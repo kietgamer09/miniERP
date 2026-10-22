@@ -162,7 +162,7 @@ Hệ thống tự kiểm tra quyền theo bảng dưới đây; thao tác ngoài
 - **Phân loại:** Bắt buộc
 - **Là** 1 người dùng, **tôi muốn** xem số liệu tóm tắt trên Trang chủ **để** nắm nhanh tình hình công việc và chấm công của bản thân.
 * **Tiêu chí:**
-  - **Khi** vào Trang chủ, hệ thống hiển thị nút Vào ca / Ra ca, số ngày công trong tháng và bảng công.
+  - **Khi** vào Trang chủ, hệ thống hiển thị nút Chấm công, số ngày công trong tháng(tổng ngày công đã trừ chủ nhật, ngày lễ tính bằng ngày đi làm + ngày nghỉ phép, nghỉ ốm) và bảng công.
   - **Khi** vào Trang chủ, hệ thống hiển thị khối “Việc của tôi” gồm 3 cột Cần làm / Đang làm / Xong, mỗi cột kèm số task, kèm tổng số task quá hạn; màu và thứ tự theo US_09.
   - **Khi** kéo thả hoặc bấm vào thẻ task trong khối này, hệ thống áp dụng quy tắc của US_10 và mở chi tiết theo US_07.
   - **Khi** Quản lý hoặc Admin vào Trang chủ, hệ thống hiển thị thêm tổng số dự án đang quản lý và số đơn nghỉ phép đang chờ duyệt.
