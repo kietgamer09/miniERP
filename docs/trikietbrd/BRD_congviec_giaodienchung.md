@@ -30,6 +30,7 @@ Sơ đồ luân chuyển trạng thái công việc:
 * **Bước kề nhau:** Chỉ được kéo thả giữa hai cột kề nhau (`Cần làm` ⬄ `Đang làm` ⬄ `Xong`), không được nhảy cóc từ `Cần làm` sang `Xong`.
 * **Kéo lùi:** `Đang làm` ➔ `Cần làm` khi công việc tạm hoãn hoặc vướng mắc. `Xong` ➔ `Đang làm` khi nghiệm thu thực tế chưa đạt. Ai được kéo: xem bảng 2.1 và US_10.
 * **Cảnh báo quá hạn:** Hệ thống so sánh ngày hiện tại với hạn chót của task mỗi khi hiển thị. Khi ngày hiện tại đã vượt qua hạn chót mà task chưa `Xong`, task được tô đỏ ở Bảng Kanban, trang "Việc của tôi" và danh sách task. Đúng ngày hạn chót chưa bị tô đỏ.
+* **Cảnh báo sắp hạn:** Hệ thống so sánh ngày hiện tại với ngày hạn của task. Nếu task chưa `Xong`, chưa quá hạn và còn từ 0 đến 3 ngày lịch đến hạn chót (kể cả đúng ngày hạn chót), task được tô vàng ở Bảng Kanban, trang "Việc của tôi" và danh sách task. Task `Xong` không hiện màu cảnh báo.
 
 ---
 
@@ -129,7 +130,8 @@ Hệ thống tự kiểm tra quyền theo bảng dưới đây; thao tác ngoài
 - **Là** 1 nhân viên, **tôi muốn** có trang "Việc của tôi" liệt kê các task được giao cho mình và thấy rõ task quá hạn **để** chủ động ưu tiên xử lý.
 * **Tiêu chí:**
   - **Khi** vào trang "Việc của tôi", hệ thống chỉ liệt kê các task mà tôi là Người làm task, trên tất cả các dự án tôi tham gia.
-  - **Khi** ngày hiện tại đã vượt qua hạn chót mà task chưa `Xong`, hệ thống tô đỏ task trên trang "Việc của tôi", danh sách task và Bảng Kanban.
+  - **Khi** hiển thị task, hệ thống tô đỏ và ghi nhãn “Quá hạn” cho task quá hạn, tô vàng và ghi “Sắp hạn” cho task sắp hạn, task còn lại chưa Xong hiện màu xanh.
+  - **Khi** xem Việc của tôi, hệ thống xếp task quá hạn lên đầu; các task còn lại xếp theo hạn chót gần đến xa (mặc định) hoặc theo mức ưu tiên cao đến thấp nếu tôi chọn.
 
 ---
 
@@ -160,9 +162,11 @@ Hệ thống tự kiểm tra quyền theo bảng dưới đây; thao tác ngoài
 - **Phân loại:** Bắt buộc
 - **Là** 1 người dùng, **tôi muốn** xem số liệu tóm tắt trên Trang chủ **để** nắm nhanh tình hình công việc và chấm công của bản thân.
 * **Tiêu chí:**
-  - **Khi** vào Trang chủ, hệ thống hiển thị: nút Vào ca / Ra ca, số ngày công trong tháng, số việc đang làm, số việc quá hạn (tô đỏ) và số việc đã hoàn thành.
+  - **Khi** vào Trang chủ, hệ thống hiển thị nút Vào ca / Ra ca, số ngày công trong tháng và bảng công.
+  - **Khi** vào Trang chủ, hệ thống hiển thị khối “Việc của tôi” gồm 3 cột Cần làm / Đang làm / Xong (xong trong tuần này), mỗi cột kèm số task, kèm tổng số task quá hạn; màu và thứ tự theo US_09.
+  - **Khi** kéo thả hoặc bấm vào thẻ task trong khối này, hệ thống áp dụng quy tắc của US_10 và mở chi tiết theo US_07.
   - **Khi** Quản lý hoặc Admin vào Trang chủ, hệ thống hiển thị thêm tổng số dự án đang quản lý và số đơn nghỉ phép đang chờ duyệt.
-
+  
 ---
 
 #### NHÓM 5: CHỨC NĂNG LÀM THÊM
