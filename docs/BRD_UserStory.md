@@ -97,7 +97,8 @@ graph TD
 
 * **Tiêu chí**
   - **Khi** Nhân viên chọn ngày gửi đơn xin nghỉ phép, hệ thống sẽ xác nhận đơn nghỉ phép rồi chuyển đến người quản lý của nhân sự đó.
-
+  - **Khi** Nhân viên không sử dụng hết số lượng phép nghỉ 1 năm (12ngày/năm) thì sang năm tiếp theo hệ thống sẽ reset số lượng phép nghỉ về ban đầu và không cộng dồn phép nghỉ sang năm tiếp theo
+ 
 #### US_09: Quản lý đơn xin nghỉ phép của nhân viên
   - **Là** 1 Quản lý **Tôi muốn** có thể duyệt/từ chối đơn xin nghỉ phép của nhân viên **Để** có thể sắp xếp lại công việc cũng như để hệ thống cập nhật được ngày công/
 
