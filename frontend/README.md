@@ -23,11 +23,13 @@ npm run dev
 - `pages/`: các trang
 - `utils/`: hàm tiện ích
 
-## Tài khoản mẫu
+## Đăng nhập
 
-Các tài khoản sau dự kiến dùng để thử giao diện đăng nhập ở phần B:
+Frontend gọi backend tại `VITE_API_URL` (mặc định `http://localhost:5000`). Tạo `frontend/.env` từ `.env.example` nếu cần đổi địa chỉ API. Backend hiện nhận tài khoản dưới trường `username`.
 
-| Email | Mật khẩu | Vai trò |
+Các tài khoản sau chỉ dùng khi bật `USE_MOCK = true` trong `src/services/authApi.js`:
+
+| Tài khoản | Mật khẩu | Vai trò |
 |---|---|---|
 | `nhanvien@minierp.local` | `An@123456` | Nhân viên |
 | `quanly@minierp.local` | `Minh@123456` | Quản lý |
