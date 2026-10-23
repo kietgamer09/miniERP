@@ -24,7 +24,7 @@ Sơ đồ quy trình tổng thể:
 ### 1.2 Vòng đời trạng thái task (Bảng Kanban)
 Sơ đồ luân chuyển trạng thái công việc:
 
-![Kanban vòng đời task](kanban-vong-doi-task.png)
+![Kanban vòng đời task](kanban-task.png)
 
 * **Vòng đời chuẩn:** `Cần làm` (khi tạo mới) ➔ `Đang làm` ➔ `Xong`.
 
