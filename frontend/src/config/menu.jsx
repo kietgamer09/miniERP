@@ -6,12 +6,11 @@
 import {
   UserOutlined, DollarOutlined, CalendarOutlined, ProjectOutlined,
   CheckSquareOutlined, FileTextOutlined, AuditOutlined, TeamOutlined,
-  BankOutlined, FieldTimeOutlined,
+  FieldTimeOutlined,
 } from '@ant-design/icons';
 
 const ALL = ['employee', 'manager', 'admin'];
 const MGR_ADMIN = ['manager', 'admin'];
-const ADMIN_ONLY = ['admin'];
 
 /** Cây menu đầy đủ – 2 nhóm: "Nhân viên" và "Công việc" */
 const fullMenuItems = [
@@ -19,8 +18,6 @@ const fullMenuItems = [
     type: 'group', label: 'Nhân viên', key: 'grp-nhanvien', roles: ALL,
     children: [
       { key: '/thong-tin', label: 'Thông tin', icon: <UserOutlined />, roles: ALL },
-      { key: '/lam-them', label: 'Làm thêm', icon: <FieldTimeOutlined />, roles: ALL },
-      { key: '/tien-luong', label: 'Tiền lương', icon: <DollarOutlined />, roles: ALL },
       {
         key: 'sub-chamcong', label: 'Chấm công', icon: <CalendarOutlined />, roles: ALL,
         children: [
@@ -28,6 +25,9 @@ const fullMenuItems = [
           { key: '/cham-cong/nghi-phep', label: 'Nghỉ phép', roles: ALL },
         ],
       },
+      { key: '/lam-them', label: 'Làm thêm', icon: <FieldTimeOutlined />, roles: ALL },
+      { key: '/quan-ly-nhan-vien', label: 'Danh sách nhân viên', icon: <TeamOutlined />, roles: ALL },
+      { key: '/tien-luong', label: 'Tiền lương', icon: <DollarOutlined />, roles: ALL },
     ],
   },
   {
@@ -36,6 +36,7 @@ const fullMenuItems = [
       {
         key: 'sub-duan', label: 'Dự án', icon: <ProjectOutlined />, roles: ALL,
         children: [
+          { key: '/quan-ly-phong-ban', label: 'Phòng ban', roles: ALL },
           { key: '/du-an/cua-toi', label: 'Dự án của tôi', roles: ALL },
           { key: '/du-an/tien-do', label: 'Tiến độ', roles: ALL },
         ],
@@ -48,10 +49,8 @@ const fullMenuItems = [
           { key: '/viec-cua-toi/viec-khac', label: 'Việc khác (cùng dự án)', roles: ALL },
         ],
       },
-      { key: '/tai-lieu', label: 'Tài liệu', icon: <FileTextOutlined />, roles: ALL },
       { key: '/phe-duyet', label: 'Phê duyệt', icon: <AuditOutlined />, roles: MGR_ADMIN },
-      { key: '/quan-ly-nhan-vien', label: 'Quản lý nhân viên', icon: <TeamOutlined />, roles: ADMIN_ONLY },
-      { key: '/quan-ly-phong-ban', label: 'Quản lý phòng ban', icon: <BankOutlined />, roles: ADMIN_ONLY },
+      { key: '/tai-lieu', label: 'Tài liệu', icon: <FileTextOutlined />, roles: ALL },
     ],
   },
 ];
