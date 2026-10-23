@@ -77,11 +77,16 @@ function getDueLabel(task, dueState) {
 
 /**
  * Sắp xếp task trong mỗi cột:
+<<<<<<< Updated upstream
  * - "Theo ưu tiên" (mode === 'priority'): Quá hạn luôn lên đầu; các task còn lại xếp Cao -> Trung bình -> Thấp, rồi hạn gần -> xa.
+=======
+ * - "Theo ưu tiên" (mode === 'priority'): Quá hạn lên đầu; sau đó Cao -> Trung bình -> Thấp, bằng ưu tiên thì hạn gần lên trước.
+>>>>>>> Stashed changes
  * - "Theo hạn" (mode === 'due'): Quá hạn luôn lên đầu, sau đó hạn gần -> xa. Nếu bằng hạn: ưu tiên Cao -> Thấp.
  */
 function sortTasks(tasks, mode = 'due', today = new Date()) {
   return [...tasks].sort((a, b) => {
+<<<<<<< Updated upstream
     // Quá hạn luôn lên đầu trong cả hai chế độ sắp xếp.
     const stateA = getDueState(a, today);
     const stateB = getDueState(b, today);
@@ -95,11 +100,28 @@ function sortTasks(tasks, mode = 'due', today = new Date()) {
       if (priDiff !== 0) return priDiff;
 
       // Bằng ưu tiên: hạn gần -> xa.
+=======
+    // Trạng thái quá hạn đứng trước mọi tiêu chí trong cả hai chế độ.
+    const overdueDiff = Number(getDueState(a, today) !== 'overdue')
+      - Number(getDueState(b, today) !== 'overdue');
+    if (overdueDiff !== 0) return overdueDiff;
+
+    if (mode === 'priority') {
+      // Trong cùng nhóm quá hạn / chưa quá hạn, ưu tiên Cao -> Thấp.
+      const priDiff = (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9);
+      if (priDiff !== 0) return priDiff;
+
+      // Bằng ưu tiên thì hạn chót gần hơn lên trước.
+>>>>>>> Stashed changes
       return new Date(a.dueDate) - new Date(b.dueDate);
     }
 
     // mode === 'due'
+<<<<<<< Updated upstream
     // Các task cùng nhóm quá hạn / chưa quá hạn xếp hạn gần -> xa.
+=======
+    // Trong cùng nhóm quá hạn / chưa quá hạn, hạn gần -> xa.
+>>>>>>> Stashed changes
     const dateDiff = new Date(a.dueDate) - new Date(b.dueDate);
     if (dateDiff !== 0) return dateDiff;
 

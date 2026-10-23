@@ -1,33 +1,30 @@
 /**
  * MainLayout – Khung giao diện chính: thanh trên + menu trái + vùng nội dung.
  *
- * Dùng Ant Design Layout. Menu lọc theo vai trò từ RoleContext.
+ * Dùng Ant Design Layout. Menu lọc theo vai trò tài khoản đăng nhập.
  * Tách layout riêng vì mọi trang đều dùng chung khung này (qua Outlet).
  */
 import { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
-  Layout, Menu, Select, Avatar, Dropdown, Button, Typography, Space,
+  Layout, Menu, Avatar, Dropdown, Button, Typography, Space, Grid, Drawer,
 } from 'antd';
 import {
   MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined, RightOutlined,
 } from '@ant-design/icons';
-import { useRole, ROLES } from '../context/RoleContext';
+import { useAuth, useRole } from '../context/AuthContext';
 import { filterMenuByRole, fullMenuItems, findOpenKeys } from '../config/menu';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
-// DEV: bộ chọn vai trò tạm – xóa khi có đăng nhập
-const ROLE_OPTIONS = [
-  { value: ROLES.EMPLOYEE, label: 'Nhân viên bình thường' },
-  { value: ROLES.MANAGER, label: 'Quản lý dự án' },
-  { value: ROLES.ADMIN, label: 'Admin/HR' },
-];
-
 function MainLayout() {
   const [collapsed, setCollapsed] = useState(false);
-  const { role, setRole } = useRole();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const screens = Grid.useBreakpoint();
+  const isMobile = !screens.md;
+  const { role } = useRole();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -41,14 +38,40 @@ function MainLayout() {
   const avatarMenu = {
     items: [
       { key: 'password', label: 'Đổi mật khẩu', onClick: () => { /* TODO */ } },
-      { key: 'logout', label: 'Đăng xuất', onClick: () => { /* TODO */ } },
+      {
+        key: 'logout',
+        label: 'Đăng xuất',
+        onClick: () => {
+          logout();
+          navigate('/login', { replace: true });
+        },
+      },
     ],
   };
+
+  function handleMenuClick({ key }) {
+    if (key.startsWith('/')) navigate(key);
+    setMobileMenuOpen(false);
+  }
+
+  function renderMenu() {
+    return (
+      <Menu
+        mode="inline"
+        selectedKeys={[location.pathname]}
+        defaultOpenKeys={openKeys}
+        items={menuItems}
+        onClick={handleMenuClick}
+        style={{ borderRight: 0, paddingTop: 8 }}
+      />
+    );
+  }
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
       {/* ===== THANH TRÊN (bám sát phac_thao_menu.png) ===== */}
       <Header
+        className="app-header"
         style={{
           background: '#ffffff',
           borderBottom: '1px solid #e8e8e8',
@@ -67,8 +90,9 @@ function MainLayout() {
         <Space>
           <Button
             type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
+            aria-label={isMobile ? 'Mở menu điều hướng' : 'Thu gọn menu điều hướng'}
+            icon={isMobile || collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => (isMobile ? setMobileMenuOpen(true) : setCollapsed(!collapsed))}
             style={{ fontSize: 18 }}
           />
           <Text
@@ -80,17 +104,8 @@ function MainLayout() {
           </Text>
         </Space>
 
-        {/* Bên phải: bộ chọn vai trò + avatar */}
-        <Space size="middle">
-          {/* DEV: xóa khi có đăng nhập */}
-          <Select
-            value={role}
-            onChange={setRole}
-            options={ROLE_OPTIONS}
-            style={{ width: 190 }}
-            size="small"
-          />
-
+        {/* Bên phải: thông tin người dùng */}
+        <Space size="middle" className="app-header-actions">
           <Dropdown menu={avatarMenu} trigger={['click']}>
             <Space style={{ cursor: 'pointer' }}>
               <Avatar
@@ -98,7 +113,9 @@ function MainLayout() {
                 icon={<UserOutlined />}
                 style={{ backgroundColor: '#d9d9d9', color: '#595959', borderRadius: 4 }}
               />
-              <Text style={{ color: '#262626' }}>Tên người dùng</Text>
+              <Text className="header-user-name" style={{ color: '#262626' }}>
+                {user?.fullName || 'Người dùng'}
+              </Text>
               <RightOutlined style={{ fontSize: 10, color: '#8c8c8c' }} />
             </Space>
           </Dropdown>
@@ -108,27 +125,30 @@ function MainLayout() {
       <Layout>
         {/* ===== MENU TRÁI ===== */}
         <Sider
+          className="desktop-sider"
           collapsible
           collapsed={collapsed}
           trigger={null}
           width={240}
           style={{ background: '#fff' }}
         >
-          <Menu
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            defaultOpenKeys={openKeys}
-            items={menuItems}
-            onClick={({ key }) => {
-              // Chỉ điều hướng nếu key là đường dẫn (bắt đầu bằng '/')
-              if (key.startsWith('/')) navigate(key);
-            }}
-            style={{ borderRight: 0, paddingTop: 8 }}
-          />
+          {renderMenu()}
         </Sider>
 
+        <Drawer
+          className="mobile-navigation-drawer"
+          title="Điều hướng"
+          placement="left"
+          width={260}
+          open={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
+          styles={{ body: { padding: 0 } }}
+        >
+          {renderMenu()}
+        </Drawer>
+
         {/* ===== VÙNG NỘI DUNG ===== */}
-        <Content style={{ padding: 16, background: '#f5f5f5', overflow: 'auto' }}>
+        <Content className="app-content" style={{ padding: 16, background: '#f5f5f5', overflow: 'auto', minWidth: 0 }}>
           {/* Outlet render trang con theo Route */}
           <Outlet />
         </Content>

@@ -66,6 +66,7 @@ function AttendanceCard() {
     >
       {/* Dòng trên: giờ + ngày + nút */}
       <div
+        className="attendance-summary"
         style={{
           background: '#f0f0f0',
           padding: '10px 16px',
@@ -74,7 +75,7 @@ function AttendanceCard() {
           justifyContent: 'space-between',
         }}
       >
-        <Space size="large">
+        <Space size="large" className="attendance-time-info">
           <Space>
             <ClockCircleOutlined />
             <Text strong>{timeStr}</Text>
@@ -86,6 +87,7 @@ function AttendanceCard() {
         </Space>
 
         <Button
+          className="attendance-action"
           type="primary"
           icon={<HandIcon />}
           disabled={btnDisabled}
@@ -122,7 +124,7 @@ function AttendanceCard() {
 
           <Divider style={{ margin: '12px 0' }} />
 
-          <div style={{ display: 'flex', gap: 40 }}>
+          <div className="attendance-punch-times" style={{ display: 'flex', gap: 40 }}>
             <div>
               <Text type="secondary">Giờ vào</Text>
               <div>

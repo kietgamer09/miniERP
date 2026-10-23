@@ -1,7 +1,7 @@
 /**
  * config/menu.jsx – Cây menu dùng cho Ant Design Menu (thuộc tính items).
  * Mỗi mục có trường `roles`: mảng vai trò được phép thấy.
- * Ẩn menu chỉ là lớp giao diện (backend vẫn phải chặn quyền).
+ * Ẩn menu/chặn route chỉ là lớp giao diện; backend phải kiểm tra quyền ở từng API.
  */
 import {
   UserOutlined, DollarOutlined, CalendarOutlined, ProjectOutlined,
@@ -79,6 +79,22 @@ function getAllPaths(items) {
   return paths;
 }
 
+/** Lấy quyền của một route từ chính mục menu, tránh khai báo quyền lần hai. */
+function getRolesForPath(path) {
+  function findItem(items) {
+    for (const item of items) {
+      if (item.key === path) return item;
+      if (item.children) {
+        const found = findItem(item.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  return findItem(fullMenuItems)?.roles ?? [];
+}
+
 /** Tìm key của submenu cha chứa đường dẫn hiện tại để mở sẵn (F5) */
 function findOpenKeys(items, pathname) {
   for (const item of items) {
@@ -95,4 +111,4 @@ function findOpenKeys(items, pathname) {
   return [];
 }
 
-export { fullMenuItems, filterMenuByRole, getAllPaths, findOpenKeys };
+export { fullMenuItems, filterMenuByRole, getAllPaths, getRolesForPath, findOpenKeys };
