@@ -1,37 +1,7 @@
-/**
- * Bộ chuyển đổi response để phần còn lại của frontend không phụ thuộc schema backend.
- * Dữ liệu mock có thể bật tạm khi backend/database chưa sẵn sàng.
- */
-const USE_MOCK = false;
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
-const MOCK_USERS = [
-  { username: 'nhanvien@minierp.local', password: 'An@123456', id: 1, fullName: 'Nguyễn Văn An', role: 'employee' },
-  { username: 'quanly@minierp.local', password: 'Minh@123456', id: 2, fullName: 'Trần Minh', role: 'manager' },
-  { username: 'admin@minierp.local', password: 'Lan@123456', id: 3, fullName: 'Lê Thị Lan', role: 'admin' },
-];
-
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+/** Gọi API xác thực của backend miniERP. */
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
 async function login(username, password) {
-  if (USE_MOCK) {
-    await wait(400);
-    const account = MOCK_USERS.find((item) => item.username === username && item.password === password);
-    if (!account) {
-      const error = new Error('Tài khoản hoặc mật khẩu không đúng');
-      error.status = 401;
-      throw error;
-    }
-
-    const { password: _password, ...user } = account;
-    return {
-      token: `mock-token-${user.id}`,
-      user: { ...user, email: user.username },
-    };
-  }
-
   const response = await fetch(`${API_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
