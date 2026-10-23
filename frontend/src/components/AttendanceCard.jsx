@@ -1,15 +1,14 @@
 /**
  * AttendanceCard – Khu chấm công trên Trang chủ.
  *
- * Hiển thị giờ hiện tại (cập nhật mỗi giây), ngày hiện tại, nút Vào/Ra ca.
- * Chuỗi trạng thái: chưa vào → "Vào ca" → "Ra ca" → "Đã đủ ca hôm nay".
+ * Hiển thị đồng hồ và trạng thái tích hợp API chấm công.
  *
  * Tách riêng vì logic đồng hồ + state chấm công không liên quan các khu khác.
  */
 import { useState, useEffect } from 'react';
-import { Card, Button, Typography, Space, Divider, Tag } from 'antd';
+import { Card, Button, Typography, Space, Divider, Alert } from 'antd';
 import { ClockCircleOutlined, CalendarOutlined } from '@ant-design/icons';
-import { formatDateVN, formatFullDateVN, isWorkingDay } from '../utils/dates';
+import { formatDateVN, formatFullDateVN } from '../utils/dates';
 
 const { Text, Title } = Typography;
 
@@ -24,8 +23,6 @@ function HandIcon() {
 
 function AttendanceCard() {
   const [now, setNow] = useState(new Date());
-  const [checkIn, setCheckIn] = useState(null);   // giờ vào ca
-  const [checkOut, setCheckOut] = useState(null);  // giờ ra ca
 
   // Cập nhật đồng hồ mỗi giây
   useEffect(() => {
@@ -35,29 +32,6 @@ function AttendanceCard() {
 
   const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
   const dateStr = formatDateVN(now);
-  const isWeekend = !isWorkingDay(now);
-
-  // Xác định trạng thái nút
-  let btnLabel = 'Vào ca';
-  let btnDisabled = false;
-  if (checkIn && checkOut) {
-    btnLabel = 'Đã đủ ca hôm nay';
-    btnDisabled = true;
-  } else if (checkIn) {
-    btnLabel = 'Ra ca';
-  } else if (isWeekend) {
-    btnLabel = 'Hôm nay nghỉ';
-    btnDisabled = true;
-  }
-
-  function handleClick() {
-    const currentTime = new Date().toLocaleTimeString('vi-VN', { hour12: false });
-    if (!checkIn) {
-      setCheckIn(currentTime);
-    } else if (!checkOut) {
-      setCheckOut(currentTime);
-    }
-  }
 
   return (
     <Card
@@ -88,13 +62,11 @@ function AttendanceCard() {
 
         <Button
           className="attendance-action"
-          type="primary"
           icon={<HandIcon />}
-          disabled={btnDisabled}
-          onClick={handleClick}
+          disabled
           style={{ minWidth: 120 }}
         >
-          {btnLabel}
+          Chưa kết nối API
         </Button>
       </div>
 
@@ -112,11 +84,6 @@ function AttendanceCard() {
             <Text type="secondary" style={{ background: '#e8e8e8', padding: '2px 8px', borderRadius: 4 }}>
               Hôm nay
             </Text>
-            {isWeekend && (
-              <Tag color="orange" style={{ margin: 0 }}>
-                Ngày nghỉ (không cần chấm công)
-              </Tag>
-            )}
           </div>
           <div style={{ marginTop: 8 }}>
             <Text strong>{formatFullDateVN(now)}</Text>
@@ -124,12 +91,19 @@ function AttendanceCard() {
 
           <Divider style={{ margin: '12px 0' }} />
 
+          <Alert
+            type="info"
+            showIcon
+            message="Backend chưa cung cấp API chấm công."
+            style={{ marginBottom: 12 }}
+          />
+
           <div className="attendance-punch-times" style={{ display: 'flex', gap: 40 }}>
             <div>
               <Text type="secondary">Giờ vào</Text>
               <div>
                 <Title level={4} style={{ margin: 0 }}>
-                  {checkIn || '--:--:--'}
+                  --:--:--
                 </Title>
               </div>
             </div>
@@ -138,7 +112,7 @@ function AttendanceCard() {
               <Text type="secondary">Giờ ra</Text>
               <div>
                 <Title level={4} style={{ margin: 0 }}>
-                  {checkOut || '--:--:--'}
+                  --:--:--
                 </Title>
               </div>
             </div>
