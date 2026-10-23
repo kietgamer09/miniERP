@@ -1,6 +1,6 @@
 /** Quản lý tài khoản và phiên đăng nhập trong giao diện. */
 import { createContext, useContext, useState } from 'react';
-import { login as loginRequest } from '../services/authApi';
+import { login as loginRequest, normalizeRole } from '../services/authApi';
 
 const STORAGE_KEY = 'miniErpAuth';
 const AuthContext = createContext(null);
@@ -15,7 +15,10 @@ function readSession() {
       window.localStorage.removeItem(STORAGE_KEY);
       return { user: null, token: null };
     }
-    return { user: session.user, token: session.token };
+    return {
+      user: { ...session.user, role: normalizeRole(session.user.role) },
+      token: session.token,
+    };
   } catch {
     return { user: null, token: null };
   }

@@ -15,6 +15,21 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function normalizeRole(role) {
+  const normalizedRole = String(role || '').trim().toLocaleLowerCase('vi');
+  const roleAliases = {
+    member: 'employee',
+    employee: 'employee',
+    nhan_vien: 'employee',
+    'nhân viên': 'employee',
+    manager: 'manager',
+    quan_ly: 'manager',
+    'quản lý': 'manager',
+    admin: 'admin',
+  };
+  return roleAliases[normalizedRole] || normalizedRole;
+}
+
 async function login(username, password) {
   if (USE_MOCK) {
     await wait(400);
@@ -55,7 +70,7 @@ async function login(username, password) {
     username: apiUser.username,
     email: apiUser.email ?? apiUser.username,
     fullName: apiUser.fullName ?? apiUser.fullname ?? apiUser.username,
-    role: apiUser.role,
+    role: normalizeRole(apiUser.role),
   };
 
   if (!normalizedUser.role) {
@@ -65,4 +80,4 @@ async function login(username, password) {
   return { token: payload.token, user: normalizedUser };
 }
 
-export { login };
+export { login, normalizeRole };
