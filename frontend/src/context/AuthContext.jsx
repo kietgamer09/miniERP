@@ -1,5 +1,5 @@
 /** Quản lý tài khoản và phiên đăng nhập trong giao diện. */
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { login as loginRequest, normalizeRole } from '../services/authApi';
 
 const STORAGE_KEY = 'miniErpAuth';
@@ -46,6 +46,15 @@ function AuthProvider({ children }) {
       // Giao diện vẫn đăng xuất dù không truy cập được localStorage.
     }
   }
+
+  useEffect(() => {
+    function handleUnauthorized() {
+      logout();
+    }
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ ...session, login, logout }}>

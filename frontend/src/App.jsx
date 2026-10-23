@@ -11,11 +11,15 @@ import RequireAuth from './components/RequireAuth';
 import RequireRole from './components/RequireRole';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import Departments from './pages/Departments';
 import Placeholder from './pages/Placeholder';
 import { getAllPaths, fullMenuItems } from './config/menu';
 
 // Lấy toàn bộ đường dẫn từ cây menu
 const allPaths = getAllPaths(fullMenuItems);
+const pages = {
+  '/quan-ly-phong-ban': Departments,
+};
 
 function App() {
   return (
@@ -27,13 +31,16 @@ function App() {
           <Route path="/" element={<Home />} />
 
           {/* Mỗi route menu dùng quyền khai báo ngay trong menu.jsx */}
-          {allPaths.map((path) => (
-            <Route
-              key={path}
-              path={path}
-              element={<RequireRole path={path}><Placeholder /></RequireRole>}
-            />
-          ))}
+          {allPaths.map((path) => {
+            const Page = pages[path] ?? Placeholder;
+            return (
+              <Route
+                key={path}
+                path={path}
+                element={<RequireRole path={path}><Page /></RequireRole>}
+              />
+            );
+          })}
 
           {/* Đường dẫn không tồn tại */}
           <Route path="*" element={<Placeholder />} />
