@@ -1,0 +1,169 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model Day_off_requests {
+  Day_off_id                                                Int           @id @default(autoincrement())
+  employee_send_id                                          Int
+  employee_receive_id                                       Int
+  start_date                                                DateTime?     @db.Date
+  end_date                                                  DateTime?     @db.Date
+  reason                                                    String?
+  status                                                    leave_status? @default(cho_xac_thuc)
+  created_at                                                DateTime?     @db.Timestamp(6)
+  employees_Day_off_requests_employee_receive_idToemployees employees     @relation("Day_off_requests_employee_receive_idToemployees", fields: [employee_receive_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  employees_Day_off_requests_employee_send_idToemployees    employees     @relation("Day_off_requests_employee_send_idToemployees", fields: [employee_send_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model attendances {
+  attendances_id Int       @id @default(autoincrement())
+  employee_id    Int
+  date           DateTime? @db.Date
+  check_in       DateTime? @db.Time(6)
+  check_out      DateTime? @db.Time(6)
+  created_at     DateTime? @db.Timestamp(6)
+  employees      employees @relation(fields: [employee_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model departments {
+  department_id   Int         @id
+  department_name String?     @db.VarChar
+  managment       String?     @db.VarChar
+  category        String?     @db.VarChar
+  created_at      DateTime?   @db.Timestamp(6)
+  employees       employees[]
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model employees {
+  employee_id                                                      Int                @id @default(autoincrement())
+  user_id                                                          Int                @unique
+  department_id                                                    Int
+  fullname                                                         String?            @db.VarChar
+  email                                                            String?            @db.VarChar
+  phone_number                                                     String?            @db.VarChar
+  birthday                                                         String?            @db.VarChar
+  manage_by                                                        String?            @db.VarChar
+  position                                                         String?            @db.VarChar
+  start_date                                                       DateTime?          @db.Date
+  status                                                           employee_status?   @default(dang_lam_viec)
+  created_at                                                       DateTime?          @db.Timestamp(6)
+  Day_off_requests_Day_off_requests_employee_receive_idToemployees Day_off_requests[] @relation("Day_off_requests_employee_receive_idToemployees")
+  Day_off_requests_Day_off_requests_employee_send_idToemployees    Day_off_requests[] @relation("Day_off_requests_employee_send_idToemployees")
+  attendances                                                      attendances[]
+  departments                                                      departments        @relation(fields: [department_id], references: [department_id], onDelete: NoAction, onUpdate: NoAction)
+  users                                                            users              @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  project_members                                                  project_members[]
+  projects                                                         projects[]
+  task_comments                                                    task_comments[]
+  tasks_tasks_assignee_idToemployees                               tasks[]            @relation("tasks_assignee_idToemployees")
+  tasks_tasks_created_byToemployees                                tasks[]            @relation("tasks_created_byToemployees")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model project_members {
+  id          Int       @id @default(autoincrement())
+  employee_id Int
+  project_id  Int
+  created_at  DateTime  @default(now()) @db.Timestamp(6)
+  employees   employees @relation(fields: [employee_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  projects    projects  @relation(fields: [project_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([project_id, employee_id], map: "project_members_project_id_employee_id_idx")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model projects {
+  id              Int               @id @default(autoincrement())
+  code            String            @unique @db.VarChar(20)
+  name            String            @db.VarChar(200)
+  description     String?
+  start_date      DateTime          @db.Date
+  end_date        DateTime          @db.Date
+  status          project_status    @default(dang_thuc_hien)
+  manager_id      Int
+  created_at      DateTime          @default(now()) @db.Timestamp(6)
+  project_members project_members[]
+  employees       employees         @relation(fields: [manager_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  tasks           tasks[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model task_comments {
+  id         Int       @id @default(autoincrement())
+  author_id  Int
+  task_id    Int
+  content    String
+  created_at DateTime  @default(now()) @db.Timestamp(6)
+  employees  employees @relation(fields: [author_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  tasks      tasks     @relation(fields: [task_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model tasks {
+  id                                     Int             @id @default(autoincrement())
+  project_id                             Int
+  title                                  String          @db.VarChar(200)
+  description                            String?
+  assignee_id                            Int
+  created_by                             Int
+  due_date                               DateTime        @db.Date
+  priority                               task_priority   @default(trung_binh)
+  status                                 task_status     @default(can_lam)
+  created_at                             DateTime        @default(now()) @db.Timestamp(6)
+  updated_at                             DateTime        @default(now()) @db.Timestamp(6)
+  task_comments                          task_comments[]
+  employees_tasks_assignee_idToemployees employees       @relation("tasks_assignee_idToemployees", fields: [assignee_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  employees_tasks_created_byToemployees  employees       @relation("tasks_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  projects                               projects        @relation(fields: [project_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([assignee_id])
+  @@index([project_id, status])
+}
+
+model users {
+  user_id    Int        @id @default(autoincrement())
+  username   String?    @db.VarChar
+  password   String?    @db.VarChar
+  role       String?    @db.VarChar
+  created_at DateTime?  @db.Timestamp(6)
+  employees  employees?
+}
+
+enum employee_status {
+  dang_lam_viec
+  da_nghi_viec
+}
+
+enum leave_status {
+  cho_xac_thuc
+  da_duoc_duyet
+  bi_tu_choi
+}
+
+enum project_status {
+  dang_thuc_hien
+  hoan_thanh
+}
+
+enum task_priority {
+  thap
+  trung_binh
+  cao
+}
+
+enum task_status {
+  can_lam
+  dang_lam
+  xong
+}

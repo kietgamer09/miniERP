@@ -1,0 +1,126 @@
+/**
+ * AttendanceCard – Khu chấm công trên Trang chủ.
+ *
+ * Hiển thị đồng hồ và trạng thái tích hợp API chấm công.
+ *
+ * Tách riêng vì logic đồng hồ + state chấm công không liên quan các khu khác.
+ */
+import { useState, useEffect } from 'react';
+import { Card, Button, Typography, Space, Divider, Alert } from 'antd';
+import { ClockCircleOutlined, CalendarOutlined } from '@ant-design/icons';
+import { formatDateVN, formatFullDateVN } from '../utils/dates';
+
+const { Text, Title } = Typography;
+
+/** Icon bàn tay chấm công theo phác thảo */
+function HandIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ verticalAlign: '-2px', marginRight: 4 }}>
+      <path d="M12 2a1.5 1.5 0 0 1 1.5 1.5v6.25a.75.75 0 0 0 1.5 0v-5a1.5 1.5 0 0 1 3 0v5a.75.75 0 0 0 1.5 0v-2.5a1.5 1.5 0 0 1 3 0v7.25c0 5.25-4.25 9.5-9.5 9.5S3.5 17.25 3.5 12c0-1.7.5-3.3 1.4-4.6l3.6 4.35V4.5A1.5 1.5 0 0 1 10 3a1.5 1.5 0 0 1 1.5 1.5v4.25a.75.75 0 0 0 1.5 0V3.5A1.5 1.5 0 0 1 12 2z" />
+    </svg>
+  );
+}
+
+function AttendanceCard() {
+  const [now, setNow] = useState(new Date());
+
+  // Cập nhật đồng hồ mỗi giây
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
+  const dateStr = formatDateVN(now);
+
+  return (
+    <Card
+      style={{ height: '100%' }}
+      styles={{ body: { padding: 0 } }}
+    >
+      {/* Dòng trên: giờ + ngày + nút */}
+      <div
+        className="attendance-summary"
+        style={{
+          background: '#f0f0f0',
+          padding: '10px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <Space size="large" className="attendance-time-info">
+          <Space>
+            <ClockCircleOutlined />
+            <Text strong>{timeStr}</Text>
+          </Space>
+          <Space>
+            <CalendarOutlined />
+            <Text strong>{dateStr}</Text>
+          </Space>
+        </Space>
+
+        <Button
+          className="attendance-action"
+          icon={<HandIcon />}
+          disabled
+          style={{ minWidth: 120 }}
+        >
+          Chưa kết nối API
+        </Button>
+      </div>
+
+      {/* Dòng dưới: khung thông tin ca */}
+      <div style={{ padding: 16 }}>
+        <div
+          style={{
+            background: '#fafafa',
+            border: '1px solid #e8e8e8',
+            borderRadius: 8,
+            padding: 16,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text type="secondary" style={{ background: '#e8e8e8', padding: '2px 8px', borderRadius: 4 }}>
+              Hôm nay
+            </Text>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <Text strong>{formatFullDateVN(now)}</Text>
+          </div>
+
+          <Divider style={{ margin: '12px 0' }} />
+
+          <Alert
+            type="info"
+            showIcon
+            message="Backend chưa cung cấp API chấm công."
+            style={{ marginBottom: 12 }}
+          />
+
+          <div className="attendance-punch-times" style={{ display: 'flex', gap: 40 }}>
+            <div>
+              <Text type="secondary">Giờ vào</Text>
+              <div>
+                <Title level={4} style={{ margin: 0 }}>
+                  --:--:--
+                </Title>
+              </div>
+            </div>
+            <Divider type="vertical" style={{ height: 'auto' }} />
+            <div>
+              <Text type="secondary">Giờ ra</Text>
+              <div>
+                <Title level={4} style={{ margin: 0 }}>
+                  --:--:--
+                </Title>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+export default AttendanceCard;

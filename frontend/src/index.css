@@ -1,0 +1,205 @@
+/* Reset cơ bản – giữ tối giản, Ant Design lo phần còn lại */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Ẩn scrollbar mặc định của Ant Layout Sider */
+.ant-layout-sider-children {
+  overflow-y: auto;
+}
+
+.app-header {
+  gap: 12px;
+}
+
+.header-user-name {
+  white-space: nowrap;
+}
+
+.app-content {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .app-header {
+    padding: 0 10px !important;
+  }
+
+  .app-header > .ant-space:first-child {
+    min-width: 0;
+    gap: 4px;
+  }
+
+  .app-header > .ant-space:first-child .ant-typography {
+    font-size: 14px !important;
+    white-space: nowrap;
+  }
+
+  .app-header-actions {
+    gap: 8px !important;
+  }
+
+  .desktop-sider,
+  .header-user-name {
+    display: none !important;
+  }
+
+  .app-content {
+    padding: 10px !important;
+  }
+
+  .attendance-summary {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px !important;
+  }
+
+  .attendance-time-info {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    gap: 8px !important;
+  }
+
+  .attendance-action {
+    width: 100%;
+  }
+
+  .attendance-punch-times {
+    gap: 16px !important;
+  }
+
+  .timesheet-overview {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px !important;
+  }
+
+  .timesheet-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    padding-top: 0 !important;
+  }
+
+  .my-tasks-header {
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+
+  .my-tasks-header > .ant-select {
+    width: 100% !important;
+  }
+
+  .task-column-list {
+    height: auto !important;
+    max-height: 320px;
+    overscroll-behavior: contain;
+  }
+
+  .ant-card-body {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-header > .ant-space:first-child .ant-typography {
+    font-size: 12px !important;
+  }
+
+  .header-user-name {
+    display: none !important;
+  }
+}
+
+.login-page {
+  position: relative;
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 20px;
+  background: #fff;
+}
+
+.login-card {
+  width: min(100%, 420px);
+  border: 0;
+  background: #f4f6f8;
+  box-shadow: none;
+}
+
+.login-card .ant-card-body {
+  padding: 28px;
+}
+
+.login-brand {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  color: #202b3d;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  transform: translateX(-50%);
+}
+
+.login-brand strong,
+.login-footer strong {
+  color: #315de8;
+}
+
+.login-title {
+  margin: 0 0 4px !important;
+  color: #222b3a !important;
+  font-size: 20px !important;
+}
+
+.login-subtitle {
+  display: block;
+  margin-bottom: 20px;
+  font-size: 12px;
+}
+
+.login-error {
+  margin-bottom: 16px;
+}
+
+.login-card .ant-form-item-label > label {
+  color: #313b4b;
+  font-size: 12px;
+}
+
+.login-card .ant-btn-primary {
+  background: #315de8;
+  box-shadow: none;
+}
+
+.login-footer {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  color: #a0a7b2;
+  font-size: 11px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .login-card {
+    width: min(100%, 420px);
+  }
+
+  .login-card .ant-card-body {
+    padding: 24px 20px;
+  }
+
+  .login-footer {
+    bottom: 16px;
+    font-size: 10px;
+  }
+}
