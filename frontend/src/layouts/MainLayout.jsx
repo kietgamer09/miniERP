@@ -4,7 +4,7 @@
  * Dùng Ant Design Layout. Menu lọc theo vai trò tài khoản đăng nhập.
  * Tách layout riêng vì mọi trang đều dùng chung khung này (qua Outlet).
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
   Layout, Menu, Avatar, Dropdown, Button, Typography, Space, Grid, Drawer,
@@ -31,8 +31,17 @@ function MainLayout() {
   // Lọc menu theo vai trò hiện tại
   const menuItems = filterMenuByRole(fullMenuItems, role);
 
-  // Tìm submenu cần mở sẵn (giữ đúng khi F5)
-  const openKeys = findOpenKeys(menuItems, location.pathname);
+  // Chỉ mở một dropdown; khi chuyển route thì mở dropdown chứa route đó.
+  const [openKeys, setOpenKeys] = useState(() => findOpenKeys(menuItems, location.pathname).slice(-1));
+
+  useEffect(() => {
+    setOpenKeys(findOpenKeys(menuItems, location.pathname).slice(-1));
+  }, [location.pathname]);
+
+  function handleOpenChange(nextOpenKeys) {
+    const newlyOpenedKey = nextOpenKeys.find((key) => !openKeys.includes(key));
+    setOpenKeys(newlyOpenedKey ? [newlyOpenedKey] : nextOpenKeys);
+  }
 
   // Menu thả xuống của avatar
   const avatarMenu = {
@@ -59,9 +68,10 @@ function MainLayout() {
       <Menu
         mode="inline"
         selectedKeys={[location.pathname]}
-        defaultOpenKeys={openKeys}
+        openKeys={openKeys}
         items={menuItems}
         onClick={handleMenuClick}
+        onOpenChange={handleOpenChange}
         style={{ borderRight: 0, paddingTop: 8 }}
       />
     );
