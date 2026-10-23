@@ -11,7 +11,8 @@ function readSession() {
     if (!savedSession) return { user: null, token: null };
 
     const session = JSON.parse(savedSession);
-    if (!session?.user || typeof session.token !== 'string') {
+    if (!session?.user || typeof session.token !== 'string' || session.token.startsWith('mock-token-')) {
+      window.localStorage.removeItem(STORAGE_KEY);
       return { user: null, token: null };
     }
     return { user: session.user, token: session.token };
@@ -23,8 +24,8 @@ function readSession() {
 function AuthProvider({ children }) {
   const [session, setSession] = useState(readSession);
 
-  async function login(email, password) {
-    const nextSession = await loginRequest(email, password);
+  async function login(username, password) {
+    const nextSession = await loginRequest(username, password);
     setSession({ user: nextSession.user, token: nextSession.token });
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession));

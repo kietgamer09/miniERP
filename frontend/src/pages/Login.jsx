@@ -19,11 +19,11 @@ function Login() {
     setLoading(true);
     setLoginError('');
     try {
-      await login(values.email.trim(), values.password);
+      await login(values.username.trim(), values.password);
       navigate(location.state?.from || '/', { replace: true });
     } catch (error) {
       setLoginError(error.status === 401
-        ? 'Email hoặc mật khẩu không đúng'
+        ? 'Tài khoản hoặc mật khẩu không đúng'
         : error.status
           ? 'Máy chủ không thể xử lý yêu cầu. Vui lòng thử lại.'
           : 'Không thể kết nối. Vui lòng kiểm tra mạng và thử lại.');
@@ -51,11 +51,8 @@ function Login() {
         <Form layout="vertical" onFinish={handleSubmit} requiredMark={false}>
           <Form.Item
             label="Tài khoản"
-            name="email"
-            rules={[
-              { required: true, message: 'Vui lòng nhập email' },
-              { type: 'email', message: 'Email chưa đúng định dạng' },
-            ]}
+            name="username"
+            rules={[{ required: true, message: 'Vui lòng nhập tài khoản' }]}
           >
             <Input autoComplete="username" placeholder="Nhập tài khoản của bạn" />
           </Form.Item>
