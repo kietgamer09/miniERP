@@ -7,9 +7,9 @@
  * Tách riêng vì logic đồng hồ + state chấm công không liên quan các khu khác.
  */
 import { useState, useEffect } from 'react';
-import { Card, Button, Typography, Space, Divider } from 'antd';
+import { Card, Button, Typography, Space, Divider, Tag } from 'antd';
 import { ClockCircleOutlined, CalendarOutlined } from '@ant-design/icons';
-import { formatDateVN, formatFullDateVN } from '../utils/dates';
+import { formatDateVN, formatFullDateVN, isWorkingDay } from '../utils/dates';
 
 const { Text, Title } = Typography;
 
@@ -35,6 +35,7 @@ function AttendanceCard() {
 
   const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
   const dateStr = formatDateVN(now);
+  const isWeekend = !isWorkingDay(now);
 
   // Xác định trạng thái nút
   let btnLabel = 'Vào ca';
@@ -44,6 +45,9 @@ function AttendanceCard() {
     btnDisabled = true;
   } else if (checkIn) {
     btnLabel = 'Ra ca';
+  } else if (isWeekend) {
+    btnLabel = 'Hôm nay nghỉ';
+    btnDisabled = true;
   }
 
   function handleClick() {
@@ -102,9 +106,16 @@ function AttendanceCard() {
             padding: 16,
           }}
         >
-          <Text type="secondary" style={{ background: '#e8e8e8', padding: '2px 8px', borderRadius: 4 }}>
-            Hôm nay
-          </Text>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Text type="secondary" style={{ background: '#e8e8e8', padding: '2px 8px', borderRadius: 4 }}>
+              Hôm nay
+            </Text>
+            {isWeekend && (
+              <Tag color="orange" style={{ margin: 0 }}>
+                Ngày nghỉ (không cần chấm công)
+              </Tag>
+            )}
+          </div>
           <div style={{ marginTop: 8 }}>
             <Text strong>{formatFullDateVN(now)}</Text>
           </div>

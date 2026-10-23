@@ -42,8 +42,17 @@ function startOfDay(date) {
 }
 
 /**
+ * Kiểm tra xem một ngày có phải là ngày làm việc hay không:
+ * Nghỉ Thứ 7 (dow = 6) và Chủ nhật (dow = 0).
+ */
+function isWorkingDay(date) {
+  const dow = new Date(date).getDay();
+  return dow !== 0 && dow !== 6;
+}
+
+/**
  * Đếm số ngày làm việc trong tháng:
- * Chỉ nghỉ Chủ nhật, Thứ 7 (nửa buổi) vẫn tính là ngày đi làm.
+ * Nghỉ Thứ 7 và Chủ nhật.
  * @param {number} year
  * @param {number} month 0-indexed (0=tháng 1)
  */
@@ -52,15 +61,15 @@ function countWorkingDays(year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   for (let day = 1; day <= daysInMonth; day++) {
     const dow = new Date(year, month, day).getDay();
-    // Chỉ nghỉ Chủ nhật (0), Thứ 7 vẫn tính đi làm
-    if (dow !== 0) count++;
+    // Nghỉ Chủ nhật (0) và Thứ 7 (6)
+    if (dow !== 0 && dow !== 6) count++;
   }
   return count;
 }
 
 /**
  * Tạo danh sách ngày làm việc trong tháng:
- * Chỉ trừ Chủ nhật, Thứ 7 vẫn hiển thị trong bảng công.
+ * Trừ Thứ 7 và Chủ nhật, chỉ hiển thị ngày làm việc thực tế trong bảng công.
  */
 function getWorkingDaysInMonth(year, month) {
   const days = [];
@@ -68,7 +77,7 @@ function getWorkingDaysInMonth(year, month) {
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
     const dow = date.getDay();
-    if (dow !== 0) {
+    if (dow !== 0 && dow !== 6) {
       days.push({
         date,
         label: `${DAY_NAMES[dow]} ${day}/${month + 1}`,
@@ -86,6 +95,7 @@ export {
   formatFullDateVN,
   addDays,
   startOfDay,
+  isWorkingDay,
   countWorkingDays,
   getWorkingDaysInMonth,
 };
