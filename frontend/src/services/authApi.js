@@ -1,6 +1,21 @@
 /** Gọi API xác thực của backend miniERP. */
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
+function normalizeRole(role) {
+  const normalizedRole = String(role || '').trim().toLocaleLowerCase('vi');
+  const roleAliases = {
+    member: 'employee',
+    employee: 'employee',
+    nhan_vien: 'employee',
+    'nhân viên': 'employee',
+    manager: 'manager',
+    quan_ly: 'manager',
+    'quản lý': 'manager',
+    admin: 'admin',
+  };
+  return roleAliases[normalizedRole] || normalizedRole;
+}
+
 async function login(username, password) {
   const response = await fetch(`${API_URL}/api/auth/login`, {
     method: 'POST',
@@ -25,7 +40,7 @@ async function login(username, password) {
     username: apiUser.username,
     email: apiUser.email ?? apiUser.username,
     fullName: apiUser.fullName ?? apiUser.fullname ?? apiUser.username,
-    role: apiUser.role,
+    role: normalizeRole(apiUser.role),
   };
 
   if (!normalizedUser.role) {
@@ -35,4 +50,4 @@ async function login(username, password) {
   return { token: payload.token, user: normalizedUser };
 }
 
-export { login };
+export { login, normalizeRole };
