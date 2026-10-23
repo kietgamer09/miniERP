@@ -1,16 +1,36 @@
-# React + Vite
+# miniERP Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Giao diện quản lý nhân sự và công việc, xây dựng bằng React, Vite và Ant Design.
 
-Currently, two official plugins are available:
+## Yêu cầu
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js phiên bản LTS hiện hành
 
-## React Compiler
+## Cài đặt và chạy
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the Oxlint configuration
+## Cấu trúc `src/`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+- `components/`: các thành phần giao diện dùng lại
+- `config/`: cấu hình menu
+- `context/`: trạng thái dùng chung
+- `data/`: dữ liệu mẫu
+- `layouts/`: khung ứng dụng
+- `pages/`: các trang
+- `utils/`: hàm tiện ích
+
+## Tài khoản mẫu
+
+Các tài khoản sau dự kiến dùng để thử giao diện đăng nhập ở phần B:
+
+| Email | Mật khẩu | Vai trò |
+|---|---|---|
+| `nhanvien@minierp.local` | `An@123456` | Nhân viên |
+| `quanly@minierp.local` | `Minh@123456` | Quản lý |
+| `admin@minierp.local` | `Lan@123456` | Admin/HR |
+
+Đây chỉ là thông tin giả cho phát triển giao diện. Xác thực mật khẩu thật phải do backend đảm nhiệm.

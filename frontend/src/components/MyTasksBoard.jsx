@@ -11,7 +11,8 @@ import { useState, useMemo } from 'react';
 import { Typography, Select, Space, Row, Col } from 'antd';
 import { FilterOutlined } from '@ant-design/icons';
 import { buildMockTasks } from '../data/mockTasks';
-import { STATUS, sortTasks } from '../utils/taskStatus';
+import { STATUS, getDueState, sortTasks } from '../utils/taskStatus';
+import { isInCurrentWeek } from '../utils/dates';
 import TaskCard from './TaskCard';
 
 const { Title, Text } = Typography;
@@ -20,7 +21,7 @@ const { Title, Text } = Typography;
 const COLUMN_LABELS = {
   [STATUS.TODO]: 'Cần làm',
   [STATUS.DOING]: 'Đang làm',
-  [STATUS.DONE]: 'Hoàn thành',
+  [STATUS.DONE]: 'Hoàn thành (trong tuần này)',
 };
 
 // Chú thích 3 ô màu
@@ -35,6 +36,9 @@ function MyTasksBoard() {
 
   // Dữ liệu mẫu – tính một lần khi component mount
   const allTasks = useMemo(() => buildMockTasks(), []);
+  const overdueCount = allTasks.filter(
+    (task) => task.status !== STATUS.DONE && getDueState(task) === 'overdue',
+  ).length;
 
   // Chia task theo cột
   const columns = useMemo(() => {
@@ -42,7 +46,10 @@ function MyTasksBoard() {
     return [STATUS.TODO, STATUS.DOING, STATUS.DONE].map((status) => {
       const tasks = allTasks.filter((t) => t.status === status);
       const sorted = sortTasks(tasks, sortMode, today);
-      return { status, label: COLUMN_LABELS[status], tasks: sorted };
+      const visibleTasks = status === STATUS.DONE
+        ? sorted.filter((task) => task.completedAt && isInCurrentWeek(task.completedAt, today))
+        : sorted;
+      return { status, label: COLUMN_LABELS[status], tasks: visibleTasks };
     });
   }, [allTasks, sortMode]);
 
@@ -50,6 +57,7 @@ function MyTasksBoard() {
     <div>
       {/* Dòng tiêu đề */}
       <div
+        className="my-tasks-header"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -60,7 +68,12 @@ function MyTasksBoard() {
         }}
       >
         <Space size="middle" wrap>
-          <Title level={5} style={{ margin: 0 }}>Việc của tôi</Title>
+          <Space size={8}>
+            <Title level={5} style={{ margin: 0 }}>Việc của tôi</Title>
+            <Text style={{ color: overdueCount > 0 ? '#cf1322' : undefined }}>
+              Quá hạn: {overdueCount}
+            </Text>
+          </Space>
 
           {/* Chú thích 3 ô màu */}
           {LEGEND.map((item) => (
@@ -94,11 +107,12 @@ function MyTasksBoard() {
       </div>
 
       {/* 3 cột */}
-      <Row gutter={12}>
+      <Row gutter={[12, 12]}>
         {columns.map((col) => (
           <Col key={col.status} xs={24} md={8}>
             {/* Tiêu đề cột + số lượng */}
             <div
+              className="task-column-list"
               style={{
                 background: '#fff',
                 padding: '8px 12px',

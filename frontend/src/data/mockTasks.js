@@ -68,7 +68,7 @@ function buildMockTasks() {
       dueDate: addDays(today, 0), // hạn là hôm nay, nhưng đã xong → không cảnh báo
       priority: 'Trung bình',
       status: 'done',
-      completedAt: addDays(today, -1),
+      completedAt: today,
     },
     {
       id: 7,
@@ -77,7 +77,17 @@ function buildMockTasks() {
       dueDate: addDays(today, -5), // hạn đã qua, nhưng đã xong → không cảnh báo
       priority: 'Thấp',
       status: 'done',
-      completedAt: addDays(today, -3),
+      completedAt: today,
+    },
+    {
+      id: 8,
+      title: 'Công việc H',
+      projectName: 'Dự án abc',
+      dueDate: addDays(today, -8), // hạn đã qua, nhưng đã xong → không cảnh báo
+      priority: 'Thấp',
+      status: 'done',
+      // Chủ nhật trước tuần hiện tại để kiểm tra bộ lọc cột Hoàn thành
+      completedAt: addDays(today, -((today.getDay() + 6) % 7) - 1),
     },
   ];
 }

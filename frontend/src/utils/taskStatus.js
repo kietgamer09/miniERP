@@ -77,40 +77,31 @@ function getDueLabel(task, dueState) {
 
 /**
  * Sắp xếp task trong mỗi cột:
- * - "Theo ưu tiên" (mode === 'priority'): Cao -> Trung bình -> Thấp. Nếu bằng ưu tiên: quá hạn lên trước, rồi hạn gần -> xa.
+ * - "Theo ưu tiên": Quá hạn lên đầu; sau đó Cao -> Trung bình -> Thấp, bằng ưu tiên thì hạn gần lên trước.
  * - "Theo hạn" (mode === 'due'): Quá hạn luôn lên đầu, sau đó hạn gần -> xa. Nếu bằng hạn: ưu tiên Cao -> Thấp.
  */
 function sortTasks(tasks, mode = 'due', today = new Date()) {
   return [...tasks].sort((a, b) => {
-    if (mode === 'priority') {
-      // 1. Tiêu chí chính: Mức ưu tiên Cao -> Trung bình -> Thấp
-      const priDiff = (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9);
-      if (priDiff !== 0) return priDiff;
-
-      // 2. Bằng ưu tiên: Quá hạn lên trước
-      const stateA = getDueState(a, today);
-      const stateB = getDueState(b, today);
-      const isOverdueA = stateA === 'overdue' ? 0 : 1;
-      const isOverdueB = stateB === 'overdue' ? 0 : 1;
-      if (isOverdueA !== isOverdueB) return isOverdueA - isOverdueB;
-
-      // 3. Hạn gần -> xa
-      return new Date(a.dueDate) - new Date(b.dueDate);
-    }
-
-    // mode === 'due'
-    // 1. Quá hạn luôn lên đầu
     const stateA = getDueState(a, today);
     const stateB = getDueState(b, today);
     const isOverdueA = stateA === 'overdue' ? 0 : 1;
     const isOverdueB = stateB === 'overdue' ? 0 : 1;
     if (isOverdueA !== isOverdueB) return isOverdueA - isOverdueB;
 
-    // 2. Hạn gần -> xa
+    if (mode === 'priority') {
+      // Cùng trạng thái quá hạn: Cao -> Trung bình -> Thấp.
+      const priDiff = (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9);
+      if (priDiff !== 0) return priDiff;
+
+      return new Date(a.dueDate) - new Date(b.dueDate);
+    }
+
+    // mode === 'due'
+    // Cùng trạng thái quá hạn thì hạn gần -> xa.
     const dateDiff = new Date(a.dueDate) - new Date(b.dueDate);
     if (dateDiff !== 0) return dateDiff;
 
-    // 3. Bằng hạn -> ưu tiên Cao -> Thấp
+    // Bằng hạn -> ưu tiên Cao -> Thấp.
     return (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9);
   });
 }

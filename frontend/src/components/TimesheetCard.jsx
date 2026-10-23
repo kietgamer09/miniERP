@@ -43,7 +43,7 @@ function DonutChart({ counts, total }) {
       })}
       <text x={cx} y={cy - 12} textAnchor="middle" fontSize={11} fill="#8c8c8c">Tổng</text>
       <text x={cx} y={cy + 6} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#262626">{worked}/{total} ngày</text>
-      <text x={cx} y={cy + 21} textAnchor="middle" fontSize={9} fill="#8c8c8c">(đã trừ CN)</text>
+      <text x={cx} y={cy + 21} textAnchor="middle" fontSize={9} fill="#8c8c8c">(Thứ 2–Thứ 6)</text>
     </svg>
   );
 }
@@ -63,13 +63,13 @@ function TimesheetCard() {
 
   return (
     <Card style={{ height: '100%' }} styles={{ body: { padding: 16 } }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+      <div className="timesheet-overview" style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
         <div style={{ textAlign: 'center' }}>
           <Title level={5} style={{ marginBottom: 8 }}>Bảng công</Title>
           <DonutChart counts={counts} total={totalWorkingDays} />
         </div>
 
-        <div style={{ flex: 1, paddingTop: 16 }}>
+        <div className="timesheet-legend" style={{ flex: 1, paddingTop: 16 }}>
           {legendKeys.map((k) => {
             const cfg = STATUS_CONFIG[k];
             return (

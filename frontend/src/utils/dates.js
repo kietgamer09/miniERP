@@ -41,9 +41,27 @@ function startOfDay(date) {
   return d;
 }
 
+/** Kiểm tra date có nằm trong tuần hiện tại (Thứ 2 đến Chủ nhật) không. */
+function isInCurrentWeek(date, today = new Date()) {
+  const weekStart = startOfDay(today);
+  const daysSinceMonday = (weekStart.getDay() + 6) % 7;
+  weekStart.setDate(weekStart.getDate() - daysSinceMonday);
+
+  const dateStart = startOfDay(date);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+
+  return dateStart >= weekStart && dateStart < weekEnd;
+}
+
+/** Ngày làm việc là Thứ 2 đến Thứ 6. */
+function isWorkingDay(date) {
+  const dow = new Date(date).getDay();
+  return dow !== 0 && dow !== 6;
+}
+
 /**
- * Đếm số ngày làm việc trong tháng:
- * Chỉ nghỉ Chủ nhật, Thứ 7 (nửa buổi) vẫn tính là ngày đi làm.
+ * Đếm số ngày làm việc từ Thứ 2 đến Thứ 6 trong tháng.
  * @param {number} year
  * @param {number} month 0-indexed (0=tháng 1)
  */
@@ -52,23 +70,19 @@ function countWorkingDays(year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   for (let day = 1; day <= daysInMonth; day++) {
     const dow = new Date(year, month, day).getDay();
-    // Chỉ nghỉ Chủ nhật (0), Thứ 7 vẫn tính đi làm
-    if (dow !== 0) count++;
+    if (dow !== 0 && dow !== 6) count++;
   }
   return count;
 }
 
-/**
- * Tạo danh sách ngày làm việc trong tháng:
- * Chỉ trừ Chủ nhật, Thứ 7 vẫn hiển thị trong bảng công.
- */
+/** Tạo danh sách ngày làm việc từ Thứ 2 đến Thứ 6 trong tháng. */
 function getWorkingDaysInMonth(year, month) {
   const days = [];
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(year, month, day);
     const dow = date.getDay();
-    if (dow !== 0) {
+    if (dow !== 0 && dow !== 6) {
       days.push({
         date,
         label: `${DAY_NAMES[dow]} ${day}/${month + 1}`,
@@ -86,6 +100,8 @@ export {
   formatFullDateVN,
   addDays,
   startOfDay,
+  isWorkingDay,
+  isInCurrentWeek,
   countWorkingDays,
   getWorkingDaysInMonth,
 };
