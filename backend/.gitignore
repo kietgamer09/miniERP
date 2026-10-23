@@ -1,0 +1,31 @@
+# Các biến môi trường nhạy cảm (chứa mật khẩu database, secret key,...)
+.env
+
+# Thư mục chứa các thư viện phụ thuộc của Node.js (rất nặng, không bao giờ đẩy lên Git)
+node_modules/
+
+# Thư mục build hoặc dist (nếu sau này có biên dịch code)
+dist/
+build/
+
+# Các file hệ thống hoặc file log sinh ra trong quá trình chạy
+.DS_Store
+*.log
+npm-debug.log*
+
+# Các file upload c
+
+# IDE & Tooling
+.idea/
+.vscode/
+.agents/
+.claude/
+.windsurf/
+
+# Environment & Dependencies
+.env
+node_modules/
+
+# Logs & System
+*.log
+.DS_Store
