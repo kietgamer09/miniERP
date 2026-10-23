@@ -54,22 +54,14 @@ function isInCurrentWeek(date, today = new Date()) {
   return dateStart >= weekStart && dateStart < weekEnd;
 }
 
-/**
-<<<<<<< Updated upstream
- * Kiểm tra xem một ngày có phải là ngày làm việc hay không:
- * Nghỉ Thứ 7 (dow = 6) và Chủ nhật (dow = 0).
- */
+/** Ngày làm việc là Thứ 2 đến Thứ 6. */
 function isWorkingDay(date) {
   const dow = new Date(date).getDay();
   return dow !== 0 && dow !== 6;
 }
 
 /**
- * Đếm số ngày làm việc trong tháng:
- * Nghỉ Thứ 7 và Chủ nhật.
-=======
  * Đếm số ngày làm việc từ Thứ 2 đến Thứ 6 trong tháng.
->>>>>>> Stashed changes
  * @param {number} year
  * @param {number} month 0-indexed (0=tháng 1)
  */
@@ -78,23 +70,12 @@ function countWorkingDays(year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   for (let day = 1; day <= daysInMonth; day++) {
     const dow = new Date(year, month, day).getDay();
-<<<<<<< Updated upstream
-    // Nghỉ Chủ nhật (0) và Thứ 7 (6)
-=======
->>>>>>> Stashed changes
     if (dow !== 0 && dow !== 6) count++;
   }
   return count;
 }
 
-/**
-<<<<<<< Updated upstream
- * Tạo danh sách ngày làm việc trong tháng:
- * Trừ Thứ 7 và Chủ nhật, chỉ hiển thị ngày làm việc thực tế trong bảng công.
-=======
- * Tạo danh sách ngày làm việc từ Thứ 2 đến Thứ 6 trong tháng.
->>>>>>> Stashed changes
- */
+/** Tạo danh sách ngày làm việc từ Thứ 2 đến Thứ 6 trong tháng. */
 function getWorkingDaysInMonth(year, month) {
   const days = [];
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -119,11 +100,8 @@ export {
   formatFullDateVN,
   addDays,
   startOfDay,
-<<<<<<< Updated upstream
   isWorkingDay,
-=======
   isInCurrentWeek,
->>>>>>> Stashed changes
   countWorkingDays,
   getWorkingDaysInMonth,
 };

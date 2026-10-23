@@ -43,11 +43,7 @@ function DonutChart({ counts, total }) {
       })}
       <text x={cx} y={cy - 12} textAnchor="middle" fontSize={11} fill="#8c8c8c">Tổng</text>
       <text x={cx} y={cy + 6} textAnchor="middle" fontSize={13} fontWeight="bold" fill="#262626">{worked}/{total} ngày</text>
-<<<<<<< Updated upstream
-      <text x={cx} y={cy + 21} textAnchor="middle" fontSize={9} fill="#8c8c8c">(đã trừ T7, CN)</text>
-=======
       <text x={cx} y={cy + 21} textAnchor="middle" fontSize={9} fill="#8c8c8c">(Thứ 2–Thứ 6)</text>
->>>>>>> Stashed changes
     </svg>
   );
 }
