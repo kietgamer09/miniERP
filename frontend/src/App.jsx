@@ -12,12 +12,16 @@ import RequireRole from './components/RequireRole';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Departments from './pages/Departments';
+import ProjectOverview from './pages/ProjectOverview';
+import MyTasksPage from './pages/MyTasksPage';
 import Placeholder from './pages/Placeholder';
 import { getAllPaths, fullMenuItems } from './config/menu';
 
 // Lấy toàn bộ đường dẫn từ cây menu
 const allPaths = getAllPaths(fullMenuItems);
 const pages = {
+  '/du-an': ProjectOverview,
+  '/viec-cua-toi': MyTasksPage,
   '/quan-ly-phong-ban': Departments,
 };
 
