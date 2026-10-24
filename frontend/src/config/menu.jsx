@@ -34,7 +34,7 @@ const fullMenuItems = [
     type: 'group', label: 'Công việc', key: 'grp-congviec', roles: ALL,
     children: [
       {
-        key: 'sub-duan', label: 'Dự án', icon: <ProjectOutlined />, roles: ALL,
+        key: '/du-an', label: 'Dự án', icon: <ProjectOutlined />, roles: ALL,
         children: [
           { key: '/quan-ly-phong-ban', label: 'Phòng ban', roles: ALL },
           { key: '/du-an/cua-toi', label: 'Dự án của tôi', roles: ALL },
@@ -42,7 +42,7 @@ const fullMenuItems = [
         ],
       },
       {
-        key: 'sub-vieccuatoi', label: 'Việc của tôi', icon: <CheckSquareOutlined />, roles: ALL,
+        key: '/viec-cua-toi', label: 'Việc của tôi', icon: <CheckSquareOutlined />, roles: ALL,
         children: [
           { key: '/viec-cua-toi/duoc-giao', label: 'Việc được giao', roles: ALL },
           { key: '/viec-cua-toi/giao-viec', label: 'Giao việc', roles: MGR_ADMIN },
@@ -97,9 +97,10 @@ function getRolesForPath(path) {
 /** Tìm key của submenu cha chứa đường dẫn hiện tại để mở sẵn (F5) */
 function findOpenKeys(items, pathname) {
   for (const item of items) {
+    if (item.key === pathname && item.children) return [item.key];
     if (item.children) {
       for (const child of item.children) {
-        if (child.key === pathname) return [item.key];
+        if (child.key === pathname) return child.children ? [child.key] : [item.key];
         if (child.children) {
           const found = findOpenKeys([child], pathname);
           if (found.length) return [item.key, ...found];
