@@ -266,7 +266,7 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
               >
                 {!isEditingMode ? (
                   <div style={{ fontWeight: 500, fontSize: 15, paddingBottom: 6, borderBottom: '1px solid #f5f5f5' }}>
-                    {form.getFieldValue('status') === 'da_nghi_viec' ? (
+                    {employee?.status === 'da_nghi_viec' ? (
                       <span style={{ color: '#ff4d4f' }}>Đã nghỉ việc</span>
                     ) : (
                       <span style={{ color: '#52c41a' }}>Đang làm việc</span>
