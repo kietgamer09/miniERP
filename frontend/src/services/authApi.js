@@ -24,7 +24,8 @@ async function login(username, password) {
   });
 
   if (!response.ok) {
-    const error = new Error('Đăng nhập thất bại');
+    const payload = await response.json().catch(() => null);
+    const error = new Error(payload?.error || 'Đăng nhập thất bại');
     error.status = response.status;
     throw error;
   }
@@ -37,6 +38,7 @@ async function login(username, password) {
   const apiUser = payload.user;
   const normalizedUser = {
     id: apiUser.id ?? apiUser.user_id,
+    employee_id: apiUser.employee_id ?? null,
     username: apiUser.username,
     email: apiUser.email ?? apiUser.username,
     fullName: apiUser.fullName ?? apiUser.fullname ?? apiUser.username,

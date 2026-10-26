@@ -12,6 +12,7 @@ import RequireRole from './components/RequireRole';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Departments from './pages/Departments';
+import Employees from './pages/Employees';
 import ProjectOverview from './pages/ProjectOverview';
 import MyTasksPage from './pages/MyTasksPage';
 import Placeholder from './pages/Placeholder';
@@ -21,6 +22,9 @@ import { getAllPaths, fullMenuItems } from './config/menu';
 const allPaths = getAllPaths(fullMenuItems);
 const pages = {
   '/du-an': ProjectOverview,
+  '/du-an/cua-toi': ProjectOverview,
+  '/du-an/tien-do': ProjectOverview,
+  '/quan-ly-nhan-vien': Employees,
   '/viec-cua-toi': MyTasksPage,
   '/quan-ly-phong-ban': Departments,
 };
