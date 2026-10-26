@@ -25,7 +25,7 @@ function Login() {
       setLoginError(error.status === 401
         ? 'Tài khoản hoặc mật khẩu không đúng'
         : error.status
-          ? 'Máy chủ không thể xử lý yêu cầu. Vui lòng thử lại.'
+          ? error.message || 'Máy chủ không thể xử lý yêu cầu. Vui lòng thử lại.'
           : 'Không thể kết nối. Vui lòng kiểm tra mạng và thử lại.');
     } finally {
       setLoading(false);
