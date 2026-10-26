@@ -26,6 +26,63 @@ body {
   min-width: 0;
 }
 
+.project-overview {
+  display: grid;
+  gap: 16px;
+}
+
+.project-page-header {
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.project-overview-panel {
+  height: 100%;
+}
+
+.project-overview-panel .ant-card-body {
+  min-height: 210px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.project-panel-loading {
+  display: grid;
+  min-height: 170px;
+  place-items: center;
+}
+
+.project-panel-list .ant-list-item {
+  padding: 8px 0;
+}
+
+.project-summary-card {
+  width: 100%;
+  margin-bottom: 8px;
+  background: #f7f8fa;
+}
+
+.project-summary-details,
+.project-department-content,
+.project-progress-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.project-summary-details {
+  margin: 10px 0;
+}
+
+.project-progress-heading {
+  gap: 2px;
+}
+
+.project-progress-panel .ant-collapse-header {
+  align-items: center !important;
+}
+
 @media (max-width: 767px) {
   .app-header {
     padding: 0 10px !important;
@@ -52,6 +109,16 @@ body {
 
   .app-content {
     padding: 10px !important;
+  }
+
+  .project-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .project-overview-panel .ant-card-body {
+    min-height: 140px;
+    max-height: 260px;
   }
 
   .attendance-summary {

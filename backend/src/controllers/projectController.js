@@ -7,6 +7,14 @@ const serializeProject = (project) => ({
   end_date: toDateOnly(project.end_date),
 });
 
+function getTodayDate() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 const validateProject = (body, creating) => {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return { error: 'Dữ liệu dự án phải là một đối tượng JSON' };
@@ -28,6 +36,9 @@ const validateProject = (body, creating) => {
   }
   // Chuỗi ngày chuẩn so sánh đúng thứ tự, không phụ thuộc múi giờ máy chủ.
   if (data.end_date < data.start_date) return { error: 'Ngày kết thúc không được trước ngày bắt đầu' };
+  if (creating && data.end_date < getTodayDate()) {
+    return { error: 'Ngày kết thúc dự án mới không được trước ngày hiện tại' };
+  }
   if (body.description !== undefined) {
     if (body.description !== null && typeof body.description !== 'string') {
       return { error: 'Mô tả phải là chuỗi hoặc null' };
@@ -102,6 +113,72 @@ export const listProjects = async (req, res) => {
   }
 };
 
+export const getProject = async (req, res) => {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ error: 'ID dự án phải là số nguyên dương hợp lệ' });
+
+    const project = await prisma.projects.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        description: true,
+        start_date: true,
+        end_date: true,
+        status: true,
+        manager_id: true,
+        created_at: true,
+        employees: { select: { fullname: true } },
+        project_members: {
+          select: {
+            employee_id: true,
+            employees: { select: { fullname: true, position: true } },
+          },
+        },
+      },
+    });
+    if (!project) return res.status(404).json({ error: 'Không tìm thấy dự án' });
+
+    const isMember = project.project_members.some(
+      (member) => member.employee_id === req.employee.employee_id,
+    );
+    if (req.user.role !== 'admin' && !isMember) {
+      return res.status(403).json({ error: 'Bạn không thuộc dự án này' });
+    }
+
+    const taskGroups = await prisma.tasks.groupBy({
+      by: ['status'],
+      where: { project_id: id },
+      _count: { _all: true },
+    });
+    const taskCounts = taskGroups.reduce((counts, group) => ({
+      tasks_done: counts.tasks_done + (group.status === 'xong' ? group._count._all : 0),
+      tasks_total: counts.tasks_total + group._count._all,
+    }), { tasks_done: 0, tasks_total: 0 });
+
+    const { employees, project_members: members, ...projectData } = project;
+    res.json({
+      ...serializeProject(projectData),
+      manager_name: employees.fullname,
+      members: members.map((member) => ({
+        employee_id: member.employee_id,
+        fullname: member.employees.fullname,
+        position: member.employees.position,
+        is_manager: member.employee_id === project.manager_id,
+      })),
+      ...taskCounts,
+      progress_percent: taskCounts.tasks_total
+        ? Math.round(taskCounts.tasks_done / taskCounts.tasks_total * 100)
+        : 0,
+    });
+  } catch (error) {
+    console.error('Không thể lấy chi tiết dự án:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+};
+
 const loadManagedProject = async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) {
@@ -141,6 +218,52 @@ export const updateProject = async (req, res) => {
     res.json(serializeProject(updated));
   } catch (error) {
     console.error('Không thể sửa dự án:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+};
+
+export const completeProject = async (req, res) => {
+  try {
+    const project = await loadManagedProject(req, res);
+    if (!project) return;
+    if (project.status === 'hoan_thanh') {
+      return res.status(409).json({ error: 'Dự án đã hoàn thành' });
+    }
+
+    const taskCount = await prisma.tasks.count({ where: { project_id: project.id } });
+    if (!taskCount) return res.status(409).json({ error: 'Dự án chưa có task nào để hoàn thành' });
+
+    const unfinishedCount = await prisma.tasks.count({
+      where: { project_id: project.id, status: { not: 'xong' } },
+    });
+    if (unfinishedCount) return res.status(409).json({ error: 'Vẫn còn task chưa hoàn thành' });
+
+    const updated = await prisma.projects.update({
+      where: { id: project.id },
+      data: { status: 'hoan_thanh' },
+    });
+    res.json(serializeProject(updated));
+  } catch (error) {
+    console.error('Không thể hoàn thành dự án:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ' });
+  }
+};
+
+export const reopenProject = async (req, res) => {
+  try {
+    const project = await loadManagedProject(req, res);
+    if (!project) return;
+    if (project.status === 'dang_thuc_hien') {
+      return res.status(409).json({ error: 'Dự án đang thực hiện' });
+    }
+
+    const updated = await prisma.projects.update({
+      where: { id: project.id },
+      data: { status: 'dang_thuc_hien' },
+    });
+    res.json(serializeProject(updated));
+  } catch (error) {
+    console.error('Không thể mở lại dự án:', error);
     res.status(500).json({ error: 'Lỗi máy chủ' });
   }
 };
