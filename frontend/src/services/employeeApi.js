@@ -4,6 +4,10 @@ export function listEmployees() {
   return request('/api/users/employee-list');
 }
 
+export function getMyProfile() {
+  return request('/api/users/me');
+}
+
 export function createEmployee(data) {
   return request('/api/users/employee-create', { method: 'POST', body: data });
 }

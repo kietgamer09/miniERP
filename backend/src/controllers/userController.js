@@ -68,6 +68,28 @@ export const getUsers = async (req, res) => {
   }
 };
 
+// Hồ sơ của tài khoản đang đăng nhập; không trả danh sách nhân viên khác.
+export const getMyProfile = async (req, res) => {
+  try {
+    const employee = await prisma.employees.findUnique({
+      where: { user_id: Number(req.user.user_id) },
+      include: {
+        users: { select: { username: true, role: true } },
+        departments: { select: { department_name: true } },
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Tài khoản chưa có hồ sơ nhân viên.' });
+    }
+
+    return res.status(200).json(employee);
+  } catch (error) {
+    console.error('Error fetching current employee profile:', error);
+    return res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
+  }
+};
+
 export const createUser = async (req, res) => {
   try {
     const {

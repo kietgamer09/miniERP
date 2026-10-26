@@ -17,12 +17,14 @@ import ProjectOverview from './pages/ProjectOverview';
 import MyProjects from './pages/MyProjects';
 import ProjectProgress from './pages/ProjectProgress';
 import MyTasksPage from './pages/MyTasksPage';
+import MyProfile from './pages/MyProfile';
 import Placeholder from './pages/Placeholder';
 import { getAllPaths, fullMenuItems } from './config/menu';
 
 // Lấy toàn bộ đường dẫn từ cây menu
 const allPaths = getAllPaths(fullMenuItems);
 const pages = {
+  '/thong-tin': MyProfile,
   '/du-an': ProjectOverview,
   '/du-an/cua-toi': MyProjects,
   '/du-an/tien-do': ProjectProgress,
