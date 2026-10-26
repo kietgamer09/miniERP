@@ -188,7 +188,8 @@ export const updateUser = async (req, res) => {
       phone_number,
       birthday,
       department_id,
-      role
+      role,
+      status
     } = req.body;
 
     const employeeExist = await prisma.employees.findUnique({
@@ -205,6 +206,7 @@ export const updateUser = async (req, res) => {
     if (phone_number !== undefined) updateEmployeeData.phone_number = phone_number;
     if (birthday !== undefined) updateEmployeeData.birthday = birthday;
     if (department_id !== undefined) updateEmployeeData.department_id = Number(department_id);
+    if (status !== undefined) updateEmployeeData.status = status;
 
     const updatedEmployee = await prisma.$transaction(async (prismaClient) => {
       const emp = await prismaClient.employees.update({
