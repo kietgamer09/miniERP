@@ -1,10 +1,11 @@
 import express from 'express';
-import { changePassword, getUsers, createUser, updateUser } from '../controllers/userController.js';
+import { changePassword, getMyProfile, getUsers, createUser, updateUser } from '../controllers/userController.js';
 import { verifyToken, authorizeRoles } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
 router.put('/change-password', verifyToken, changePassword);
+router.get('/me', verifyToken, getMyProfile);
 
 router.get('/employee-list', verifyToken, getUsers);
 
