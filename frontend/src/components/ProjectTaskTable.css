@@ -1,0 +1,11 @@
+.project-task-table .ant-table-tbody > .task-row-overdue > td,
+.project-task-table .ant-table-tbody > .task-row-overdue:hover > td,
+.project-task-table .ant-table-tbody > .task-row-overdue > td.ant-table-cell-row-hover {
+  background: #fff1f0;
+}
+
+.project-task-table .ant-table-tbody > .task-row-near-due > td,
+.project-task-table .ant-table-tbody > .task-row-near-due:hover > td,
+.project-task-table .ant-table-tbody > .task-row-near-due > td.ant-table-cell-row-hover {
+  background: #fffbe6;
+}

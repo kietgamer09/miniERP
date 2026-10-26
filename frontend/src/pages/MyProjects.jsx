@@ -1,7 +1,7 @@
 /** Danh sách các dự án người dùng tham gia, tách khỏi trang tổng quan dự án. */
 import { Alert, Button, Card, Col, Empty, Row, Space, Spin, Tag, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import useProjects from '../hooks/useProjects';
 
 const { Title, Text } = Typography;
@@ -35,11 +35,14 @@ function MyProjects() {
           {projects.map((project) => (
             <Col xs={24} lg={12} key={project.id}>
               <Card
-                title={<span>{project.name} <Text type="secondary">({project.code})</Text></span>}
+                title={<span><Link to={`/du-an/${project.id}`}>{project.name}</Link> <Text type="secondary">({project.code})</Text></span>}
                 extra={<Tag color={project.status === 'hoan_thanh' ? 'green' : 'blue'}>
                   {project.status === 'hoan_thanh' ? 'Hoàn thành' : 'Đang thực hiện'}
                 </Tag>}
-                actions={[<Button key="progress" type="link" onClick={() => navigate('/du-an/tien-do')}>Xem tiến độ</Button>]}
+                actions={[
+                  <Link key="detail" to={`/du-an/${project.id}`}>Xem chi tiết</Link>,
+                  <Button key="progress" type="link" onClick={() => navigate('/du-an/tien-do')}>Xem tiến độ</Button>,
+                ]}
               >
                 <Space direction="vertical" size={6}>
                   <Text>Thời hạn: {formatDate(project.start_date)} – {formatDate(project.end_date)}</Text>

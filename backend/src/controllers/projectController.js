@@ -102,6 +102,7 @@ export const listProjects = async (req, res) => {
       return {
         ...serializeProject(project),
         manager_name: employees.fullname,
+        can_manage: req.user.role === 'admin' || project.manager_id === req.employee.employee_id,
         members_count: _count.project_members,
         ...counts,
         progress_percent: counts.tasks_total ? Math.round(counts.tasks_done / counts.tasks_total * 100) : 0,
@@ -162,6 +163,7 @@ export const getProject = async (req, res) => {
     res.json({
       ...serializeProject(projectData),
       manager_name: employees.fullname,
+      can_manage: req.user.role === 'admin' || projectData.manager_id === req.employee.employee_id,
       members: members.map((member) => ({
         employee_id: member.employee_id,
         fullname: member.employees.fullname,
@@ -179,13 +181,13 @@ export const getProject = async (req, res) => {
   }
 };
 
-const loadManagedProject = async (req, res) => {
+export const loadManagedProject = async (req, res, db = prisma) => {
   const id = parseId(req.params.id);
   if (!id) {
     res.status(400).json({ error: 'ID dự án phải là số nguyên dương hợp lệ' });
     return null;
   }
-  const project = await prisma.projects.findUnique({ where: { id } });
+  const project = await db.projects.findUnique({ where: { id } });
   if (!project) {
     res.status(404).json({ error: 'Không tìm thấy dự án' });
     return null;

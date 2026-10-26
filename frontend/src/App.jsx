@@ -14,6 +14,7 @@ import Login from './pages/Login';
 import Departments from './pages/Departments';
 import Employees from './pages/Employees';
 import ProjectOverview from './pages/ProjectOverview';
+import ProjectDetail from './pages/ProjectDetail';
 import MyProjects from './pages/MyProjects';
 import ProjectProgress from './pages/ProjectProgress';
 import MyTasksPage from './pages/MyTasksPage';
@@ -41,6 +42,9 @@ function App() {
         <Route element={<MainLayout />}>
           {/* Trang chủ */}
           <Route path="/" element={<Home />} />
+
+          {/* Route động không nằm trong menu; backend kiểm tra quyền thành viên. */}
+          <Route path="/du-an/:id" element={<ProjectDetail />} />
 
           {/* Mỗi route menu dùng quyền khai báo ngay trong menu.jsx */}
           {allPaths.map((path) => {

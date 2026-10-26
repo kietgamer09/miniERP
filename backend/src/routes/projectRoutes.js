@@ -4,6 +4,8 @@ import { attachEmployee } from '../middlewares/employeeMiddleware.js';
 import {
   completeProject, createProject, deleteProject, getProject, listProjects, reopenProject, updateProject,
 } from '../controllers/projectController.js';
+import { createTask, listProjectTasks } from '../controllers/taskController.js';
+import { addMembers, listAvailableEmployees, removeMember } from '../controllers/memberController.js';
 
 const router = express.Router();
 router.use(verifyToken, attachEmployee);
@@ -14,5 +16,10 @@ router.put('/:id', updateProject);
 router.delete('/:id', deleteProject);
 router.post('/:id/complete', completeProject);
 router.post('/:id/reopen', reopenProject);
+router.post('/:id/tasks', createTask);
+router.get('/:id/tasks', listProjectTasks);
+router.get('/:id/available-employees', listAvailableEmployees);
+router.post('/:id/members', addMembers);
+router.delete('/:id/members/:employee_id', removeMember);
 
 export default router;
