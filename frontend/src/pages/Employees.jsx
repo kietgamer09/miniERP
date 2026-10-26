@@ -3,18 +3,13 @@ import { useEffect, useState } from 'react';
 import { Alert, Avatar, Button, Input, Select, Space, Table, Typography, message } from 'antd';
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { listEmployees } from '../services/employeeApi';
+import { listDepartments } from '../services/departmentApi';
 import { request } from '../services/http';
 import EmployeeFormModal from '../components/EmployeeFormModal';
 import { useRole } from '../context/AuthContext';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
-
-async function getEmployeeList() {
-  const data = await listEmployees();
-  if (!Array.isArray(data)) throw new Error('Dữ liệu nhân viên từ máy chủ không hợp lệ');
-  return data;
-}
 
 function Employees() {
   const [employees, setEmployees] = useState([]);
@@ -34,6 +29,7 @@ function Employees() {
   const { role } = useRole();
   const isAdmin = role === 'admin';
 
+  // Gọi API lấy danh sách nhân viên ban đầu và danh sách phòng ban
   useEffect(() => {
     let isMounted = true;
     
@@ -41,15 +37,17 @@ function Employees() {
       try {
         setLoading(true);
         setLoadError('');
-        
+
+        // Không truyền params tĩnh ở đây để lấy toàn bộ dữ liệu về thực hiện lọc mượt mà ở Client hoặc tùy chỉnh linh hoạt
         const [empData, deptData] = await Promise.all([
-          getEmployeeList(),
-          request('/api/departments').catch(() => [])
+          listEmployees(), 
+          listDepartments() // Sử dụng service vừa tạo thay vì request thô
         ]);
 
         if (isMounted) {
-          setEmployees(empData);
-          setDepartments(Array.isArray(deptData) ? deptData : []);
+          const empList = Array.isArray(empData) ? empData : (empData.data || []);
+          setEmployees(empList);
+          setDepartments(Array.isArray(deptData) ? deptData : (deptData.data || []));
         }
       } catch (error) {
         if (!isMounted) return;
@@ -91,12 +89,21 @@ function Employees() {
     setReloadKey((key) => key + 1);
   }
 
+  // Lọc dữ liệu theo Tên nhân viên, SĐT hoặc Email và theo Phòng ban
   const filteredData = employees.filter((emp) => {
-    const matchName = emp.fullname?.toLowerCase().includes(searchText.toLowerCase()) || 
-                      emp.phone_number?.includes(searchText) ||
-                      emp.users?.username?.includes(searchText);
+    const keyword = searchText.toLowerCase().trim();
+    
+    // Kiểm tra khớp từ khóa tìm kiếm (Tên, SĐT, Email)
+    const matchSearch = !keyword || (
+      (emp.fullname && emp.fullname.toLowerCase().includes(keyword)) ||
+      (emp.phone_number && emp.phone_number.toLowerCase().includes(keyword)) ||
+      (emp.email && emp.email.toLowerCase().includes(keyword))
+    );
+
+    // Kiểm tra khớp phòng ban
     const matchDept = selectedDept === 'all' || String(emp.department_id) === String(selectedDept);
-    return matchName && matchDept;
+
+    return matchSearch && matchDept;
   });
 
   const columns = [
@@ -153,7 +160,7 @@ function Employees() {
     {
       title: 'Phòng ban',
       key: 'department',
-      width: '18%', // Nới rộng thêm để tên phòng ban không bị nhảy dòng
+      width: '18%',
       render: (_, record) => (
         <span
           style={{
@@ -162,7 +169,7 @@ function Employees() {
             borderRadius: 6,
             fontSize: 13,
             color: '#595959',
-            whiteSpace: 'nowrap', // Ép chữ hiển thị trên 1 dòng duy nhất
+            whiteSpace: 'nowrap',
             display: 'inline-block',
           }}
         >
@@ -174,7 +181,7 @@ function Employees() {
       title: 'Trạng thái',
       dataIndex: 'status',
       key: 'status',
-      width: '11%', // Thu nhỏ lại vừa đủ chứa nhãn trạng thái
+      width: '11%',
       render: (status) => {
         const isWorking = status !== 'da_nghi_viec';
         return (
@@ -274,7 +281,7 @@ function Employees() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 16, flexShrink: 0 }}>
         <Space size={12}>
           <Input
-            placeholder="Tìm theo tên, SĐT hoặc tài khoản..."
+            placeholder="Tìm theo tên, SĐT hoặc email..."
             prefix={<SearchOutlined style={{ color: '#bfbfbf', marginRight: 8 }} />}
             value={searchText}
             onChange={(e) => {
@@ -304,7 +311,7 @@ function Employees() {
         </Space>
 
         <Text type="secondary" style={{ fontSize: 13 }}>
-          {filteredData.length} kết quả
+          {totalItems} kết quả
         </Text>
       </div>
 
