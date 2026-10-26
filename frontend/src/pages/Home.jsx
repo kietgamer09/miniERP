@@ -2,7 +2,7 @@
  * Home – Trang chủ của miniERP.
  *
  * Bố cục 2 hàng:
- * - Hàng trên: AttendanceCard (55%) + TimesheetCard (45%)
+ * - Hàng trên: AttendanceCard (khoảng 46%) + TimesheetCard (khoảng 54%)
  * - Hàng dưới: MyTasksBoard (toàn chiều rộng)
  *
  * Một bản dùng cho cả 3 vai trò (menu khác, nội dung trang chủ giống nhau).
@@ -17,10 +17,10 @@ function Home() {
     <div>
       {/* Hàng trên: Chấm công + Bảng công */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col xs={24} lg={13}>
+        <Col xs={24} lg={11}>
           <AttendanceCard />
         </Col>
-        <Col xs={24} lg={11}>
+        <Col xs={24} lg={13}>
           <TimesheetCard />
         </Col>
       </Row>

@@ -29,7 +29,18 @@ function MainLayout() {
   const location = useLocation();
 
   // Lọc menu theo vai trò hiện tại
-  const menuItems = filterMenuByRole(fullMenuItems, role);
+  const menuItems = filterMenuByRole(fullMenuItems, role).map((group) => ({
+    ...group,
+    children: group.children?.map((item) => item.children ? {
+      ...item,
+      onTitleClick: ({ key }) => {
+        if (key === '/du-an' || key === '/viec-cua-toi') {
+          navigate(key);
+          setMobileMenuOpen(false);
+        }
+      },
+    } : item),
+  }));
 
   // Chỉ mở một dropdown; khi chuyển route thì mở dropdown chứa route đó.
   const [openKeys, setOpenKeys] = useState(() => findOpenKeys(menuItems, location.pathname).slice(-1));
