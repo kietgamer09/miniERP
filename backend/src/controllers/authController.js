@@ -27,6 +27,12 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Tài khoản không tồn tại trong hệ thống!' });
     }
 
+    if (user.employees && user.employees.status === 'da_nghi_viec') {
+          return res.status(403).json({
+            error: 'Tài khoản này đã bị vô hiệu hóa do nhân viên đã nghỉ việc!'
+          });
+        }
+
     const isPasswordValid = typeof user.password === 'string' && await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Mật khẩu không chính xác!' });
