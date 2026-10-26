@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Alert, Button, Card, Col, Collapse, Empty, List, Popconfirm, Progress, Row, Space, Spin,
   Tag, Typography, message,
@@ -72,15 +73,14 @@ function ProjectOverview() {
   }
 
   const canCreate = ['manager', 'admin'].includes(user?.role);
-  const canEditProject = (project) => user?.role === 'admin'
-    || (user?.employee_id != null && project.manager_id === user.employee_id);
+  const canEditProject = (project) => project.can_manage;
 
   function renderProjectSummary(project) {
     return (
       <Card size="small" className="project-summary-card">
         <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
           <div>
-            <Text strong>{project.name}</Text>
+            <Link to={`/du-an/${project.id}`} style={{ fontWeight: 600 }}>{project.name}</Link>
             <div><Text type="secondary">Mã dự án: {project.code}</Text></div>
           </div>
           <Tag color={project.status === 'hoan_thanh' ? 'green' : 'blue'}>

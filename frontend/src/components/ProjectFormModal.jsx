@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Form, Input, Modal } from 'antd';
+import { Alert, DatePicker, Form, Input, Modal } from 'antd';
+import viVN from 'antd/locale/vi_VN';
+import dayjs from 'dayjs';
+import 'dayjs/locale/vi';
 import { createProject, updateProject } from '../services/projectApi';
+
+dayjs.locale('vi');
 
 function getTodayDate() {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -17,14 +22,15 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
   const submitting = useRef(false);
   const today = getTodayDate();
   const startDate = Form.useWatch('start_date', form);
-  const minEndDate = project
-    ? startDate
-    : startDate && startDate > today ? startDate : today;
 
   useEffect(() => {
     if (!open) return;
     form.resetFields();
-    if (project) form.setFieldsValue(project);
+    if (project) form.setFieldsValue({
+      ...project,
+      start_date: dayjs(project.start_date).locale('vi'),
+      end_date: dayjs(project.end_date).locale('vi'),
+    });
   }, [open, project, form]);
 
   async function handleSave() {
@@ -38,8 +44,8 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
       const body = {
         name: values.name.trim(),
         description: values.description?.trim() || null,
-        start_date: values.start_date,
-        end_date: values.end_date,
+        start_date: values.start_date.format('YYYY-MM-DD'),
+        end_date: values.end_date.format('YYYY-MM-DD'),
       };
       if (project) await updateProject(project.id, body);
       else await createProject({ ...body, code: values.code.trim() });
@@ -69,24 +75,26 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
         </Form.Item>
         <Form.Item label="Mô tả" name="description"><Input.TextArea rows={3} /></Form.Item>
         <Form.Item label="Ngày bắt đầu" name="start_date" rules={[{ required: true, message: 'Vui lòng chọn ngày bắt đầu' }]}>
-          <Input type="date" />
+          <DatePicker locale={viVN.DatePicker} format="DD/MM/YYYY" placeholder="Chọn ngày bắt đầu" style={{ width: '100%' }} />
         </Form.Item>
-      <Form.Item label="Ngày kết thúc" name="end_date" dependencies={['start_date']} rules={[
+        <Form.Item label="Ngày kết thúc" name="end_date" dependencies={['start_date']} rules={[
           { required: true, message: 'Vui lòng chọn ngày kết thúc' },
           () => ({
             validator(_, value) {
               if (!value) return Promise.resolve();
-              if (startDate && value < startDate) {
+              if (startDate && value.isBefore(startDate, 'day')) {
                 return Promise.reject(new Error('Ngày kết thúc không được trước ngày bắt đầu'));
               }
-              if (!project && value < today) {
+              if (!project && value.format('YYYY-MM-DD') < today) {
                 return Promise.reject(new Error('Ngày kết thúc dự án mới không được trước ngày hiện tại'));
               }
               return Promise.resolve();
             },
           }),
         ]}>
-          <Input type="date" min={minEndDate} />
+          <DatePicker locale={viVN.DatePicker} format="DD/MM/YYYY" placeholder="Chọn ngày kết thúc" style={{ width: '100%' }}
+            disabledDate={(date) => Boolean(startDate && date.isBefore(startDate, 'day'))
+              || (!project && date.format('YYYY-MM-DD') < today)} />
         </Form.Item>
       </Form>
     </Modal>

@@ -9,6 +9,22 @@ const DAY_NAMES = [
   'Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7',
 ];
 
+/** Chuỗi ngày chỉ chứa ngày tháng phải được hiểu theo giờ địa phương. */
+function parseDateOnly(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  if (year < 1) return null;
+  const date = new Date(0);
+  date.setFullYear(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+}
+
+function formatDateOnlyVN(value) {
+  if (!parseDateOnly(value)) return '—';
+  return `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}`;
+}
+
 /** "22/10/2026" */
 function formatDateVN(date) {
   const d = new Date(date);
@@ -94,6 +110,8 @@ function getWorkingDaysInMonth(year, month) {
 }
 
 export {
+  parseDateOnly,
+  formatDateOnlyVN,
   DAY_NAMES,
   formatDateVN,
   getDayName,

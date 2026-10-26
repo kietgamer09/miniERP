@@ -1,5 +1,12 @@
 import { request } from './http';
 
+export const getProject = (id) => request(`/api/projects/${id}`);
+export const completeProject = (id) => request(`/api/projects/${id}/complete`, { method: 'POST' });
+export const reopenProject = (id) => request(`/api/projects/${id}/reopen`, { method: 'POST' });
+export const listAvailableEmployees = (id) => request(`/api/projects/${id}/available-employees`);
+export const addMembers = (id, employeeIds) => request(`/api/projects/${id}/members`, { method: 'POST', body: { employee_ids: employeeIds } });
+export const removeMember = (id, employeeId) => request(`/api/projects/${id}/members/${employeeId}`, { method: 'DELETE' });
+
 export function listProjects() {
   return request('/api/projects');
 }
