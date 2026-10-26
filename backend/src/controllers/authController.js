@@ -15,7 +15,7 @@ export const login = async (req, res) => {
     // Không chọn ngẫu nhiên danh tính khi dữ liệu có username trùng.
     const users = await prisma.users.findMany({
       where: { username: username.trim() },
-      include: { employees: { select: { employee_id: true } } },
+      include: { employees: { select: { employee_id: true, status: true } } },
       take: 2,
     });
     if (users.length > 1) {
