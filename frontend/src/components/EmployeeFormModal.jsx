@@ -29,7 +29,6 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
         setIsEditingMode(false);
       } else {
         form.resetFields();
-        // Mặc định trạng thái là đang làm việc khi thêm mới (không hiển thị trên form)
         form.setFieldsValue({ status: 'dang_lam_viec' });
         setIsEditingMode(true);
       }
@@ -193,7 +192,7 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
               rules={[{ required: true, message: 'Vui lòng chọn phòng ban!' }]}
             >
               {isEditing && !isEditingMode ? (
-                <div style={{ fontWeight: 500, fontSize: 15, paddingBottom: 6, borderBottom: '1px solid #f5F5F5' }}>
+                <div style={{ fontWeight: 500, fontSize: 15, paddingBottom: 6, borderBottom: '1px solid #f5f5f5' }}>
                   {departments.find(d => d.department_id === employee?.department_id)?.department_name || employee?.departments?.department_name || 'Chưa phân ban'}
                 </div>
               ) : (
@@ -256,7 +255,7 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
           </Col>
         </Row>
 
-        {/* Chỉ hiển thị trường Trạng thái khi đang ở chế độ chỉnh sửa (isEditing = true) */}
+        {/* Trường Trạng thái làm việc */}
         {isEditing && (
           <Row gutter={24}>
             <Col span={12}>
@@ -267,7 +266,7 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
               >
                 {!isEditingMode ? (
                   <div style={{ fontWeight: 500, fontSize: 15, paddingBottom: 6, borderBottom: '1px solid #f5f5f5' }}>
-                    {employee?.status === 'da_nghi_viec' ? (
+                    {form.getFieldValue('status') === 'da_nghi_viec' ? (
                       <span style={{ color: '#ff4d4f' }}>Đã nghỉ việc</span>
                     ) : (
                       <span style={{ color: '#52c41a' }}>Đang làm việc</span>
