@@ -10,3 +10,5 @@ export const reopenProject = (id) => request(`/api/projects/${id}/reopen`, { met
 export const listAvailableEmployees = (id) => request(`/api/projects/${id}/available-employees`);
 export const addMembers = (id, employeeIds) => request(`/api/projects/${id}/members`, { method: 'POST', body: { employee_ids: employeeIds } });
 export const removeMember = (id, employeeId) => request(`/api/projects/${id}/members/${employeeId}`, { method: 'DELETE' });
+export const listProjectTasks = (id) => request(`/api/projects/${id}/tasks`);
+export const createTask = (id, data) => request(`/api/projects/${id}/tasks`, { method: 'POST', body: data });

@@ -4,7 +4,7 @@
  * Dùng Ant Design Layout. Menu lọc theo vai trò tài khoản đăng nhập.
  * Tách layout riêng vì mọi trang đều dùng chung khung này (qua Outlet).
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
   Layout, Menu, Avatar, Dropdown, Button, Typography, Space, Grid, Drawer,
@@ -27,6 +27,7 @@ function MainLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const menuPath = /^\/du-an\/\d+$/.test(location.pathname) ? '/du-an/cua-toi' : location.pathname;
 
   // Lọc menu theo vai trò hiện tại
   const menuItems = filterMenuByRole(fullMenuItems, role).map((group) => ({
@@ -43,15 +44,15 @@ function MainLayout() {
   }));
 
   // Chỉ mở một dropdown; khi chuyển route thì mở dropdown chứa route đó.
-  const [openKeys, setOpenKeys] = useState(() => findOpenKeys(menuItems, location.pathname).slice(-1));
-
-  useEffect(() => {
-    setOpenKeys(findOpenKeys(menuItems, location.pathname).slice(-1));
-  }, [location.pathname]);
+  const [menuState, setMenuState] = useState(() => ({
+    path: menuPath, keys: findOpenKeys(menuItems, menuPath).slice(-1),
+  }));
+  const openKeys = menuState.path === menuPath
+    ? menuState.keys : findOpenKeys(menuItems, menuPath).slice(-1);
 
   function handleOpenChange(nextOpenKeys) {
     const newlyOpenedKey = nextOpenKeys.find((key) => !openKeys.includes(key));
-    setOpenKeys(newlyOpenedKey ? [newlyOpenedKey] : nextOpenKeys);
+    setMenuState({ path: menuPath, keys: newlyOpenedKey ? [newlyOpenedKey] : nextOpenKeys });
   }
 
   // Menu thả xuống của avatar
@@ -78,7 +79,7 @@ function MainLayout() {
     return (
       <Menu
         mode="inline"
-        selectedKeys={[location.pathname]}
+        selectedKeys={[menuPath]}
         openKeys={openKeys}
         items={menuItems}
         onClick={handleMenuClick}

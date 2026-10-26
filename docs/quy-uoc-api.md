@@ -146,7 +146,7 @@ ORDER BY p.code;
 ```
 
 Sau đó đăng nhập các vai trò để xem dự án mẫu. Admin thấy tất cả dự án; người khác thấy dự án mình tham gia. Kiểm tra dòng task quá hạn đỏ, sắp hạn vàng, task xong có hạn cũ không cảnh báo (các màn hình/API của lượt trước cần đã được tích hợp).
-## 6. API thành viên dự án (tuần 4, lượt 1)
+## 7. API thành viên dự án (tuần 4, lượt 1)
 
 Các API dưới đây đều cần Bearer token, hồ sơ nhân viên đang làm việc và quyền quản lý dự án: admin hoặc nhân viên có `employee_id` bằng `manager_id`. Không tìm thấy dự án trả 404; thiếu quyền trả 403. Quyền được kiểm tra trước khi xử lý dữ liệu thành viên.
 
@@ -215,3 +215,67 @@ Khởi động backend bằng `npm run dev` trong thư mục `backend`. Tạo m�
 Kiểm tra bổ sung: thiếu/sai/hết hạn token → 401; ID dự án sai → 400; dự án không tồn tại → 404 với token hợp lệ; ID nhân viên trên URL là `abc` → 400. Admin thực hiện được ba API thành viên. GET available-employees và DELETE thành viên bằng thành viên thường/quản lý khác đều trả 403.
 
 Nếu chưa có thành viên với task chưa xong/task đã xong, để lại bước 7–8 liên quan task và kiểm tra sau lượt 4 hoặc lượt 6; không tự chỉnh dữ liệu nhân sự để tạo điều kiện thử.
+
+## 8. API task của dự án (tuần 4, lượt 4–5)
+
+Hai API đều cần Bearer token và hồ sơ nhân viên đang làm việc qua `verifyToken`, `attachEmployee`.
+
+| Thao tác | API | Quyền | Thành công |
+|---|---|---|---|
+| Tạo task | `POST /api/projects/:id/tasks` | Quản lý của chính dự án hoặc admin | 201, task vừa tạo |
+| Xem task | `GET /api/projects/:id/tasks` | Thành viên dự án hoặc admin | 200, mảng task |
+
+Body tạo task:
+
+```json
+{"title":"Kiểm tra cảm biến nhiệt","description":"Ghi nhận kết quả kiểm tra","assignee_id":3,"due_date":"2026-11-15","priority":"cao"}
+```
+
+ID người làm là `employee_id`, không phải `user_id`. Sau khi kiểm tra quyền quản lý, backend kiểm tra đúng thứ tự:
+
+1. Dự án hoàn thành → 409 `Dự án đã hoàn thành, hãy mở lại dự án để tạo task mới`.
+2. Thiếu tiêu đề sau trim, người làm, hạn chót hoặc ưu tiên → 400 `Vui lòng nhập đủ tiêu đề, người làm, hạn chót và mức ưu tiên`; tiêu đề quá 200 ký tự → 400.
+3. Ưu tiên ngoài `thap`, `trung_binh`, `cao`, ngày không có thật/sai dạng YYYY-MM-DD, hoặc ID người làm sai → 400.
+4. Không thuộc dự án → 400 `Người làm task phải là thành viên của dự án`.
+5. Đã nghỉ việc → 400 `Nhân viên đã nghỉ việc`.
+6. Hạn sau ngày kết thúc → 400 `Hạn chót không được sau ngày kết thúc dự án (YYYY-MM-DD)`, với ngày kết thúc thật. Trùng ngày hợp lệ; hạn chót ở quá khứ được phép trong phạm vi yêu cầu này.
+
+Mô tả có thể là chuỗi hoặc null; bỏ qua/chuỗi rỗng lưu null, kiểu khác trả 400. Backend luôn đặt `status = can_lam`, `created_by = req.employee.employee_id`; không nhận các trường này từ body.
+
+Phản hồi POST và mỗi phần tử GET có cùng cấu trúc:
+
+```json
+{"id":12,"project_id":1,"title":"Kiểm tra cảm biến nhiệt","description":"Ghi nhận kết quả kiểm tra","assignee_id":3,"assignee_name":"Trần Minh Anh","created_by":2,"due_date":"2026-11-15","priority":"cao","status":"can_lam","created_at":"2026-10-26T03:00:00.000Z","updated_at":"2026-10-26T03:00:00.000Z"}
+```
+
+GET sắp theo `due_date` tăng dần rồi `id`; không có task trả `[]`. Lấy người làm bằng quan hệ trong truy vấn, không gọi thêm truy vấn cho từng task. Dự án không tồn tại → 404; ID sai → 400; người ngoài dự án → 403 `Bạn không thuộc dự án này`. Lỗi máy chủ không trả chi tiết Prisma hay mật khẩu.
+
+Tạo task, kiểm tra hạn khi sửa dự án và kiểm tra điều kiện hoàn thành dự án chạy trong các transaction Serializable. Khi có thay đổi đồng thời gây xung đột, trả 409 `Dữ liệu dự án vừa thay đổi, vui lòng thử lại`; giao diện hiển thị nguyên văn để người dùng tải lại/thử lại.
+
+### Postman: 11 trường hợp API task
+
+Chạy backend bằng `npm run dev`. Tạo biến `base_url = http://localhost:5000`, `project_id` là dự án đang thực hiện, `completed_project_id` là dự án hoàn thành, `assignee_id` là thành viên đang làm việc và `project_end_date` là ngày kết thúc thực tế dạng YYYY-MM-DD. Lấy token qua `/api/auth/login`, chọn Authorization → Bearer Token; POST chọn Body → raw → JSON:
+
+```json
+{"title":"Task kiểm tra API","assignee_id":{{assignee_id}},"due_date":"{{project_end_date}}","priority":"cao"}
+```
+
+Dùng dự án kiểm tra riêng vì POST thành công ghi dữ liệu thật. Không thay trạng thái nhân sự thật để chuẩn bị dữ liệu thử.
+
+| # | Thử | Kỳ vọng |
+|---|---|---|
+| 1 | Quản lý dự án POST body hợp lệ | 201, can_lam, created_by đúng nhân viên gọi API |
+| 2 | Thành viên thường POST cùng body | 403 |
+| 3 | Quản lý/admin POST vào dự án hoàn thành | 409, yêu cầu mở lại dự án |
+| 4 | Người làm đang làm việc nhưng không thuộc dự án | 400, lỗi thành viên |
+| 5 | Người làm hợp lệ, hạn chót sau ngày kết thúc một ngày | 400, thông điệp có ngày kết thúc |
+| 6 | Hạn chót đúng bằng ngày kết thúc | 201 |
+| 7 | Tiêu đề chỉ có khoảng trắng; hoặc priority bằng urgent | 400 với lỗi tương ứng |
+| 8 | Người làm đã nghỉ việc nhưng còn liên kết thành viên | 400 `Nhân viên đã nghỉ việc` |
+| 9 | Thành viên GET `/api/projects/{{project_id}}/tasks` | 200, đúng thứ tự hạn chót rồi ID, có assignee_name |
+| 10 | Người ngoài dự án GET danh sách task | 403 `Bạn không thuộc dự án này` |
+| 11 | Admin GET task của dự án bất kỳ | 200 |
+
+Kiểm tra thêm token thiếu/sai/hết hạn → 401; ID dự án sai → 400; dự án không tồn tại → 404; ngày 30/02, ID người làm sai hoặc tiêu đề quá 200 ký tự → 400. Dự án hoàn thành và body thiếu trường phải báo 409 trước; người làm ngoài dự án và hạn vượt ngày kết thúc phải báo lỗi thành viên trước. Gửi thêm status xong/created_by của người khác không làm thay đổi các giá trị backend tự đặt.
+
+Giao diện `/du-an/:id` có bảng task và form tạo task; chỉ can_manage có nút tạo. Dự án hoàn thành khóa nút với tooltip `Mở lại dự án để tạo task`. Tạo xong tải lại chi tiết, tiến độ và bảng task. Hàng quá hạn đỏ, sắp hạn 0–3 ngày vàng và có nhãn chữ; task xong không nhận cảnh báo hạn. Bảng chuyển due_date/xong sang định dạng của getDueState tại một nơi, không thay quy tắc hiện có.

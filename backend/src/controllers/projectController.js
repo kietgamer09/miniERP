@@ -184,7 +184,7 @@ export const getProject = async (req, res) => {
   }
 };
 
-export const loadManagedProject = async (req, res) => {
+export const loadManagedProject = async (req, res, db = prisma) => {
   const id = parseId(req.params.id);
   if (!id) {
     res.status(400).json({ error: 'ID dự án phải là số nguyên dương hợp lệ' });
@@ -204,25 +204,31 @@ export const loadManagedProject = async (req, res) => {
 
 export const updateProject = async (req, res) => {
   try {
-    const project = await loadManagedProject(req, res);
-    if (!project) return;
-    const body = req.body ?? {};
-    if (body.code !== undefined && body.code !== project.code) {
-      return res.status(400).json({ error: 'Không được đổi mã dự án' });
-    }
-    const { data, error } = validateProject(body, false);
-    if (error) return res.status(400).json({ error });
-    const deadlines = await prisma.tasks.aggregate({
-      where: { project_id: project.id }, _max: { due_date: true },
-    });
-    const latest = toDateOnly(deadlines._max.due_date);
-    if (latest && latest > toDateOnly(data.end_date)) {
-      return res.status(409).json({ error: `Còn task có hạn chót ${latest}, sau ngày kết thúc mới` });
-    }
-    const updated = await prisma.projects.update({ where: { id: project.id }, data });
-    res.json(serializeProject(updated));
+    const result = await prisma.$transaction(async (tx) => {
+      const project = await loadManagedProject(req, res, tx);
+      if (!project) return null;
+      const body = req.body ?? {};
+      if (body.code !== undefined && body.code !== project.code) {
+        return { status: 400, error: 'Không được đổi mã dự án' };
+      }
+      const { data, error } = validateProject(body, false);
+      if (error) return { status: 400, error };
+      const deadlines = await tx.tasks.aggregate({
+        where: { project_id: project.id }, _max: { due_date: true },
+      });
+      const latest = toDateOnly(deadlines._max.due_date);
+      if (latest && latest > toDateOnly(data.end_date)) {
+        return { status: 409, error: `Còn task có hạn chót ${latest}, sau ngày kết thúc mới` };
+      }
+      return { project: await tx.projects.update({ where: { id: project.id }, data }) };
+    }, { isolationLevel: 'Serializable' });
+    if (!result) return;
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json(serializeProject(result.project));
   } catch (error) {
     console.error('Không thể sửa dự án:', error);
+    if (res.headersSent) return;
+    if (error.code === 'P2034') return res.status(409).json({ error: 'Dữ liệu dự án vừa thay đổi, vui lòng thử lại' });
     res.status(500).json({ error: 'Lỗi máy chủ' });
   }
 };
@@ -255,27 +261,26 @@ export const deleteProject = async (req, res) => {
 
 export const completeProject = async (req, res) => {
   try {
-    const project = await loadManagedProject(req, res);
-    if (!project) return;
-    if (project.status === 'hoan_thanh') {
-      return res.status(409).json({ error: 'Dự án đã hoàn thành' });
-    }
-
-    const taskCount = await prisma.tasks.count({ where: { project_id: project.id } });
-    if (!taskCount) return res.status(409).json({ error: 'Dự án chưa có task nào để hoàn thành' });
-
-    const unfinishedCount = await prisma.tasks.count({
-      where: { project_id: project.id, status: { not: 'xong' } },
-    });
-    if (unfinishedCount) return res.status(409).json({ error: 'Vẫn còn task chưa hoàn thành' });
-
-    const updated = await prisma.projects.update({
-      where: { id: project.id },
-      data: { status: 'hoan_thanh' },
-    });
-    res.json(serializeProject(updated));
+    // Cùng mức cô lập với tạo task để không hoàn thành giữa lúc có task mới.
+    const result = await prisma.$transaction(async (tx) => {
+      const project = await loadManagedProject(req, res, tx);
+      if (!project) return null;
+      if (project.status === 'hoan_thanh') return { status: 409, error: 'Dự án đã hoàn thành' };
+      const taskCount = await tx.tasks.count({ where: { project_id: project.id } });
+      if (!taskCount) return { status: 409, error: 'Dự án chưa có task nào để hoàn thành' };
+      const unfinishedCount = await tx.tasks.count({
+        where: { project_id: project.id, status: { not: 'xong' } },
+      });
+      if (unfinishedCount) return { status: 409, error: 'Vẫn còn task chưa hoàn thành' };
+      return { project: await tx.projects.update({ where: { id: project.id }, data: { status: 'hoan_thanh' } }) };
+    }, { isolationLevel: 'Serializable' });
+    if (!result) return;
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    res.json(serializeProject(result.project));
   } catch (error) {
     console.error('Không thể hoàn thành dự án:', error);
+    if (res.headersSent) return;
+    if (error.code === 'P2034') return res.status(409).json({ error: 'Dữ liệu dự án vừa thay đổi, vui lòng thử lại' });
     res.status(500).json({ error: 'Lỗi máy chủ' });
   }
 };

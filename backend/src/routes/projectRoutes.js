@@ -5,6 +5,7 @@ import {
   completeProject, createProject, deleteProject, getProject, listProjects, reopenProject, updateProject,
 } from '../controllers/projectController.js';
 import { addMembers, listAvailableEmployees, removeMember } from '../controllers/memberController.js';
+import { createTask, listProjectTasks } from '../controllers/taskController.js';
 
 const router = express.Router();
 router.use(verifyToken, attachEmployee);
@@ -18,5 +19,7 @@ router.post('/:id/reopen', reopenProject);
 router.get('/:id/available-employees', listAvailableEmployees);
 router.post('/:id/members', addMembers);
 router.delete('/:id/members/:employee_id', removeMember);
+router.post('/:id/tasks', createTask);
+router.get('/:id/tasks', listProjectTasks);
 
 export default router;

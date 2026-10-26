@@ -99,7 +99,7 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
           }),
         ]}>
           <DatePicker locale={viVN.DatePicker} format="DD/MM/YYYY" placeholder="Chọn ngày kết thúc" style={{ width: '100%' }}
-            disabledDate={(date) => (startDate && date.isBefore(startDate, 'day'))
+            disabledDate={(date) => Boolean(startDate && date.isBefore(startDate, 'day'))
               || (!project && date.format('YYYY-MM-DD') < today)} />
         </Form.Item>
       </Form>

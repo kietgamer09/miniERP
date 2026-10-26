@@ -22,7 +22,7 @@ function HandIcon() {
 }
 
 function AttendanceCard() {
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState(() => new Date());
 
   // Cập nhật đồng hồ mỗi giây
   useEffect(() => {
