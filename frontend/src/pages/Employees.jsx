@@ -4,7 +4,6 @@ import { Alert, Avatar, Button, Input, Select, Space, Table, Typography, message
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { listEmployees } from '../services/employeeApi';
 import { listDepartments } from '../services/departmentApi';
-import { request } from '../services/http';
 import EmployeeFormModal from '../components/EmployeeFormModal';
 import { useRole } from '../context/AuthContext';
 

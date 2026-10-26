@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Alert, Button, Card, Descriptions, Popconfirm, Space, Spin, Tag, Typography, message } from 'antd';
+import { Alert, Button, Card, Descriptions, Popconfirm, Space, Spin, Tag, Tooltip, Typography, message } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { completeProject, getProject, reopenProject } from '../services/projectApi';
 import { formatDateOnlyVN } from '../utils/dates';
@@ -8,6 +8,8 @@ import ProgressBar from '../components/ProgressBar';
 import ProjectFormModal from '../components/ProjectFormModal';
 import MemberList from '../components/MemberList';
 import AddMembersModal from '../components/AddMembersModal';
+import ProjectTaskTable from '../components/ProjectTaskTable';
+import TaskFormModal from '../components/TaskFormModal';
 
 function ProjectDetailContent({ id }) {
   const [project, setProject] = useState(null);
@@ -16,6 +18,7 @@ function ProjectDetailContent({ id }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
   const submitting = useRef(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -41,6 +44,7 @@ function ProjectDetailContent({ id }) {
   function handleSaved(text) {
     setFormOpen(false);
     setMembersOpen(false);
+    setTaskFormOpen(false);
     messageApi.success(text);
     reload();
   }
@@ -89,6 +93,10 @@ function ProjectDetailContent({ id }) {
             {project.can_manage && <Space wrap style={{ marginTop: 16 }}>
               <Button icon={<EditOutlined />} disabled={changingStatus} onClick={() => setFormOpen(true)}>Sửa dự án</Button>
               <Button icon={<PlusOutlined />} disabled={changingStatus} onClick={() => setMembersOpen(true)}>Thêm thành viên</Button>
+              <Tooltip title={completed ? 'Mở lại dự án để tạo task' : undefined}>
+                <span><Button type="primary" icon={<PlusOutlined />} disabled={completed || changingStatus}
+                  onClick={() => setTaskFormOpen(true)}>Tạo task</Button></span>
+              </Tooltip>
               <Popconfirm title={completed ? 'Mở lại dự án này?' : 'Hoàn thành dự án này?'}
                 okText={completed ? 'Mở lại' : 'Hoàn thành'} cancelText="Hủy" onConfirm={changeStatus}
                 okButtonProps={{ loading: changingStatus }}>
@@ -97,10 +105,13 @@ function ProjectDetailContent({ id }) {
             </Space>}
           </Card>
           <MemberList project={project} onChanged={() => handleSaved('Đã bớt thành viên khỏi dự án')} />
+          <ProjectTaskTable projectId={project.id} />
           {project.can_manage && formOpen && <ProjectFormModal open project={project}
             onCancel={() => setFormOpen(false)} onSaved={() => handleSaved('Cập nhật dự án thành công')} />}
           {project.can_manage && membersOpen && <AddMembersModal projectId={project.id}
             onCancel={() => setMembersOpen(false)} onSaved={() => handleSaved('Thêm thành viên thành công')} />}
+          {project.can_manage && !completed && taskFormOpen && <TaskFormModal project={project}
+            onCancel={() => setTaskFormOpen(false)} onSaved={() => handleSaved('Tạo task thành công')} />}
         </>}
   </div>;
 }

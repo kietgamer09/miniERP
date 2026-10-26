@@ -14,6 +14,7 @@ import Login from './pages/Login';
 import Departments from './pages/Departments';
 import Employees from './pages/Employees';
 import ProjectOverview from './pages/ProjectOverview';
+import ProjectDetail from './pages/ProjectDetail';
 import Projects from './pages/Projects';
 import ProjectProgress from './pages/ProjectProgress';
 import MyTasksPage from './pages/MyTasksPage';
