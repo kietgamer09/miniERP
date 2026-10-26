@@ -57,34 +57,36 @@ function Projects() {
     </Space>;
   }
 
-  return <div className="project-overview">
-    {contextHolder}
-    <Space wrap className="project-page-header">
-      <div>
-        <Title level={3} style={{ margin: 0 }}>{isAdmin ? 'Dự án công ty' : 'Dự án của tôi'}</Title>
-        <Text type="secondary">{isAdmin ? 'Danh sách dự án và tiến độ toàn công ty' : 'Các dự án bạn đang tham gia'}</Text>
-      </div>
-      <Space wrap>
-        <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading}>Tải lại</Button>
-        {['manager', 'admin'].includes(role) && <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm()}>Tạo dự án</Button>}
+  return (
+    <div className="project-overview">
+      {contextHolder}
+      <Space wrap className="project-page-header">
+        <div>
+          <Title level={3} style={{ margin: 0 }}>{isAdmin ? 'Dự án công ty' : 'Dự án của tôi'}</Title>
+          <Text type="secondary">{isAdmin ? 'Danh sách dự án và tiến độ toàn công ty' : 'Các dự án bạn đang tham gia'}</Text>
+        </div>
+        <Space wrap>
+          <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading}>Tải lại</Button>
+          {['manager', 'admin'].includes(role) && <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm()}>Tạo dự án</Button>}
+        </Space>
       </Space>
-    </Space>
-    <Row gutter={[16, 16]}>
-      <Col xs={24} lg={12}>
-        <Card title="Danh sách các ban nhóm công ty" className="project-overview-panel">
-          {/* TODO: Nối API phòng ban trong lượt được giao sau. */}
-          <Empty description="Sẽ nối API phòng ban sau" />
-        </Card>
-      </Col>
-      <Col xs={24} lg={12}>
-        <Card title={isAdmin ? 'Danh sách dự án công ty' : 'Danh sách dự án của bạn'} className="project-overview-panel">
-          {renderProjects()}
-        </Card>
-      </Col>
-    </Row>
-    <Card title="Tiến độ dự án hiện tại">{renderProjects(true)}</Card>
-    {formOpen && <ProjectFormModal open project={selectedProject} onCancel={() => setFormOpen(false)} onSaved={handleSaved} />}
-  </div>;
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
+          <Card title="Danh sách các ban nhóm công ty" className="project-overview-panel">
+            {/* TODO: Nối API phòng ban trong lượt được giao sau. */}
+            <Empty description="Sẽ nối API phòng ban sau" />
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title={isAdmin ? 'Danh sách dự án công ty' : 'Danh sách dự án của bạn'} className="project-overview-panel">
+            {renderProjects()}
+          </Card>
+        </Col>
+      </Row>
+      <Card title="Tiến độ dự án hiện tại">{renderProjects(true)}</Card>
+      {formOpen && <ProjectFormModal open project={selectedProject} onCancel={() => setFormOpen(false)} onSaved={handleSaved} />}
+    </div>
+  );
 }
 
 export default Projects;

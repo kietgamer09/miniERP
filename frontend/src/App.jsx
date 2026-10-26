@@ -2,7 +2,7 @@
  * App.jsx – Khai báo Route cho toàn bộ ứng dụng.
  *
  * Dùng react-router-dom v7 với layout lồng (nested route).
- * Bảng pages nối menu với màn hình; route chi tiết dự án được khai báo riêng.
+ * Route "/" hiện Home; bảng pages nối menu với các màn hình đã hoàn thành.
  * getAllPaths lấy danh sách đường dẫn từ cây menu để không phải viết thủ công.
  */
 import { Routes, Route } from 'react-router-dom';
@@ -15,7 +15,6 @@ import Departments from './pages/Departments';
 import Employees from './pages/Employees';
 import ProjectOverview from './pages/ProjectOverview';
 import Projects from './pages/Projects';
-import ProjectDetail from './pages/ProjectDetail';
 import ProjectProgress from './pages/ProjectProgress';
 import MyTasksPage from './pages/MyTasksPage';
 import MyProfile from './pages/MyProfile';

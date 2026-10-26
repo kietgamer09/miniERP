@@ -67,10 +67,16 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
     >
       {saveError && <Alert type="error" showIcon title={saveError} style={{ marginBottom: 16 }} />}
       <Form form={form} layout="vertical" disabled={saving} preserve={false}>
-        <Form.Item label="Mã dự án" name="code" rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập mã dự án' }]}>
+        <Form.Item label="Mã dự án" name="code" rules={[
+          { required: true, whitespace: true, message: 'Vui lòng nhập mã dự án' },
+          { max: 20, message: 'Mã dự án không được quá 20 ký tự' },
+        ]}>
           <Input disabled={Boolean(project) || saving} maxLength={20} placeholder="VD: DA-001" />
         </Form.Item>
-        <Form.Item label="Tên dự án" name="name" rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập tên dự án' }]}>
+        <Form.Item label="Tên dự án" name="name" rules={[
+          { required: true, whitespace: true, message: 'Vui lòng nhập tên dự án' },
+          { max: 200, message: 'Tên dự án không được quá 200 ký tự' },
+        ]}>
           <Input maxLength={200} placeholder="Nhập tên dự án" />
         </Form.Item>
         <Form.Item label="Mô tả" name="description"><Input.TextArea rows={3} /></Form.Item>
@@ -93,7 +99,7 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
           }),
         ]}>
           <DatePicker locale={viVN.DatePicker} format="DD/MM/YYYY" placeholder="Chọn ngày kết thúc" style={{ width: '100%' }}
-            disabledDate={(date) => Boolean(startDate && date.isBefore(startDate, 'day'))
+            disabledDate={(date) => (startDate && date.isBefore(startDate, 'day'))
               || (!project && date.format('YYYY-MM-DD') < today)} />
         </Form.Item>
       </Form>
