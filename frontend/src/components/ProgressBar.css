@@ -1,0 +1,25 @@
+.project-progress-bar {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 10px;
+  margin: 8px 0 4px;
+  overflow: hidden;
+  border: 1px solid #c9d4cf;
+  border-radius: 6px;
+  background: #f4f6f5;
+  color: #163525;
+}
+
+.project-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: #95deaa;
+}
+
+.project-progress-bar > span {
+  position: relative;
+  z-index: 1;
+}
