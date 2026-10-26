@@ -190,7 +190,7 @@ export const loadManagedProject = async (req, res) => {
     res.status(400).json({ error: 'ID dự án phải là số nguyên dương hợp lệ' });
     return null;
   }
-  const project = await prisma.projects.findUnique({ where: { id } });
+  const project = await db.projects.findUnique({ where: { id } });
   if (!project) {
     res.status(404).json({ error: 'Không tìm thấy dự án' });
     return null;
