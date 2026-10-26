@@ -7,6 +7,9 @@ const serializeProject = (project) => ({
   end_date: toDateOnly(project.end_date),
 });
 
+const canManageProject = (req, project) => req.user.role === 'admin'
+  || project.manager_id === req.employee.employee_id;
+
 function getTodayDate() {
   const parts = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -102,6 +105,7 @@ export const listProjects = async (req, res) => {
       return {
         ...serializeProject(project),
         manager_name: employees.fullname,
+        can_manage: canManageProject(req, project),
         members_count: _count.project_members,
         ...counts,
         progress_percent: counts.tasks_total ? Math.round(counts.tasks_done / counts.tasks_total * 100) : 0,
@@ -162,6 +166,7 @@ export const getProject = async (req, res) => {
     res.json({
       ...serializeProject(projectData),
       manager_name: employees.fullname,
+      can_manage: canManageProject(req, projectData),
       members: members.map((member) => ({
         employee_id: member.employee_id,
         fullname: member.employees.fullname,
@@ -179,7 +184,7 @@ export const getProject = async (req, res) => {
   }
 };
 
-const loadManagedProject = async (req, res) => {
+export const loadManagedProject = async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) {
     res.status(400).json({ error: 'ID dự án phải là số nguyên dương hợp lệ' });
@@ -190,7 +195,7 @@ const loadManagedProject = async (req, res) => {
     res.status(404).json({ error: 'Không tìm thấy dự án' });
     return null;
   }
-  if (req.user.role !== 'admin' && project.manager_id !== req.employee.employee_id) {
+  if (!canManageProject(req, project)) {
     res.status(403).json({ error: 'Chỉ Quản lý dự án hoặc Admin được thực hiện thao tác này' });
     return null;
   }

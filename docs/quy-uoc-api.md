@@ -67,6 +67,8 @@ Body sửa (gửi đủ name, start_date, end_date):
 
 Không đổi được code. Không gửi description khi sửa thì giữ mô tả cũ; gửi null hoặc chuỗi rỗng để xóa. Các trường ngoài hợp đồng không được ghi vào database. Ngày kết thúc bằng ngày bắt đầu hợp lệ. Khi tạo dự án, ngày kết thúc không được trước ngày hiện tại theo múi giờ `Asia/Ho_Chi_Minh`; ngày bắt đầu có thể ở quá khứ. Khi sửa, ngày kết thúc không được trước ngày bắt đầu hoặc hạn chót lớn nhất của task.
 
+Danh sách và chi tiết dự án trả thêm `can_manage` (boolean), do backend tính: `true` khi người gọi là admin hoặc có `employee_id` trùng `manager_id` của dự án; trường hợp khác là `false`. Frontend dùng trường này để hiện các thao tác quản lý.
+
 Chi tiết dự án trả thêm `manager_name`, `members` (mỗi thành viên gồm `employee_id`, `fullname`, `position`, `is_manager`), `tasks_done`, `tasks_total` và `progress_percent`. Chỉ thành viên dự án hoặc admin xem được; kiểm tra quyền trước khi tính tiến độ.
 
 Hai API trạng thái không nhận body. Hoàn thành trả `409` nếu dự án đã hoàn thành, chưa có task hoặc còn task chưa xong. Mở lại trả `409` nếu dự án đã đang thực hiện.
@@ -80,7 +82,7 @@ Ví dụ phản hồi thêm (sửa trả cùng cấu trúc với giá trị đã
 Ví dụ phản hồi danh sách:
 
 ```json
-[{"id":1,"code":"DA-TEST-01","name":"Dự án kiểm tra","description":"Thử API","start_date":"2026-10-27","end_date":"2026-11-30","status":"dang_thuc_hien","manager_id":2,"created_at":"2026-10-26T03:00:00.000Z","manager_name":"Nguyễn Văn A","members_count":1,"tasks_done":1,"tasks_total":2,"progress_percent":50}]
+[{"id":1,"code":"DA-TEST-01","name":"Dự án kiểm tra","description":"Thử API","start_date":"2026-10-27","end_date":"2026-11-30","status":"dang_thuc_hien","manager_id":2,"created_at":"2026-10-26T03:00:00.000Z","manager_name":"Nguyễn Văn A","can_manage":true,"members_count":1,"tasks_done":1,"tasks_total":2,"progress_percent":50}]
 ```
 
 Danh sách sắp theo thời gian tạo giảm dần; khi bằng nhau, ID giảm dần. Không có dự án trả `[]`. Chưa có task thì các số tiến độ bằng 0. start_date/end_date luôn YYYY-MM-DD; created_at là thời điểm ISO.
@@ -144,3 +146,72 @@ ORDER BY p.code;
 ```
 
 Sau đó đăng nhập các vai trò để xem dự án mẫu. Admin thấy tất cả dự án; người khác thấy dự án mình tham gia. Kiểm tra dòng task quá hạn đỏ, sắp hạn vàng, task xong có hạn cũ không cảnh báo (các màn hình/API của lượt trước cần đã được tích hợp).
+## 6. API thành viên dự án (tuần 4, lượt 1)
+
+Các API dưới đây đều cần Bearer token, hồ sơ nhân viên đang làm việc và quyền quản lý dự án: admin hoặc nhân viên có `employee_id` bằng `manager_id`. Không tìm thấy dự án trả 404; thiếu quyền trả 403. Quyền được kiểm tra trước khi xử lý dữ liệu thành viên.
+
+| Thao tác | Phương thức và đường dẫn | Body | Thành công |
+|---|---|---|---|
+| Nhân viên có thể thêm | `GET /api/projects/:id/available-employees` | — | 200, mảng nhân viên |
+| Thêm thành viên | `POST /api/projects/:id/members` | `{ "employee_ids": [3, 4] }` | 201, mảng thành viên vừa thêm |
+| Bớt thành viên | `DELETE /api/projects/:id/members/:employee_id` | — | 204, không có nội dung |
+
+`available-employees` chỉ trả nhân viên `dang_lam_viec` chưa tham gia dự án, theo họ tên tăng dần (khi trùng tên thì theo mã nhân viên):
+
+```json
+[{"employee_id":3,"fullname":"Trần Minh Anh","position":"Kỹ thuật viên"}]
+```
+
+`employee_ids` phải là mảng không rỗng, gồm số nguyên dương hợp lệ trong phạm vi ID PostgreSQL; không nhận chuỗi số, số thập phân, `null` hoặc số âm. ID trùng ngay trong body được gộp thành một ID. Ví dụ `[3, 3, 4]` tương đương `[3, 4]`.
+
+Kiểm tra nhân viên đang làm việc và tư cách thành viên, sau đó thêm toàn bộ trong một transaction. Nếu có một người không tồn tại/đã nghỉ việc, trả 400 `Nhân viên không tồn tại hoặc đã nghỉ việc`. Nếu có một người đã tham gia, trả 409 `Nhân viên đã là thành viên của dự án`. Cả hai trường hợp đều không thêm ai trong nhóm đó. Phản hồi thành công:
+
+```json
+[{"employee_id":3,"fullname":"Trần Minh Anh","position":"Kỹ thuật viên","is_manager":false}]
+```
+
+Bớt thành viên kiểm tra theo thứ tự: ID hợp lệ → đang là thành viên → không phải Quản lý dự án → không còn task chưa xong được giao trong chính dự án này. Task đã `xong` được giữ lại dù thành viên đã được bớt khỏi dự án.
+
+| Trường hợp bớt thành viên | Lỗi |
+|---|---|
+| ID nhân viên sai | 400 `ID nhân viên phải là số nguyên dương hợp lệ` |
+| Không là thành viên | 404 `Người này không phải thành viên của dự án` |
+| Là Quản lý dự án | 409 `Không thể bớt Quản lý dự án` |
+| Còn N task chưa xong trong dự án | 409 `Còn N task chưa xong, hãy giao lại trước khi bớt thành viên` |
+| Giao dịch bớt bị xung đột do thao tác đồng thời | 409 `Dữ liệu thành viên vừa thay đổi, vui lòng thử lại` |
+
+Không trả mật khẩu hay lỗi chi tiết Prisma. Lỗi máy chủ được ghi vào terminal; client nhận `{ "error": "thông điệp tiếng Việt" }`.
+
+### Kiểm tra bằng Postman
+
+Khởi động backend bằng `npm run dev` trong thư mục `backend`. Tạo môi trường Postman:
+
+- `base_url`: `http://localhost:5000`.
+- `project_id`: ID một dự án kiểm tra do tài khoản manager quản lý.
+- `manager_token`, `admin_token`, `employee_token`, `other_manager_token`: token lấy qua `POST {{base_url}}/api/auth/login` bằng các tài khoản tương ứng. `employee_token` là thành viên thường của dự án; `other_manager_token` thuộc quản lý khác, không phải Quản lý dự án kiểm tra.
+- `employee_a`, `employee_b`: hai ID nhân viên đang làm việc, chưa tham gia dự án.
+- `inactive_employee_id`: ID nhân viên đã nghỉ việc có sẵn; không thay trạng thái nhân viên thật chỉ để kiểm tra.
+- `unfinished_member_id`: thành viên được giao N task chưa `xong` trong dự án, ghi lại N trước khi thử.
+- `finished_member_id`: thành viên chỉ có task `xong` hoặc chưa có task, không phải Quản lý dự án.
+- `project_manager_id`: `manager_id` đọc từ chi tiết dự án; `nonmember_id`: ID nhân viên không thuộc dự án.
+
+Ở mỗi request, chọn Authorization → Bearer Token → biến token theo bảng. Với POST, chọn Body → raw → JSON; ID trong body phải là số (dùng `{{employee_a}}` không có dấu ngoặc kép). Chuẩn bị ID trên dự án kiểm tra riêng; các request thành công sẽ thay đổi dữ liệu thật.
+
+| # | Request và cách thử | Kỳ vọng |
+|---|---|---|
+| 1 | Dùng `manager_token`, `POST {{base_url}}/api/projects/{{project_id}}/members`, body `{ "employee_ids": [{{employee_a}}, {{employee_b}}] }` | 201, mảng hai người; GET chi tiết thấy hai người mới trong `members` |
+| 2 | Gửi lại request thêm với `employee_token` | 403, không thêm thành viên |
+| 3 | Dùng `manager_token`, thử body chứa `inactive_employee_id`; thử lại với ID chắc chắn không tồn tại. Thử thêm một ID hợp lệ cùng ID sai để kiểm tra toàn bộ giao dịch | 400 `Nhân viên không tồn tại hoặc đã nghỉ việc`, không thêm người nào |
+| 4 | Dùng `manager_token`, gửi lại `employee_a` đã thêm ở bước 1 | 409 `Nhân viên đã là thành viên của dự án` |
+| 5 | Thử `{ "employee_ids": [] }`, `{ "employee_ids": 3 }`, `{}`, mảng chứa chuỗi, số âm hoặc số thập phân | 400; với `[a, a]` và a chưa tham gia thì 201, chỉ thêm một người |
+| 6 | Dùng `manager_token`, `GET {{base_url}}/api/projects/{{project_id}}/available-employees` | 200; không chứa hai người ở bước 1, Quản lý dự án hoặc nhân viên đã nghỉ việc; họ tên tăng dần |
+| 7 | Dùng `manager_token`, `DELETE {{base_url}}/api/projects/{{project_id}}/members/{{unfinished_member_id}}` | 409 `Còn N task chưa xong, hãy giao lại trước khi bớt thành viên`, N đúng số task trong dự án này |
+| 8 | Dùng `manager_token`, DELETE như trên với `finished_member_id` | 204, body rỗng; GET chi tiết không còn người đó; các task đã xong vẫn còn |
+| 9 | Dùng `manager_token`, DELETE với `project_manager_id` | 409 `Không thể bớt Quản lý dự án` |
+| 10 | Dùng `manager_token`, DELETE với `nonmember_id` | 404 `Người này không phải thành viên của dự án` |
+| 11 | Dùng `other_manager_token`, POST thêm thành viên | 403 dù vai trò là manager |
+| 12 | `GET {{base_url}}/api/projects/{{project_id}}` lần lượt bằng token quản lý dự án, admin và thành viên thường; thử cả GET danh sách | 200; `can_manage` lần lượt `true`, `true`, `false` |
+
+Kiểm tra bổ sung: thiếu/sai/hết hạn token → 401; ID dự án sai → 400; dự án không tồn tại → 404 với token hợp lệ; ID nhân viên trên URL là `abc` → 400. Admin thực hiện được ba API thành viên. GET available-employees và DELETE thành viên bằng thành viên thường/quản lý khác đều trả 403.
+
+Nếu chưa có thành viên với task chưa xong/task đã xong, để lại bước 7–8 liên quan task và kiểm tra sau lượt 4 hoặc lượt 6; không tự chỉnh dữ liệu nhân sự để tạo điều kiện thử.

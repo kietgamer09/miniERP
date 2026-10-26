@@ -39,10 +39,29 @@ export const changePassword = async (req, res) => {
   }
 };
 
-// 2. GET /api/users/employee-list - Lấy danh sách nhân viên kèm thông tin cơ bản
+// 2. GET /api/users/employee-list - Lấy danh sách nhân viên kèm tìm kiếm theo tên và lọc theo phòng ban
 export const getUsers = async (req, res) => {
   try {
+    const { search, department_id } = req.query;
+
+    // Xây dựng điều kiện lọc động
+    const whereCondition = {};
+
+    // 1. Tìm theo tên nhân viên (fullname)
+    if (search && search.trim()) {
+      whereCondition.fullname = {
+        contains: search.trim(),
+        mode: 'insensitive', // Giúp tìm kiếm không phân biệt hoa thường (hoặc bỏ mode nếu dùng MySQL cũ)
+      };
+    }
+
+    // 2. Lọc theo phòng ban
+    if (department_id) {
+      whereCondition.department_id = Number(department_id);
+    }
+
     const employees = await prisma.employees.findMany({
+      where: whereCondition,
       include: {
         users: {
           select: {
