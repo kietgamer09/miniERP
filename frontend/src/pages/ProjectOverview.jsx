@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
-  Alert, Button, Card, Col, Collapse, Empty, List, Progress, Row, Space, Spin,
+  Alert, Button, Card, Col, Collapse, Empty, List, Popconfirm, Progress, Row, Space, Spin,
   Tag, Typography, message,
 } from 'antd';
-import { EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
-import { listProjects } from '../services/projectApi';
+import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { deleteProject as deleteProjectRequest, listProjects } from '../services/projectApi';
 import { useAuth } from '../context/AuthContext';
 import ProjectFormModal from '../components/ProjectFormModal';
 
@@ -24,6 +24,7 @@ function ProjectOverview() {
   const [reloadKey, setReloadKey] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [deletingProjectId, setDeletingProjectId] = useState(null);
   const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
@@ -57,6 +58,19 @@ function ProjectOverview() {
     reload();
   }
 
+  async function handleDelete(project) {
+    setDeletingProjectId(project.id);
+    try {
+      await deleteProjectRequest(project.id);
+      messageApi.success('Đã xóa dự án và toàn bộ công việc, bình luận, thành viên thuộc dự án');
+      reload();
+    } catch (error) {
+      messageApi.error(error.message || 'Không xóa được dự án');
+    } finally {
+      setDeletingProjectId(null);
+    }
+  }
+
   const canCreate = ['manager', 'admin'].includes(user?.role);
   const canEditProject = (project) => user?.role === 'admin'
     || (user?.employee_id != null && project.manager_id === user.employee_id);
@@ -79,7 +93,19 @@ function ProjectOverview() {
           <Text>Quản lý dự án: {project.manager_name || 'Chưa phân công'}</Text>
         </div>
         {canEditProject(project) && (
-          <Button size="small" icon={<EditOutlined />} onClick={() => openForm(project)}>Sửa dự án</Button>
+          <Space wrap>
+            <Button size="small" icon={<EditOutlined />} onClick={() => openForm(project)}>Sửa dự án</Button>
+            <Popconfirm
+              title="Xóa dự án này?"
+              description="Công việc, bình luận và thành viên thuộc dự án cũng sẽ bị xóa vĩnh viễn."
+              okText="Xóa dự án"
+              cancelText="Hủy"
+              okButtonProps={{ danger: true, loading: deletingProjectId === project.id }}
+              onConfirm={() => handleDelete(project)}
+            >
+              <Button size="small" danger icon={<DeleteOutlined />} loading={deletingProjectId === project.id}>Xóa</Button>
+            </Popconfirm>
+          </Space>
         )}
       </Card>
     );

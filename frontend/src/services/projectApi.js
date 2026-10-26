@@ -11,3 +11,7 @@ export function createProject(data) {
 export function updateProject(id, data) {
   return request(`/api/projects/${id}`, { method: 'PUT', body: data });
 }
+
+export function deleteProject(id) {
+  return request(`/api/projects/${id}`, { method: 'DELETE' });
+}

@@ -222,6 +222,32 @@ export const updateProject = async (req, res) => {
   }
 };
 
+export const deleteProject = async (req, res) => {
+  try {
+    const project = await loadManagedProject(req, res);
+    if (!project) return;
+
+    await prisma.$transaction(async (tx) => {
+      const tasks = await tx.tasks.findMany({
+        where: { project_id: project.id },
+        select: { id: true },
+      });
+      const taskIds = tasks.map((task) => task.id);
+      if (taskIds.length) {
+        await tx.task_comments.deleteMany({ where: { task_id: { in: taskIds } } });
+        await tx.tasks.deleteMany({ where: { id: { in: taskIds } } });
+      }
+      await tx.project_members.deleteMany({ where: { project_id: project.id } });
+      await tx.projects.delete({ where: { id: project.id } });
+    });
+
+    res.status(204).end();
+  } catch (error) {
+    console.error('Không thể xóa dự án:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi xóa dự án' });
+  }
+};
+
 export const completeProject = async (req, res) => {
   try {
     const project = await loadManagedProject(req, res);
