@@ -42,6 +42,9 @@ function App() {
           {/* Trang chủ */}
           <Route path="/" element={<Home />} />
 
+          {/* Backend kiểm tra thành viên; route động không nằm trong cây menu. */}
+          <Route path="/du-an/:id" element={<ProjectDetail />} />
+
           {/* Mỗi route menu dùng quyền khai báo ngay trong menu.jsx */}
           {allPaths.map((path) => {
             const Page = pages[path] ?? Placeholder;
