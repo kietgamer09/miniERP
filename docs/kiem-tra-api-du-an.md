@@ -37,10 +37,10 @@ Copy trường `token` trong phản hồi vào biến tương ứng. Với API d
 
 ## 2. Thử thêm → danh sách → sửa
 
-1. `POST {{base_url}}/api/projects` bằng token_ql:
+1. `POST {{base_url}}/api/projects` bằng token_ql (ngày kết thúc mới phải từ hôm nay theo múi giờ Việt Nam):
 
 ```json
-{"code":"DA-TEST-01","name":"Dự án kiểm tra","description":"Thử API","start_date":"2026-10-01","end_date":"2026-11-30"}
+{"code":"DA-TEST-01","name":"Dự án kiểm tra","description":"Thử API","start_date":"2026-10-27","end_date":"2026-11-30"}
 ```
 
 Kỳ vọng 201. Copy id trả về vào project_id; ghi lại manager_id (employee_id người tạo).
@@ -50,7 +50,7 @@ Kỳ vọng 201. Copy id trả về vào project_id; ghi lại manager_id (emplo
 3. `PUT {{base_url}}/api/projects/{{project_id}}` bằng token_ql:
 
 ```json
-{"name":"Dự án đã sửa","description":"Mô tả mới","start_date":"2026-10-01","end_date":"2026-12-31"}
+{"name":"Dự án đã sửa","description":"Mô tả mới","start_date":"2026-10-27","end_date":"2026-12-31"}
 ```
 
 Kỳ vọng 200. Gọi lại GET để xác nhận đã lưu. Sửa cần gửi đủ 3 trường name/start_date/end_date; không gửi code hoặc gửi đúng mã cũ.
@@ -87,33 +87,46 @@ Các thay đổi body dưới đây dựa trên body hợp lệ ở mục 2. Dù
 |---|---|---|
 | 1 | Manager POST body hợp lệ | 201; đúng 1 thành viên là người tạo |
 | 2 | Employee POST cùng body | 403 |
-| 3 | POST bỏ name hoặc name chỉ có khoảng trắng | 400 |
-| 4 | POST end_date = 2026-09-30 | 400 |
-| 5 | POST mã mới, start_date và end_date cùng 2026-10-01 | 201 |
+| 3 | POST start_date = 2026-10-28, end_date = 2026-10-27 | 400, ngày kết thúc không được trước ngày bắt đầu |
+| 4 | POST start_date = 2026-10-25, end_date = 2026-10-25 (hôm qua) | 400, ngày kết thúc dự án mới không được trước hôm nay |
+| 5 | POST mã mới, start_date và end_date cùng 2026-11-01 | 201 |
 | 6 | POST trùng code đã tạo | 409 |
 | 7 | GET không gửi Authorization | 401 |
-| 8 | GET với Bearer abc | 403 theo middleware hiện tại |
+| 8 | GET với Bearer abc | 401 |
 | 9 | Employee GET trước/sau SQL thêm thành viên | Chỉ thấy dự án mình tham gia |
 | 10 | Admin GET | Thấy tất cả dự án |
 | 11 | PUT bằng token_ql_khac | 403 |
 | 12 | PUT bằng chủ dự án hoặc admin, body hợp lệ | 200; GET xác nhận thay đổi |
 | 13 | PUT thêm code khác mã cũ | 400 |
 | 14 | Sau SQL task, PUT end_date = 2026-11-19, start_date = 2026-10-01 | 409, báo hạn task 2026-11-20 |
-| 15 | PUT /api/projects/abc với body hợp lệ | 400 |
+| 15 | GET /api/projects/abc | 400 |
 | 16 | PUT ID nguyên dương đã xác nhận không có trong DB | 404 |
 | 17 | POST start_date = 2026-02-30 | 400 |
 | 18 | POST name là số, description là mảng, hoặc bỏ body | 400 |
 | 19 | GET bằng tài khoản không có hồ sơ / đã nghỉ việc | 403 |
 | 20 | GET sau khi chèn hai task ở mục 3 | Tổng 2, xong 1, tiến độ 50% |
+| 21 | GET chi tiết `/api/projects/{{project_id}}` bằng thành viên | 200, có manager_name, members và tiến độ |
+| 22 | GET chi tiết bằng employee chưa thuộc dự án | 403, `Bạn không thuộc dự án này` |
+| 23 | Hoàn thành dự án chưa có task | 409, `Dự án chưa có task nào để hoàn thành` |
+| 24 | Hoàn thành dự án có task `dang_lam` | 409, `Vẫn còn task chưa hoàn thành` |
+| 25 | Chuyển hết task dự án sang `xong`, POST `/complete`, rồi POST `/reopen` | Cả hai trả 200; gọi lặp thao tác tương ứng trả 409 |
 
-Kiểm tra thêm: ngày không bị lệch; phản hồi API dự án không có password; lỗi database chỉ trả thông điệp chung. API chi tiết, hoàn thành và mở lại chưa thuộc phạm vi ba API này.
+Để kiểm tra trường hợp 23, tạo một dự án mới chưa có task và gọi `POST /api/projects/{{project_id}}/complete`. Để kiểm tra 24, dùng dự án đã có task `dang_lam` từ SQL phía trên. Trước trường hợp 25, chạy:
+
+```sql
+UPDATE tasks SET status = 'xong' WHERE project_id = 123;
+```
+
+Sau đó gọi lần lượt `POST /api/projects/123/complete` và `POST /api/projects/123/reopen` bằng token của manager tạo dự án hoặc admin.
+
+Kiểm tra thêm: ngày không bị lệch; ngày kết thúc dự án mới không được chọn hoặc gửi trước hôm nay; phản hồi API dự án không có password; lỗi database chỉ trả thông điệp chung. Sai/hết hạn token phải trả 401.
 
 ## 5. Cách đọc code
 
 - validators.js kiểm tra ID trong phạm vi Int PostgreSQL, ngày có thật và định dạng ngày trả về.
 - employeeMiddleware.js đổi user_id trong token thành employee_id và kiểm tra tình trạng nhân viên.
-- projectRoutes.js áp dụng xác thực cho cả ba API, kiểm tra role khi tạo.
-- projectController.js kiểm tra đầu vào, phân quyền, ghi giao dịch và tính tiến độ bằng groupBy.
+- projectRoutes.js áp dụng xác thực cho sáu API, kiểm tra role khi tạo.
+- projectController.js kiểm tra đầu vào, phân quyền, ghi giao dịch, tính tiến độ bằng groupBy và xác nhận điều kiện hoàn thành/mở lại.
 - server.js đăng ký đường dẫn /api/projects.
 
-Không thay schema, thêm thư viện hay sửa middleware xác thực. Lưu ý endpoint /api/health có sẵn đang lấy toàn bộ users và trả lỗi gốc; cần xử lý riêng trước khi triển khai thật. Hướng dẫn này không dùng endpoint đó để kiểm tra kết nối.
+Không thay schema hay thêm thư viện. `/api/health` chỉ trả trạng thái kết nối chung, không trả bản ghi users hoặc lỗi database chi tiết.

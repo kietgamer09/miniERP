@@ -14,10 +14,11 @@ app.use(express.json());
 
 app.get('/api/health', async (req, res) => {
   try {
-    const users = await prisma.users.findMany();
-    res.json({ message: 'Kết nối miniERP thành công qua Prisma 7!', users });
+    await prisma.users.count();
+    res.json({ message: 'Kết nối miniERP thành công qua Prisma 7!' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Health check thất bại:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ' });
   }
 });
 

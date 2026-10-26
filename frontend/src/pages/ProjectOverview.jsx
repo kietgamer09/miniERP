@@ -1,11 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Empty, Progress, Space, Table, Tag, Typography, message } from 'antd';
+import {
+  Alert, Button, Card, Col, Collapse, Empty, List, Progress, Row, Space, Spin,
+  Tag, Typography, message,
+} from 'antd';
 import { EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { listProjects } from '../services/projectApi';
 import { useAuth } from '../context/AuthContext';
 import ProjectFormModal from '../components/ProjectFormModal';
 
 const { Title, Text } = Typography;
+
+function formatDate(date) {
+  if (!date) return 'Chưa có ngày';
+  const parts = date.slice(0, 10).split('-');
+  return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : date;
+}
 
 function ProjectOverview() {
   const { user } = useAuth();
@@ -49,49 +58,112 @@ function ProjectOverview() {
   }
 
   const canCreate = ['manager', 'admin'].includes(user?.role);
-  const columns = [
-    { title: 'Mã dự án', dataIndex: 'code', width: 140 },
-    {
-      title: 'Tên dự án', dataIndex: 'name', width: 260,
-      render: (name, project) => <div><Text strong>{name}</Text>{project.description && <div><Text type="secondary">{project.description}</Text></div>}</div>,
-    },
-    { title: 'Quản lý', dataIndex: 'manager_name', width: 170 },
-    { title: 'Bắt đầu', dataIndex: 'start_date', width: 120 },
-    { title: 'Kết thúc', dataIndex: 'end_date', width: 120 },
-    { title: 'Thành viên', dataIndex: 'members_count', width: 110 },
-    {
-      title: 'Tiến độ', width: 170,
-      render: (_, project) => <div><Progress percent={project.progress_percent} size="small" /><Text type="secondary">{project.tasks_done}/{project.tasks_total} công việc</Text></div>,
-    },
-    {
-      title: 'Trạng thái', dataIndex: 'status', width: 160,
-      render: (status) => <Tag color={status === 'hoan_thanh' ? 'green' : 'blue'}>{status === 'hoan_thanh' ? 'Hoàn thành' : 'Đang thực hiện'}</Tag>,
-    },
-    {
-      title: 'Thao tác', width: 90, fixed: 'right',
-      // user_id và employee_id là hai khóa khác nhau; backend vẫn kiểm tra quyền khi lưu.
-      render: (_, project) => (user?.role === 'admin' || (user?.employee_id != null && project.manager_id === user.employee_id))
-        ? <Button icon={<EditOutlined />} onClick={() => openForm(project)}>Sửa</Button> : null,
-    },
-  ];
+  const canEditProject = (project) => user?.role === 'admin'
+    || (user?.employee_id != null && project.manager_id === user.employee_id);
+
+  function renderProjectSummary(project) {
+    return (
+      <Card size="small" className="project-summary-card">
+        <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
+          <div>
+            <Text strong>{project.name}</Text>
+            <div><Text type="secondary">Mã dự án: {project.code}</Text></div>
+          </div>
+          <Tag color={project.status === 'hoan_thanh' ? 'green' : 'blue'}>
+            {project.status === 'hoan_thanh' ? 'Hoàn thành' : 'Đang thực hiện'}
+          </Tag>
+        </Space>
+        <div className="project-summary-details">
+          <Text>Thời hạn: {formatDate(project.start_date)} – {formatDate(project.end_date)}</Text>
+          <Text>Thành viên: {project.members_count ?? 0}</Text>
+          <Text>Quản lý dự án: {project.manager_name || 'Chưa phân công'}</Text>
+        </div>
+        {canEditProject(project) && (
+          <Button size="small" icon={<EditOutlined />} onClick={() => openForm(project)}>Sửa dự án</Button>
+        )}
+      </Card>
+    );
+  }
+
+  const progressItems = projects.map((project) => ({
+    key: String(project.id),
+    label: (
+      <div className="project-progress-heading">
+        <Text strong>{project.name}</Text>
+        <Text type="secondary">Thời hạn: {formatDate(project.start_date)} – {formatDate(project.end_date)}</Text>
+      </div>
+    ),
+    children: (
+      <>
+        <Progress percent={project.progress_percent ?? 0} />
+        <Text type="secondary">
+          {project.tasks_done ?? 0}/{project.tasks_total ?? 0} công việc hoàn thành
+        </Text>
+      </>
+    ),
+  }));
 
   return (
-    <div>
+    <div className="project-overview">
       {contextHolder}
-      <Space wrap style={{ width: '100%', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={3} style={{ margin: 0 }}>Dự án</Title>
+      <Space wrap className="project-page-header">
+        <div>
+          <Title level={3} style={{ margin: 0 }}>Dự án</Title>
+          <Text type="secondary">Danh sách dự án và tiến độ thực hiện</Text>
+        </div>
         <Space wrap>
           <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading}>Tải lại</Button>
-          {canCreate && <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm()}>Thêm dự án</Button>}
+          {canCreate && <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm()}>Tạo dự án</Button>}
         </Space>
       </Space>
-      {loadError ? (
-        <Alert type="error" showIcon title={loadError} action={<Button onClick={reload}>Thử lại</Button>} />
-      ) : (
-        <Table rowKey="id" columns={columns} dataSource={projects} loading={loading}
-          scroll={{ x: 1340 }} pagination={false} locale={{ emptyText: <Empty description="Chưa có dự án" /> }} />
+
+      <Row gutter={[16, 16]} className="project-overview-top">
+        <Col xs={24} xl={12}>
+          <Card title="Danh sách các ban nhóm công ty" className="project-overview-panel">
+            <Empty description="Danh sách phòng ban chưa có API trong backend hiện tại." />
+          </Card>
+        </Col>
+
+        <Col xs={24} xl={12}>
+          <Card title="Danh sách dự án của bạn" className="project-overview-panel">
+            {loadError ? (
+              <Alert type="error" showIcon title={loadError} action={<Button onClick={reload}>Thử lại</Button>} />
+            ) : loading ? (
+              <div className="project-panel-loading"><Spin /></div>
+            ) : projects.length ? (
+              <List
+                className="project-panel-list"
+                dataSource={projects}
+                rowKey="id"
+                renderItem={renderProjectSummary}
+              />
+            ) : (
+              <Empty description="Bạn chưa tham gia dự án nào" />
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      <Card title="Tiến độ tất cả dự án" className="project-progress-panel">
+        {loadError ? (
+          <Alert type="error" showIcon title={loadError} action={<Button onClick={reload}>Thử lại</Button>} />
+        ) : loading ? (
+          <div className="project-panel-loading"><Spin /></div>
+        ) : progressItems.length ? (
+          <Collapse items={progressItems} />
+        ) : (
+          <Empty description="Chưa có dự án để hiển thị tiến độ" />
+        )}
+      </Card>
+
+      {formOpen && (
+        <ProjectFormModal
+          open
+          project={selectedProject}
+          onCancel={() => setFormOpen(false)}
+          onSaved={handleSaved}
+        />
       )}
-      {formOpen && <ProjectFormModal open project={selectedProject} onCancel={() => setFormOpen(false)} onSaved={handleSaved} />}
     </div>
   );
 }

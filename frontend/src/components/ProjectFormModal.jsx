@@ -2,11 +2,24 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Form, Input, Modal } from 'antd';
 import { createProject, updateProject } from '../services/projectApi';
 
+function getTodayDate() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 function ProjectFormModal({ open, project, onCancel, onSaved }) {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const submitting = useRef(false);
+  const today = getTodayDate();
+  const startDate = Form.useWatch('start_date', form);
+  const minEndDate = project
+    ? startDate
+    : startDate && startDate > today ? startDate : today;
 
   useEffect(() => {
     if (!open) return;
@@ -58,16 +71,22 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
         <Form.Item label="Ngày bắt đầu" name="start_date" rules={[{ required: true, message: 'Vui lòng chọn ngày bắt đầu' }]}>
           <Input type="date" />
         </Form.Item>
-        <Form.Item label="Ngày kết thúc" name="end_date" dependencies={['start_date']} rules={[
+      <Form.Item label="Ngày kết thúc" name="end_date" dependencies={['start_date']} rules={[
           { required: true, message: 'Vui lòng chọn ngày kết thúc' },
-          ({ getFieldValue }) => ({
+          () => ({
             validator(_, value) {
-              return value && getFieldValue('start_date') && value < getFieldValue('start_date')
-                ? Promise.reject(new Error('Ngày kết thúc không được trước ngày bắt đầu')) : Promise.resolve();
+              if (!value) return Promise.resolve();
+              if (startDate && value < startDate) {
+                return Promise.reject(new Error('Ngày kết thúc không được trước ngày bắt đầu'));
+              }
+              if (!project && value < today) {
+                return Promise.reject(new Error('Ngày kết thúc dự án mới không được trước ngày hiện tại'));
+              }
+              return Promise.resolve();
             },
           }),
         ]}>
-          <Input type="date" />
+          <Input type="date" min={minEndDate} />
         </Form.Item>
       </Form>
     </Modal>
