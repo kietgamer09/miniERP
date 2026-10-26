@@ -1,7 +1,7 @@
 import { request } from './http';
 
-export function listEmployees() {
-  return request('/api/users/employee-list');
+export function listEmployees(params) {
+  return request('/api/users/employee-list', { params }); // Thêm { params } vào đây
 }
 
 export function getMyProfile() {

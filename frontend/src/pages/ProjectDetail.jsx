@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Alert, Button, Card, Descriptions, Popconfirm, Space, Spin, Tag, Tooltip, Typography, message } from 'antd';
+import { Alert, Button, Card, Descriptions, Popconfirm, Space, Spin, Tag, Typography, message } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { completeProject, getProject, reopenProject } from '../services/projectApi';
 import { formatDateOnlyVN } from '../utils/dates';
@@ -8,15 +8,14 @@ import ProgressBar from '../components/ProgressBar';
 import ProjectFormModal from '../components/ProjectFormModal';
 import MemberList from '../components/MemberList';
 import AddMembersModal from '../components/AddMembersModal';
-import ProjectTaskTable from '../components/ProjectTaskTable';
-import TaskFormModal from '../components/TaskFormModal';
 
 function ProjectDetailContent({ id }) {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
-  const [activeModal, setActiveModal] = useState('');
+  const [formOpen, setFormOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
   const submitting = useRef(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -40,9 +39,9 @@ function ProjectDetailContent({ id }) {
   }
 
   function handleSaved(text) {
-    setActiveModal('');
+    setFormOpen(false);
+    setMembersOpen(false);
     messageApi.success(text);
-    // Tải lại tiến độ và remount bảng task để cả hai cùng lấy dữ liệu mới.
     reload();
   }
 
@@ -53,7 +52,8 @@ function ProjectDetailContent({ id }) {
     const completed = project.status === 'hoan_thanh';
     try {
       await (completed ? reopenProject(id) : completeProject(id));
-      handleSaved(completed ? 'Đã mở lại dự án' : 'Đã hoàn thành dự án');
+      messageApi.success(completed ? 'Đã mở lại dự án' : 'Đã hoàn thành dự án');
+      reload();
     } catch (error) {
       messageApi.error(error.message || 'Không thay đổi được trạng thái dự án');
     } finally {
@@ -87,33 +87,27 @@ function ProjectDetailContent({ id }) {
             ]} />
             <ProgressBar {...project} />
             {project.can_manage && <Space wrap style={{ marginTop: 16 }}>
-              <Button icon={<EditOutlined />} disabled={changingStatus} onClick={() => setActiveModal('project')}>Sửa dự án</Button>
-              <Button icon={<PlusOutlined />} disabled={changingStatus} onClick={() => setActiveModal('members')}>Thêm thành viên</Button>
-              <Tooltip title={completed ? 'Mở lại dự án để tạo task' : undefined}>
-                <span><Button type="primary" icon={<PlusOutlined />} disabled={completed || changingStatus}
-                  onClick={() => setActiveModal('task')}>Tạo task</Button></span>
-              </Tooltip>
+              <Button icon={<EditOutlined />} disabled={changingStatus} onClick={() => setFormOpen(true)}>Sửa dự án</Button>
+              <Button icon={<PlusOutlined />} disabled={changingStatus} onClick={() => setMembersOpen(true)}>Thêm thành viên</Button>
               <Popconfirm title={completed ? 'Mở lại dự án này?' : 'Hoàn thành dự án này?'}
                 okText={completed ? 'Mở lại' : 'Hoàn thành'} cancelText="Hủy" onConfirm={changeStatus}
                 okButtonProps={{ loading: changingStatus }}>
-                <Button loading={changingStatus}>{completed ? 'Mở lại dự án' : 'Hoàn thành dự án'}</Button>
+                <Button type="primary" loading={changingStatus}>{completed ? 'Mở lại dự án' : 'Hoàn thành dự án'}</Button>
               </Popconfirm>
             </Space>}
           </Card>
           <MemberList project={project} onChanged={() => handleSaved('Đã bớt thành viên khỏi dự án')} />
-          <ProjectTaskTable projectId={project.id} />
-          {project.can_manage && activeModal === 'project' && <ProjectFormModal open project={project}
-            onCancel={() => setActiveModal('')} onSaved={() => handleSaved('Cập nhật dự án thành công')} />}
-          {project.can_manage && activeModal === 'members' && <AddMembersModal projectId={project.id}
-            onCancel={() => setActiveModal('')} onSaved={() => handleSaved('Thêm thành viên thành công')} />}
-          {project.can_manage && !completed && activeModal === 'task' && <TaskFormModal project={project}
-            onCancel={() => setActiveModal('')} onSaved={() => handleSaved('Tạo task thành công')} />}
+          {project.can_manage && formOpen && <ProjectFormModal open project={project}
+            onCancel={() => setFormOpen(false)} onSaved={() => handleSaved('Cập nhật dự án thành công')} />}
+          {project.can_manage && membersOpen && <AddMembersModal projectId={project.id}
+            onCancel={() => setMembersOpen(false)} onSaved={() => handleSaved('Thêm thành viên thành công')} />}
         </>}
   </div>;
 }
 
 function ProjectDetail() {
   const { id } = useParams();
+  // Đổi dự án phải xóa cả trạng thái form và dữ liệu của dự án trước.
   return <ProjectDetailContent key={id} id={id} />;
 }
 

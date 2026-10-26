@@ -9,7 +9,7 @@ const DAY_NAMES = [
   'Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7',
 ];
 
-/** Hiểu chuỗi YYYY-MM-DD theo giờ địa phương để tránh lệch ngày khi tính hạn. */
+/** Tạo ngày theo giờ địa phương, tránh việc chuỗi YYYY-MM-DD bị hiểu là UTC. */
 function parseDateOnly(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   const [year, month, day] = value.split('-').map(Number);
@@ -17,7 +17,8 @@ function parseDateOnly(value) {
   const date = new Date(0);
   date.setFullYear(year, month - 1, day);
   date.setHours(0, 0, 0, 0);
-  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+    ? date : null;
 }
 
 function formatDateOnlyVN(value) {

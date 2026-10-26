@@ -2,7 +2,7 @@
 import { request } from './http';
 
 function listDepartments() {
-  return request('/api/departments');
+  return request('/api/departments/department-list');
 }
 
 function createDepartment(data) {

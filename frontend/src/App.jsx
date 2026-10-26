@@ -2,7 +2,7 @@
  * App.jsx – Khai báo Route cho toàn bộ ứng dụng.
  *
  * Dùng react-router-dom v7 với layout lồng (nested route).
- * Route "/" hiện Home, mọi đường dẫn menu khác hiện Placeholder.
+ * Route "/" hiện Home; bảng pages nối menu với các màn hình đã hoàn thành.
  * getAllPaths lấy danh sách đường dẫn từ cây menu để không phải viết thủ công.
  */
 import { Routes, Route } from 'react-router-dom';
@@ -14,8 +14,7 @@ import Login from './pages/Login';
 import Departments from './pages/Departments';
 import Employees from './pages/Employees';
 import ProjectOverview from './pages/ProjectOverview';
-import ProjectDetail from './pages/ProjectDetail';
-import MyProjects from './pages/MyProjects';
+import Projects from './pages/Projects';
 import ProjectProgress from './pages/ProjectProgress';
 import MyTasksPage from './pages/MyTasksPage';
 import MyProfile from './pages/MyProfile';
@@ -27,7 +26,7 @@ const allPaths = getAllPaths(fullMenuItems);
 const pages = {
   '/thong-tin': MyProfile,
   '/du-an': ProjectOverview,
-  '/du-an/cua-toi': MyProjects,
+  '/du-an/cua-toi': Projects,
   '/du-an/tien-do': ProjectProgress,
   '/quan-ly-nhan-vien': Employees,
   '/viec-cua-toi': MyTasksPage,
@@ -43,7 +42,7 @@ function App() {
           {/* Trang chủ */}
           <Route path="/" element={<Home />} />
 
-          {/* Route động không nằm trong menu; backend kiểm tra quyền thành viên. */}
+          {/* Backend kiểm tra thành viên; route động không nằm trong cây menu. */}
           <Route path="/du-an/:id" element={<ProjectDetail />} />
 
           {/* Mỗi route menu dùng quyền khai báo ngay trong menu.jsx */}

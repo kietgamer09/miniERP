@@ -47,16 +47,17 @@ function AddMembersModal({ projectId, onCancel, onSaved }) {
     }
   }
 
-  return <Modal open forceRender title="Thêm thành viên dự án" onOk={handleSave}
+  return <Modal open title="Thêm thành viên dự án" forceRender onOk={handleSave}
     onCancel={() => { if (!submitting.current) onCancel(); }} okText="Thêm thành viên" cancelText="Hủy"
     confirmLoading={saving} closable={!saving} cancelButtonProps={{ disabled: saving }}
     okButtonProps={{ disabled: loading || Boolean(loadError) || !employees.length }}>
-    {loadError && <Alert type="error" title={loadError} showIcon style={{ marginBottom: 16 }} action={<Button onClick={reload}>Thử lại</Button>} />}
+    {loadError && <Alert type="error" title={loadError} showIcon style={{ marginBottom: 16 }}
+      action={<Button size="small" onClick={reload}>Thử lại</Button>} />}
     {saveError && <Alert type="error" title={saveError} showIcon style={{ marginBottom: 16 }} />}
     <Form form={form} layout="vertical" disabled={saving || loading || Boolean(loadError)}>
       <Form.Item name="employee_ids" label="Nhân viên" rules={[{ required: true, type: 'array', min: 1, message: 'Vui lòng chọn ít nhất một nhân viên' }]}>
-        <Select mode="multiple" showSearch optionFilterProp="label" loading={loading} placeholder="Tìm và chọn nhân viên"
-          notFoundContent={loading ? 'Đang tải…' : 'Không có nhân viên phù hợp'}
+        <Select mode="multiple" showSearch optionFilterProp="label" loading={loading}
+          placeholder="Tìm và chọn nhân viên" notFoundContent={loading ? 'Đang tải…' : 'Không có nhân viên phù hợp'}
           options={employees.map((employee) => ({ value: employee.employee_id,
             label: `${employee.fullname || `Nhân viên ${employee.employee_id}`}${employee.position ? ` · ${employee.position}` : ''}` }))} />
       </Form.Item>
