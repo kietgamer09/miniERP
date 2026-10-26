@@ -91,6 +91,61 @@ Lỗi: 400 dữ liệu/ID sai, ngày kết thúc dự án mới quá khứ hoặ
 
 Hướng dẫn thực hành: [Kiểm tra API dự án](kiem-tra-api-du-an.md).
 
+## 6. Dữ liệu mẫu phần Công việc: cách chạy
+
+Script riêng: `backend/prisma/seed-cong-viec.js`. Chạy trong thư mục `backend`, dùng cấu hình Prisma/PostgreSQL hiện có:
+
+```bash
+npm run seed:cong-viec
+```
+
+Điều kiện: database đã có ít nhất 8 nhân viên có `status = dang_lam_viec`, trong đó ít nhất một nhân viên có tài khoản vai trò `manager`. Nếu chưa đủ, script dừng trước khi xóa/ghi dữ liệu và nhắc chạy dữ liệu mẫu nhân sự trước. Script không tạo hoặc sửa nhân viên/tài khoản. Khi `NODE_ENV=production`, script từ chối chạy trước mọi truy vấn database.
+
+Ngày tính theo ngày chạy tại `Asia/Ho_Chi_Minh`. Nhân viên được chọn theo `employee_id` tăng dần; không dùng số ngẫu nhiên. `MAU-01` và `MAU-03` do cùng một tài khoản manager quản lý. `MAU-02` do người khác quản lý, ưu tiên tài khoản manager khác nếu có, nếu không thì chọn nhân viên đang làm việc khác. Người quản lý luôn thuộc danh sách thành viên của dự án.
+
+| Mã | Tên dự án | Thành viên | Trạng thái | Cần làm | Đang làm | Xong | Tổng task |
+|---|---|---|---|---|---|---|---|
+| MAU-01 | Bảo trì dây chuyền mạ kẽm | 8 | dang_thuc_hien | 5 | 4 | 3 | 12 |
+| MAU-02 | Làm website công ty | 6 | hoan_thanh | 0 | 0 | 6 | 6 |
+| MAU-03 | Đào tạo an toàn lao động | 6 | dang_thuc_hien | 5 | 4 | 3 | 12 |
+
+Tổng đúng **30 task**: 10 cần làm, 8 đang làm, 12 xong. Hai dự án đang thực hiện có tổng 4 task quá hạn chưa xong, 4 task sắp hạn chưa xong (hạn hôm nay hoặc sau 3 ngày), có đủ ba mức ưu tiên và task còn hạn xa. Mỗi dự án đang thực hiện còn có một task xong với hạn đã qua để kiểm tra giao diện không tô cảnh báo task xong. Không tạo bình luận.
+
+Mọi dự án bắt đầu hôm nay trừ 25 ngày. MAU-01/MAU-03 kết thúc hôm nay cộng 45 ngày; MAU-02 kết thúc hôm nay trừ 2 ngày. Người làm luôn là thành viên đang làm việc, created_by luôn là Quản lý dự án, hạn chót không sau ngày kết thúc. Script kiểm tra toàn bộ các điều kiện này bằng code trước khi ghi.
+
+### Chạy lại và phạm vi thay thế
+
+Tiền tố `MAU-` dành riêng cho dữ liệu mẫu. Mỗi lần chạy sẽ xóa **tất cả** dự án có mã bắt đầu bằng `MAU-` và dữ liệu liên quan theo đúng thứ tự khóa ngoại: bình luận task → task → thành viên → dự án; sau đó tạo lại ba dự án trên. Những chỉnh sửa thủ công bên trong dự án MAU-* cũng bị thay thế. Dự án không mang tiền tố này và dữ liệu nhân sự được giữ nguyên.
+
+Đọc nhân viên, kiểm tra dữ liệu, xóa bản cũ và tạo lại nằm trong một transaction. Nếu lỗi, toàn bộ thay đổi database trong giao dịch được hủy. Sau khi thành công, terminal in bảng số thành viên/task theo trạng thái, tổng task, số quá hạn/sắp hạn và dòng `Đã tạo dữ liệu mẫu, chạy lại an toàn`. Script đóng Prisma rồi thoát tiến trình.
+
+Để kiểm tra việc không nhân đôi, chạy liên tiếp hai lần:
+
+```bash
+npm run seed:cong-viec
+npm run seed:cong-viec
+```
+
+Cả hai lần phải có đúng ba mã dự án, 30 task và bảng tổng kết như trên. Nếu chạy trong cùng ngày với dữ liệu nhân viên không đổi, phân công, trạng thái và hạn chót giống nhau; ID tự tăng và thời điểm tạo có thể đổi. Chạy sang ngày khác sẽ dịch các ngày theo ngày chạy mới.
+
+Có thể đối chiếu bằng truy vấn chỉ đọc:
+
+```sql
+SELECT p.code,
+       COUNT(DISTINCT pm.employee_id) AS members,
+       COUNT(DISTINCT t.id) AS tasks,
+       COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'can_lam') AS can_lam,
+       COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'dang_lam') AS dang_lam,
+       COUNT(DISTINCT t.id) FILTER (WHERE t.status = 'xong') AS xong
+FROM projects p
+LEFT JOIN project_members pm ON pm.project_id = p.id
+LEFT JOIN tasks t ON t.project_id = p.id
+WHERE p.code LIKE 'MAU-%'
+GROUP BY p.id, p.code
+ORDER BY p.code;
+```
+
+Sau đó đăng nhập các vai trò để xem dự án mẫu. Admin thấy tất cả dự án; người khác thấy dự án mình tham gia. Kiểm tra dòng task quá hạn đỏ, sắp hạn vàng, task xong có hạn cũ không cảnh báo (các màn hình/API của lượt trước cần đã được tích hợp).
 ## 6. API thành viên dự án (tuần 4, lượt 1)
 
 Các API dưới đây đều cần Bearer token, hồ sơ nhân viên đang làm việc và quyền quản lý dự án: admin hoặc nhân viên có `employee_id` bằng `manager_id`. Không tìm thấy dự án trả 404; thiếu quyền trả 403. Quyền được kiểm tra trước khi xử lý dữ liệu thành viên.
