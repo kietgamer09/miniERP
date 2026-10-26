@@ -16,6 +16,7 @@ import Employees from './pages/Employees';
 import ProjectOverview from './pages/ProjectOverview';
 import Projects from './pages/Projects';
 import ProjectProgress from './pages/ProjectProgress';
+import ProjectDetail from './pages/ProjectDetail';
 import MyTasksPage from './pages/MyTasksPage';
 import MyProfile from './pages/MyProfile';
 import Placeholder from './pages/Placeholder';
