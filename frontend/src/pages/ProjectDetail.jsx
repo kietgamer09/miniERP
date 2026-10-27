@@ -8,8 +8,9 @@ import ProgressBar from '../components/ProgressBar';
 import ProjectFormModal from '../components/ProjectFormModal';
 import MemberList from '../components/MemberList';
 import AddMembersModal from '../components/AddMembersModal';
-import ProjectTaskTable from '../components/ProjectTaskTable';
+import ProjectKanban from '../components/ProjectKanban';
 import TaskFormModal from '../components/TaskFormModal';
+import TaskDetailDrawer from '../components/TaskDetailDrawer';
 
 function ProjectDetailContent({ id }) {
   const [project, setProject] = useState(null);
@@ -19,6 +20,8 @@ function ProjectDetailContent({ id }) {
   const [formOpen, setFormOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
   const [changingStatus, setChangingStatus] = useState(false);
   const submitting = useRef(false);
   const [messageApi, contextHolder] = message.useMessage();
@@ -41,10 +44,21 @@ function ProjectDetailContent({ id }) {
     setReloadKey((key) => key + 1);
   }
 
+  async function refreshProjectProgress() {
+    try {
+      const updatedProject = await getProject(id);
+      setProject(updatedProject);
+    } catch (error) {
+      messageApi.error(error.message || 'Không tải được tiến độ dự án mới');
+    }
+  }
+
   function handleSaved(text) {
     setFormOpen(false);
     setMembersOpen(false);
     setTaskFormOpen(false);
+    setEditingTask(null);
+    setSelectedTaskId(null);
     messageApi.success(text);
     reload();
   }
@@ -105,13 +119,23 @@ function ProjectDetailContent({ id }) {
             </Space>}
           </Card>
           <MemberList project={project} onChanged={() => handleSaved('Đã bớt thành viên khỏi dự án')} />
-          <ProjectTaskTable projectId={project.id} />
+          <ProjectKanban key={reloadKey} projectId={project.id} projectStatus={project.status}
+            onOpen={(task) => setSelectedTaskId(task.id)}
+            onEdit={(task) => { setSelectedTaskId(null); setEditingTask(task); }}
+            onTaskChanged={refreshProjectProgress} />
+          <TaskDetailDrawer key={selectedTaskId || 'closed'} taskId={selectedTaskId} open={Boolean(selectedTaskId)}
+            onClose={() => setSelectedTaskId(null)} onEdit={(task) => {
+              setSelectedTaskId(null);
+              setEditingTask(task);
+            }} />
           {project.can_manage && formOpen && <ProjectFormModal open project={project}
             onCancel={() => setFormOpen(false)} onSaved={() => handleSaved('Cập nhật dự án thành công')} />}
           {project.can_manage && membersOpen && <AddMembersModal projectId={project.id}
             onCancel={() => setMembersOpen(false)} onSaved={() => handleSaved('Thêm thành viên thành công')} />}
           {project.can_manage && !completed && taskFormOpen && <TaskFormModal project={project}
             onCancel={() => setTaskFormOpen(false)} onSaved={() => handleSaved('Tạo task thành công')} />}
+          {project.can_manage && editingTask && <TaskFormModal project={project} task={editingTask}
+            onCancel={() => setEditingTask(null)} onSaved={() => handleSaved('Cập nhật task thành công')} />}
         </>}
   </div>;
 }

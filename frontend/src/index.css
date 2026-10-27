@@ -156,6 +156,20 @@ body {
   min-width: 0;
 }
 
+.projects-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.projects-page > .ant-row { min-width: 0; }
+.projects-page .project-overview-panel { height: auto; }
+.projects-page .project-overview-panel .ant-card-body { flex: 1 1 auto; min-height: 210px; max-height: 300px; }
+.project-progress-page .ant-list-item { width: 100%; }
+.project-progress-item { width: 100%; min-width: 0; }
+
 .project-page-header {
   width: 100%;
   justify-content: space-between;
@@ -244,6 +258,11 @@ body {
   .project-overview-panel .ant-card-body {
     min-height: 140px;
     max-height: 260px;
+  }
+
+  .projects-page .project-overview-panel .ant-card-body {
+    max-height: none;
+    overflow: visible;
   }
 
   .attendance-summary {
@@ -403,7 +422,7 @@ body {
 .app-header-start { min-width: 0; }
 .header-user-info { display: flex; flex-direction: column; text-align: right; gap: 2px; line-height: 1.4; }
 .header-user-role { color: var(--muted); font-size: 11px; }
-.account-trigger { gap: 12px; border-left: 1px solid var(--border); padding-left: 20px; }
+.account-trigger { vertical-align: middle; gap: 12px; border-left: 1px solid var(--border); padding-left: 20px; }
 .app-content { padding: 40px 32px 28px; }
 .desktop-sider .ant-menu { padding-inline: 12px; }
 .desktop-sider .ant-menu-item-group-title { font-size: 13px; color: var(--muted); padding-block: 20px 8px; }

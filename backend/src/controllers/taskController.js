@@ -1,20 +1,51 @@
 import prisma from '../config/prisma.js';
 import { loadManagedProject } from './projectController.js';
 import { parseId, isValidDate, toDateOnly } from '../utils/validators.js';
+import { getAllowedMoves } from '../utils/taskRules.js';
 
-const taskFields = {
+export const taskFields = {
   id: true, project_id: true, title: true, description: true,
   assignee_id: true, created_by: true, due_date: true, priority: true,
-  status: true, created_at: true, updated_at: true,
+  status: true, completed_at: true, created_at: true, updated_at: true,
   employees_tasks_assignee_idToemployees: { select: { fullname: true } },
+  employees_tasks_created_byToemployees: { select: { fullname: true } },
+  projects: { select: { name: true, status: true, manager_id: true, end_date: true } },
 };
 
-function serializeTask(task) {
-  const { employees_tasks_assignee_idToemployees: assignee, ...data } = task;
-  return { ...data, assignee_name: assignee.fullname, due_date: toDateOnly(task.due_date) };
+export function formatTask(task, caller) {
+  const assignee = task.employees_tasks_assignee_idToemployees;
+  const creator = task.employees_tasks_created_byToemployees;
+  const isMine = task.assignee_id === caller.employeeId;
+  const canEdit = caller.role === 'admin' || task.projects.manager_id === caller.employeeId;
+  return {
+    id: task.id,
+    project_id: task.project_id,
+    project_name: task.projects.name,
+    project_status: task.projects.status,
+    title: task.title,
+    description: task.description,
+    assignee_id: task.assignee_id,
+    assignee_name: assignee.fullname,
+    created_by: task.created_by,
+    created_by_name: creator.fullname,
+    due_date: toDateOnly(task.due_date),
+    priority: task.priority,
+    status: task.status,
+    completed_at: task.completed_at?.toISOString() ?? null,
+    created_at: task.created_at,
+    updated_at: task.updated_at,
+    is_mine: isMine,
+    can_edit: canEdit,
+    allowed_moves: getAllowedMoves({
+      status: task.status,
+      isAssignee: isMine,
+      canManage: canEdit,
+      projectStatus: task.projects.status,
+    }),
+  };
 }
 
-function validateTask(body) {
+export function validateTask(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)
     || typeof body.title !== 'string' || !body.title.trim()
     || !body.assignee_id || !body.due_date || !body.priority) {
@@ -73,7 +104,9 @@ export const createTask = async (req, res) => {
 
     if (!result) return;
     if (result.error) return res.status(result.status).json({ error: result.error });
-    res.status(201).json(serializeTask(result.task));
+    res.status(201).json(formatTask(result.task, {
+      employeeId: req.employee.employee_id, role: req.user.role,
+    }));
   } catch (error) {
     console.error('Không thể tạo task:', error);
     if (res.headersSent) return;
@@ -107,9 +140,43 @@ export const listProjectTasks = async (req, res) => {
       select: taskFields,
       orderBy: [{ due_date: 'asc' }, { id: 'asc' }],
     });
-    res.json(tasks.map(serializeTask));
+    res.json(tasks.map((task) => formatTask(task, {
+      employeeId: req.employee.employee_id, role: req.user.role,
+    })));
   } catch (error) {
     console.error('Không thể lấy danh sách task:', error);
     res.status(500).json({ error: 'Lỗi máy chủ khi lấy danh sách task' });
+  }
+};
+
+function getCurrentWeekRange() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const nextWeek = new Date(start);
+  nextWeek.setDate(nextWeek.getDate() + 7);
+  return { start, nextWeek };
+}
+
+export const listMyTasks = async (req, res) => {
+  try {
+    const { start, nextWeek } = getCurrentWeekRange();
+    const tasks = await prisma.tasks.findMany({
+      where: {
+        assignee_id: req.employee.employee_id,
+        OR: [
+          { status: { not: 'xong' } },
+          { status: 'xong', completed_at: { gte: start, lt: nextWeek } },
+        ],
+      },
+      select: taskFields,
+      orderBy: [{ due_date: 'asc' }, { id: 'asc' }],
+    });
+    res.json(tasks.map((task) => formatTask(task, {
+      employeeId: req.employee.employee_id, role: req.user.role,
+    })));
+  } catch (error) {
+    console.error('Không thể lấy task của tôi:', error);
+    res.status(500).json({ error: 'Lỗi máy chủ khi lấy task của tôi' });
   }
 };

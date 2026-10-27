@@ -59,7 +59,7 @@ function Projects() {
   }
 
   return (
-    <div className="project-overview">
+    <div className="projects-page">
       {contextHolder}
       <Space wrap className="project-page-header">
         <div>
