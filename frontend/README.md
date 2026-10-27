@@ -38,9 +38,10 @@ Mở URL mà Vite in ra trong terminal. Thông tin đăng nhập phải là tài
 - Đổi mật khẩu trong menu tài khoản dùng `PUT /api/users/change-password`; hồ sơ cá nhân dùng `GET /api/users/me`.
 - Trang chủ, `/viec-cua-toi` và `/viec-cua-toi/duoc-giao` tổng hợp task từ `GET /api/projects/:id/tasks`, chỉ giữ công việc của nhân viên đăng nhập. Không hỗ trợ kéo thả hay đổi trạng thái khi backend chưa có endpoint.
 - Hòm thông báo bên trái avatar hiển thị việc chưa xong được giao; tự cập nhật mỗi phút khi website hiển thị, cho tải lại thủ công, đánh dấu đã đọc. Trạng thái đọc lưu riêng theo tài khoản trên trình duyệt.
-- Nhắc chấm công theo lịch 08:00 và 17:00, Thứ 2–Thứ 6, giờ Việt Nam; bật/tắt trong hòm thông báo. Chưa có API chấm công nên chưa xác nhận đã chấm công, chưa hỗ trợ nhắc khi đóng website.
+- Chấm công trên trang chủ và `/cham-cong/bang-cong`: `POST /api/attendances/check-in` và `POST /api/attendances/check-out`, không gửi giờ từ trình duyệt. Giờ máy chủ trả về được hiển thị nguyên phần TIME, không cộng múi giờ thêm lần nữa. Kết quả thành công lưu theo tài khoản và ngày trong tab, giữ được sau F5; không dùng làm dữ liệu giả thay cho API đọc.
+- Nhắc chấm công theo lịch 08:00 và 17:00, Thứ 2–Thứ 6, giờ Việt Nam; bật/tắt trong hòm thông báo. Ẩn nhắc tương ứng sau khi vào/ra ca thành công trên tab. Chưa có API đọc lại trạng thái, nên chưa kiểm tra được việc chấm công trên thiết bị khác, chưa hỗ trợ nhắc khi đóng website.
 - Nút mặt trăng/mặt trời chuyển nền sáng/tối cho toàn bộ giao diện và ghi nhớ trên trình duyệt.
-- Backend chưa có API bảng công, chấm công, làm thêm, nghỉ phép, lương, phê duyệt, tài liệu, sửa/giao lại/đổi trạng thái task, bình luận hay lịch sử thông báo đồng bộ.
+- Backend chưa có API đọc công hôm nay/bảng công tháng, làm thêm, nghỉ phép, lương, phê duyệt, tài liệu, sửa/giao lại/đổi trạng thái task, bình luận hay lịch sử thông báo đồng bộ. Bảng công tháng chưa tổng hợp khi thiếu API đọc.
 - `/api/health`, `/api/auth/admin-dashboard` và `/api/auth/reports` là endpoint kiểm tra; hai endpoint sau hiện chỉ trả thông báo và thông tin token, chưa có dữ liệu nghiệp vụ để dựng dashboard/báo cáo.
 
 Để hiển thị dữ liệu thật cho các khu vực đó, backend cần cung cấp endpoint cùng định dạng response và quyền truy cập tương ứng; sau đó mới có thể nối frontend theo hợp đồng API.

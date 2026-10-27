@@ -16,7 +16,7 @@ function Home() {
   return (
     <div>
       {/* Hàng trên: Chấm công + Bảng công */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} lg={11}>
           <AttendanceCard />
         </Col>
