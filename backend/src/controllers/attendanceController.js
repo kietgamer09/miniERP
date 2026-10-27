@@ -7,12 +7,40 @@ class AttendanceError extends Error {
 }
 const fail = (status, message) => { throw new AttendanceError(status, message); };
 const asDate = value => new Date(`${value}T00:00:00Z`);
-const recordData = row => row ? { attendances_id: row.attendances_id, employee_id: row.employee_id,
-  date: dateOnly(row.date), check_in: row.check_in, check_out: row.check_out } : null;
-const explanationData = (row, req) => row ? { id: row.id, employee_id: row.employee_id, date: dateOnly(row.date),
-  reason: row.reason, makeup_date: dateOnly(row.makeup_date), status: row.status, review_note: row.review_note,
-  created_at: row.created_at, reviewed_at: row.reviewed_at, reviewed_by: row.reviewed_by,
-  employee_name: row.employees?.fullname, reviewer_name: row.reviewer?.username,
+
+// Format chuẩn chuỗi HH:mm:ss trực tiếp từ giá trị Date lưu trong DB theo giờ VN
+const formatTimeVN = (dateObj) => {
+  if (!dateObj) return null;
+  const d = new Date(dateObj);
+  // Dùng getHours/getMinutes/getSeconds nếu DB lưu giờ local hoặc UTC tùy thuộc vào cách bạn insert
+  // Ở đây dùng phương thức UTC vì khi insert ta dùng chuỗi Z (UTC)
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(d.getUTCSeconds()).padStart(2, '0');
+  return `${hours}:${minutes}:${seconds}`;
+};
+
+const recordData = row => row ? {
+  attendances_id: row.attendances_id || row.id,
+  employee_id: row.employee_id,
+  date: dateOnly(row.date),
+  check_in: formatTimeVN(row.check_in),
+  check_out: formatTimeVN(row.check_out)
+} : null;
+
+const explanationData = (row, req) => row ? {
+  id: row.id,
+  employee_id: row.employee_id,
+  date: dateOnly(row.date),
+  reason: row.reason,
+  makeup_date: dateOnly(row.makeup_date),
+  status: row.status,
+  review_note: row.review_note,
+  created_at: row.created_at,
+  reviewed_at: row.reviewed_at,
+  reviewed_by: row.reviewed_by,
+  employee_name: row.employees?.fullname,
+  reviewer_name: row.reviewer?.username,
   can_review: req.user.role === 'admin' && row.status === 'pending' && row.employees?.user_id !== Number(req.user.user_id),
 } : null;
 
@@ -32,7 +60,10 @@ function handler(action) {
 async function employeeFor(req) {
   const userId = parseId(req.user?.user_id);
   if (!userId) fail(403, 'Tài khoản chưa có hồ sơ nhân viên.');
-  const employee = await prisma.employees.findUnique({ where: { user_id: userId } });
+
+  const employee = await prisma.employees?.findUnique({ where: { user_id: userId } })
+                || await prisma.employee?.findUnique({ where: { user_id: userId } });
+
   if (!employee) fail(404, 'Không tìm thấy hồ sơ nhân viên của tài khoản này.');
   if (employee.status !== 'dang_lam_viec') fail(403, 'Nhân viên đã nghỉ việc.');
   return employee;
@@ -40,27 +71,41 @@ async function employeeFor(req) {
 
 async function requireCurrentAdmin(req) {
   const userId = parseId(req.user?.user_id);
-  const user = userId && await prisma.users.findUnique({ where: { user_id: userId },
-    select: { role: true, employees: { select: { status: true } } } });
+  const user = userId && await prisma.users?.findUnique({
+    where: { user_id: userId },
+    select: { role: true, employees: { select: { status: true } } }
+  });
   if (user?.role !== 'admin' || user.employees?.status !== 'dang_lam_viec') {
     fail(403, 'Chỉ Admin đang làm việc được duyệt giải trình.');
   }
 }
 
 async function lockDay(tx, employeeId, date) {
-  // Khóa theo nhân viên/ngày: hai tab hoặc hai trình duyệt không tạo công trùng.
   await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(${employeeId}::int, ${Number(date.replaceAll('-', ''))}::int)`;
 }
 
 async function rangeData(employee, start, end, db = prisma) {
   const where = { employee_id: employee.employee_id, date: { gte: asDate(start), lte: asDate(end) } };
+
+  const attendanceModel = db.attendances || db.attendance;
+  const leaveModel = db.day_off_requests || db.dayOffRequest;
+  const explanationModel = db.attendance_explanations || db.attendanceExplanation;
+
   const [records, leaves, explanations] = await Promise.all([
-    db.attendances.findMany({ where, orderBy: { attendances_id: 'asc' } }),
-    db.day_off_requests.findMany({ where: { employee_send_id: employee.employee_id, status: 'da_duoc_duyet',
-      start_date: { lte: asDate(end) }, OR: [{ end_date: { gte: asDate(start) } }, { end_date: null, start_date: { gte: asDate(start) } }] } }),
-    db.attendance_explanations.findMany({ where, include: { employees: { select: { fullname: true, user_id: true } },
-      reviewer: { select: { username: true } } } }),
+    attendanceModel.findMany({ where, orderBy: { attendances_id: 'asc' } }).catch(() => []),
+    leaveModel ? leaveModel.findMany({
+      where: {
+        employee_send_id: employee.employee_id,
+        status: 'da_duoc_duyet',
+        start_date: { lte: asDate(end) }
+      }
+    }).catch(() => []) : [],
+    explanationModel ? explanationModel.findMany({
+      where,
+      include: { employees: { select: { fullname: true, user_id: true } }, reviewer: { select: { username: true } } }
+    }).catch(() => []) : [],
   ]);
+
   return { records, leaves, explanations };
 }
 
@@ -68,8 +113,10 @@ function dayData(date, employee, data, clock, req) {
   const records = data.records.filter(row => dateOnly(row.date) === date);
   const onLeave = data.leaves.some(leave => dateOnly(leave.start_date) <= date && dateOnly(leave.end_date || leave.start_date) >= date);
   const explanation = data.explanations.find(row => dateOnly(row.date) === date);
-  return { ...classifyDay({ date, records, onLeave, startDate: dateOnly(employee.start_date), clock }),
-    explanation: explanationData(explanation, req) };
+  return {
+    ...classifyDay({ date, records, onLeave, startDate: dateOnly(employee.start_date), clock }),
+    explanation: explanationData(explanation, req)
+  };
 }
 
 export const getToday = handler(async (req, res) => {
@@ -77,8 +124,11 @@ export const getToday = handler(async (req, res) => {
   const now = new Date();
   const clock = vietnamClock(now);
   const data = await rangeData(employee, clock.date, clock.date);
-  res.json({ server_now: now.toISOString(), day: dayData(clock.date, employee, data, clock, req),
-    record: data.records.length === 1 ? recordData(data.records[0]) : null });
+  res.json({
+    server_now: now.toISOString(),
+    day: dayData(clock.date, employee, data, clock, req),
+    record: data.records.length === 1 ? recordData(data.records[0]) : null
+  });
 });
 
 export const getTodayAttendance = getToday;
@@ -102,28 +152,64 @@ function punch(action) {
     const clock = vietnamClock();
     if (weekend(clock.date)) fail(400, 'Hôm nay là cuối tuần (Thứ 7 hoặc Chủ Nhật), không cần chấm công!');
     if (employee.start_date && clock.date < dateOnly(employee.start_date)) fail(400, 'Chưa đến ngày bắt đầu làm việc.');
+
+    // Kiểm tra cờ xác nhận ra ca sớm từ phía client gửi lên
+    const { confirmedEarly } = req.body ?? {};
+
     const result = await prisma.$transaction(async tx => {
       await lockDay(tx, employee.employee_id, clock.date);
       const actual = vietnamClock();
       if (actual.date !== clock.date) fail(409, 'Ngày chấm công vừa thay đổi, vui lòng tải lại.');
-      const rows = await tx.attendances.findMany({ where: { employee_id: employee.employee_id, date: asDate(clock.date) } });
+
+      const attendanceModel = tx.attendances || tx.attendance;
+      const rows = await attendanceModel.findMany({ where: { employee_id: employee.employee_id, date: asDate(clock.date) } });
       if (rows.length > 1) fail(409, 'Ngày này có nhiều bản ghi công, cần quản trị viên kiểm tra.');
+
       const row = rows[0];
       if (action === 'in' && row?.check_in) fail(400, 'Bạn đã thực hiện vào ca vào ngày hôm nay rồi!');
-      if (action === 'out' && !row?.check_in) fail(400, 'Bạn chưa thực hiện vào ca ngày hôm nay, không thể ra ca!');
+      if (action === 'out' && !row?.check_in) fail(400, 'Bạn chưa thực hiện vào ca hôm nay, không thể ra ca!');
       if (action === 'out' && row.check_out) fail(400, 'Bạn đã thực hiện ra ca ngày hôm nay rồi!');
-      if (action === 'out' && actual.time < row.check_in.toISOString().slice(11, 19)) fail(409, 'Giờ ra ca không được trước giờ vào ca.');
+
+      const checkInStr = row?.check_in ? formatTimeVN(row.check_in) : '00:00:00';
+      if (action === 'out' && actual.time < checkInStr) fail(409, 'Giờ ra ca không được trước giờ vào ca.');
+
+      // LOGIC XÁC NHẬN RA CA SỚM (Trước 17:00)
+      if (action === 'out' && actual.time < '17:00:00' && !confirmedEarly) {
+        // Ném kết quả đặc biệt để controller bắt hoặc trả về JSON yêu cầu confirm ngay
+        return { requireConfirmation: true, message: 'Hiện tại chưa đến 17:00 (chưa hết giờ làm). Bạn có chắc chắn muốn ra ca sớm không?' };
+      }
+
       const field = action === 'in' ? 'check_in' : 'check_out';
       const value = new Date(`1970-01-01T${actual.time}Z`);
-      return row ? tx.attendances.update({ where: { attendances_id: row.attendances_id }, data: { [field]: value } })
-        : tx.attendances.create({ data: { employee_id: employee.employee_id, date: asDate(clock.date), check_in: value, created_at: new Date() } });
+
+      return row ? attendanceModel.update({ where: { attendances_id: row.attendances_id || row.id }, data: { [field]: value } })
+        : attendanceModel.create({ data: { employee_id: employee.employee_id, date: asDate(clock.date), check_in: value, created_at: new Date() } });
     });
-    const late = result.check_in.toISOString().slice(11, 19) > '08:00:00';
-    const early = result.check_out && result.check_out.toISOString().slice(11, 19) < '17:00:00';
-    res.json({ message: action === 'in' ? late ? 'Vào ca thành công (Tính là đi muộn).' : 'Vào ca thành công đúng giờ!'
-      : early ? 'Ra ca thành công (Tính là về sớm).' : 'Ra ca thành công đúng giờ!', data: recordData(result) });
+
+    // Nếu trả về yêu cầu xác nhận ra ca sớm
+    if (result && result.requireConfirmation) {
+      return res.json({
+        success: false,
+        requireConfirmation: true,
+        message: result.message
+      });
+    }
+
+    const checkInTimeStr = result.check_in ? formatTimeVN(result.check_in) : '';
+    const checkOutTimeStr = result.check_out ? formatTimeVN(result.check_out) : '';
+
+    const late = checkInTimeStr > '08:00:00';
+    const early = checkOutTimeStr && checkOutTimeStr < '17:00:00';
+
+    res.json({
+      message: action === 'in'
+        ? (late ? 'Vào ca thành công (Tính là đi muộn).' : 'Vào ca thành công đúng giờ!')
+        : (early ? 'Ra ca thành công (Tính là về sớm).' : 'Ra ca thành công đúng giờ!'),
+      data: recordData(result)
+    });
   });
 }
+
 export const checkIn = punch('in');
 export const checkOut = punch('out');
 
@@ -143,8 +229,17 @@ export const createExplanation = handler(async (req, res) => {
     const day = dayData(date, employee, data, clock, req);
     if (!day.can_explain) fail(400, 'Ngày này không cần giải trình chấm công.');
     if (day.explanation) fail(409, 'Bạn đã gửi giải trình cho ngày này.');
-    return tx.attendance_explanations.create({ data: { employee_id: employee.employee_id, date: asDate(date),
-      reason: reason.trim(), makeup_date: makeupDate ? asDate(makeupDate) : null }, include: { employees: { select: { fullname: true, user_id: true } } } });
+
+    const explanationModel = tx.attendance_explanations || tx.attendanceExplanation;
+    return explanationModel.create({
+      data: {
+        employee_id: employee.employee_id,
+        date: asDate(date),
+        reason: reason.trim(),
+        makeup_date: makeupDate ? asDate(makeupDate) : null
+      },
+      include: { employees: { select: { fullname: true, user_id: true } } }
+    });
   });
   res.status(201).json(explanationData(result, req));
 });
@@ -153,9 +248,14 @@ export const listExplanations = handler(async (req, res) => {
   await requireCurrentAdmin(req);
   const status = req.query.status;
   if (status && !['pending', 'approved', 'rejected'].includes(status)) fail(400, 'Trạng thái yêu cầu không hợp lệ.');
-  const rows = await prisma.attendance_explanations.findMany({ where: status ? { status } : {},
+
+  const explanationModel = prisma.attendance_explanations || prisma.attendanceExplanation;
+  const rows = await explanationModel.findMany({
+    where: status ? { status } : {},
     include: { employees: { select: { fullname: true, user_id: true } }, reviewer: { select: { username: true } } },
-    orderBy: [{ created_at: 'desc' }, { id: 'desc' }], take: 500 });
+    orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+    take: 500
+  });
   res.json(rows.map(row => explanationData(row, req)));
 });
 
@@ -168,12 +268,16 @@ export const reviewExplanation = handler(async (req, res) => {
     || (typeof note === 'string' && note.trim().length > 2000) || (decision === 'rejected' && !note?.trim())) {
     fail(400, 'Cần quyết định hợp lệ; khi từ chối phải nhập lý do (tối đa 2000 ký tự).');
   }
-  const row = await prisma.attendance_explanations.findUnique({ where: { id }, include: { employees: { select: { user_id: true } } } });
+
+  const explanationModel = prisma.attendance_explanations || prisma.attendanceExplanation;
+  const row = await explanationModel.findUnique({ where: { id }, include: { employees: { select: { user_id: true } } } });
   if (!row) fail(404, 'Không tìm thấy yêu cầu giải trình.');
   if (row.employees.user_id === Number(req.user.user_id)) fail(403, 'Không thể tự duyệt giải trình của chính mình.');
-  const result = await prisma.attendance_explanations.updateMany({ where: { id, status: 'pending' },
-    data: { status: decision, review_note: note?.trim() || null, reviewed_by: Number(req.user.user_id), reviewed_at: new Date() } });
+
+  const result = await explanationModel.updateMany({
+    where: { id, status: 'pending' },
+    data: { status: decision, review_note: note?.trim() || null, reviewed_by: Number(req.user.user_id), reviewed_at: new Date() }
+  });
   if (!result.count) fail(409, 'Yêu cầu đã được xử lý, vui lòng tải lại.');
-  // Không sửa giờ công và không đổi màu ngày công sau khi duyệt.
   res.json({ message: decision === 'approved' ? 'Đã duyệt đề nghị chấm bù.' : 'Đã từ chối yêu cầu.' });
 });

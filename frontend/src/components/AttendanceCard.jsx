@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Typography, Space, Divider, message, Alert } from 'antd';
+import { Card, Button, Typography, Space, Divider, message, Modal } from 'antd';
 import { ClockCircleOutlined, CalendarOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { formatDateVN, formatFullDateVN, parseDateOnly } from '../utils/dates';
-import { useAttendance } from '../hooks/useAttendance';
+import { formatDateVN, formatFullDateVN } from '../utils/dates';
+import { checkInApi, checkOutApi, getTodayAttendanceApi } from '../services/attendanceApi';
 
 const { Text, Title } = Typography;
 
@@ -16,38 +16,115 @@ function HandIcon() {
 
 function AttendanceCard() {
   const [now, setNow] = useState(() => new Date());
+  const [loading, setLoading] = useState(false);
+  
+  const [checkInTime, setCheckInTime] = useState('--:--:--');
+  const [checkOutTime, setCheckOutTime] = useState('--:--:--');
+  
+  const [isCheckOutMode, setIsCheckOutMode] = useState(false); 
+  const [isCompleted, setIsCompleted] = useState(false);        
+
   const [messageApi, contextHolder] = message.useMessage();
-  const attendance = useAttendance();
-  const record = attendance?.record;
-  const day = attendance?.day;
-  const dayInfo = attendance?.dayInfo;
-  const weekend = attendance?.weekend;
-  const busy = attendance?.busy;
-  const loading = attendance?.loading;
-  const error = attendance?.error;
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const fetchTodayAttendance = async () => {
+      try {
+        const res = await getTodayAttendanceApi();
+        const targetRecord = res?.record || res?.data;
+        if (targetRecord) {
+          const { check_in, check_out } = targetRecord;
+
+          if (check_in) {
+            setCheckInTime(check_in);
+            setIsCheckOutMode(true);
+          }
+
+          if (check_out) {
+            setCheckOutTime(check_out);
+            setIsCompleted(true);
+          }
+        }
+      } catch (error) {
+        console.error('Không thể tải trạng thái chấm công hôm nay:', error);
+      }
+    };
+
+    fetchTodayAttendance();
+  }, []);
+
   const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
   const dateStr = formatDateVN(now);
-  const checkInTime = record?.check_in || '--:--:--';
-  const checkOutTime = record?.check_out || '--:--:--';
-  const isCheckOutMode = Boolean(record?.check_in && !record?.check_out);
-  const isCompleted = Boolean(record?.check_in && record?.check_out);
-  const dayDate = parseDateOnly(day);
-  const punching = busy === 'in' || busy === 'out';
+
+  // --- XỬ LÝ RA CA & POPUP XÁC NHẬN RA CA SỚM ---
+  const executeCheckOut = async (confirmedEarly = false) => {
+    try {
+      const res = await checkOutApi(confirmedEarly);
+
+      // Nếu backend trả về yêu cầu xác nhận ra ca sớm (trước 17:00)
+      if (res && res.requireConfirmation) {
+        Modal.confirm({
+          title: 'Xác nhận ra ca sớm',
+          content: res.message || 'Hiện tại chưa đến 17:00. Bạn có chắc chắn muốn ra ca sớm không?',
+          okText: 'Đồng ý ra sớm',
+          cancelText: 'Hủy',
+          onOk: async () => {
+            try {
+              // Gọi lại API ra ca với cờ xác nhận = true
+              await checkOutApi(true);
+              messageApi.success('Ra ca thành công (Về sớm)!');
+              
+              // Đồng bộ lại thời gian ra ca
+              const updatedRes = await getTodayAttendanceApi();
+              const updatedRecord = updatedRes?.record || updatedRes?.data;
+              if (updatedRecord && updatedRecord.check_out) {
+                setCheckOutTime(updatedRecord.check_out);
+              }
+              setIsCompleted(true);
+            } catch (err) {
+              messageApi.error(err.message || 'Có lỗi khi xác nhận ra ca sớm');
+            }
+          },
+        });
+      } else {
+        messageApi.success(res?.message || 'Ra ca thành công!');
+        
+        const updatedRes = await getTodayAttendanceApi();
+        const updatedRecord = updatedRes?.record || updatedRes?.data;
+        if (updatedRecord && updatedRecord.check_out) {
+          setCheckOutTime(updatedRecord.check_out);
+        }
+        setIsCompleted(true);
+      }
+    } catch (error) {
+      messageApi.error(error.message || 'Có lỗi xảy ra khi ra ca');
+    }
+  };
 
   const handleAttendanceClick = async () => {
-    if (!attendance?.submitAttendance) return;
+    setLoading(true);
     try {
-      const action = record?.check_in ? 'out' : 'in';
-      const res = await attendance.submitAttendance(action);
-      messageApi.success(res?.message || (action === 'in' ? 'Vào ca thành công!' : 'Ra ca thành công!'));
-    } catch (err) {
-      messageApi.error(err.message || 'Có lỗi xảy ra khi chấm công');
+      if (!isCheckOutMode) {
+        const res = await checkInApi();
+        messageApi.success(res.message || 'Vào ca thành công!');
+        
+        const updatedRes = await getTodayAttendanceApi();
+        const updatedRecord = updatedRes?.record || updatedRes?.data;
+        if (updatedRecord && updatedRecord.check_in) {
+          setCheckInTime(updatedRecord.check_in);
+        }
+        setIsCheckOutMode(true);
+      } else {
+        await executeCheckOut(false);
+      }
+    } catch (error) {
+      messageApi.error(error.message || 'Có lỗi xảy ra khi chấm công');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,13 +132,9 @@ function AttendanceCard() {
   let btnText = 'Chấm công';
   let btnBg = '#1890ff';
   let btnIcon = <HandIcon />;
-  let isDisabled = weekend || loading || !attendance?.submitAttendance;
+  let isDisabled = false;
 
-  if (weekend) {
-    btnText = 'Cuối tuần không chấm công';
-    btnBg = '#d9d9d9';
-    isDisabled = true;
-  } else if (!isCheckOutMode && !isCompleted) {
+  if (!isCheckOutMode && !isCompleted) {
     if (isCurrentLate) {
       btnText = 'Vào ca muộn';
       btnBg = '#faad14';
@@ -79,11 +152,12 @@ function AttendanceCard() {
     btnIcon = <CheckCircleOutlined />;
   }
 
-  const checkInColor = checkInTime !== '--:--:--'
-    ? (checkInTime > '08:00:00' ? '#faad14' : '#52c41a')
+  const checkInColor = checkInTime !== '--:--:--' 
+    ? (checkInTime > '08:00:00' ? '#faad14' : '#52c41a') 
     : 'inherit';
-  const checkOutColor = checkOutTime !== '--:--:--'
-    ? (checkOutTime < '17:00:00' ? '#faad14' : '#52c41a')
+
+  const checkOutColor = checkOutTime !== '--:--:--' 
+    ? (checkOutTime < '17:00:00' ? '#faad14' : '#52c41a') 
     : 'inherit';
 
   return (
@@ -112,19 +186,19 @@ function AttendanceCard() {
         </Space>
 
         <Button
-          type={isCompleted || weekend ? 'default' : 'primary'}
+          type={isCompleted ? 'default' : 'primary'}
           className="attendance-action"
           icon={btnIcon}
-          loading={punching || loading}
+          loading={loading}
           disabled={isDisabled}
           onClick={handleAttendanceClick}
-          style={{
-            minWidth: 140,
+          style={{ 
+            minWidth: 140, 
             backgroundColor: btnBg,
             borderColor: btnBg,
-            color: isCompleted || weekend ? 'rgba(0, 0, 0, 0.45)' : '#fff',
+            color: isCompleted ? 'rgba(0, 0, 0, 0.45)' : '#fff',
             borderRadius: 6,
-            fontWeight: 500,
+            fontWeight: 500
           }}
         >
           {btnText}
@@ -132,9 +206,7 @@ function AttendanceCard() {
       </div>
 
       <div style={{ padding: 16 }}>
-        {error && <Alert type="warning" showIcon title={error} style={{ marginBottom: 12 }} />}
         <div
-          className={`attendance-status--${dayInfo?.color || 'default'}`}
           style={{
             background: 'var(--subtle-bg)',
             border: '1px solid var(--border)',
@@ -146,15 +218,14 @@ function AttendanceCard() {
             <Text type="secondary" style={{ background: 'var(--border)', padding: '2px 8px', borderRadius: 4 }}>
               Hôm nay
             </Text>
-            {dayInfo?.label && <Text type="secondary">{dayInfo.label}</Text>}
           </div>
           <div style={{ marginTop: 8 }}>
-            <Text strong>{dayDate ? formatFullDateVN(dayDate) : formatFullDateVN(now)}</Text>
+            <Text strong>{formatFullDateVN(now)}</Text>
           </div>
 
           <Divider style={{ margin: '12px 0' }} />
 
-          <div className="attendance-punch-times" style={{ display: 'flex', gap: 40 }}>
+          <div className="attendance-punch-times" style={{ display: 'flex', gap: 40, alignItems: 'center' }}>
             <div>
               <Text type="secondary">Giờ vào</Text>
               <div>
@@ -163,7 +234,9 @@ function AttendanceCard() {
                 </Title>
               </div>
             </div>
-            <Divider orientation="vertical" style={{ height: 'auto' }} />
+            
+            <div style={{ width: '1px', height: '36px', background: 'var(--border)' }} />
+
             <div>
               <Text type="secondary">Giờ ra</Text>
               <div>
