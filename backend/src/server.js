@@ -8,6 +8,7 @@ import projectRoutes from './routes/projectRoutes.js';
 import departmentRoutes from './routes/departmentRoutes.js';
 import attendancesRoutes from './routes/attendancesRoutes.js';
 import leaveRoutes from './routes/leaveRoutes.js';
+import taskRoutes from './routes/taskRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,6 +32,7 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/attendances', attendancesRoutes);
 app.use('/api/leaves',leaveRoutes);
+app.use('/api/tasks', taskRoutes);
 
 const server = app.listen(PORT);
 server.once('listening', () => {

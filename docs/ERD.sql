@@ -106,6 +106,7 @@ CREATE TABLE "tasks" (
   "due_date" date NOT NULL,
   "priority" task_priority NOT NULL DEFAULT 'trung_binh',
   "status" task_status NOT NULL DEFAULT 'can_lam',
+  "completed_at" timestamp,
   "created_at" timestamp NOT NULL DEFAULT (now()),
   "updated_at" timestamp NOT NULL DEFAULT (now())
 );

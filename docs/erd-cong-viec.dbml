@@ -1,0 +1,65 @@
+Table projects {
+  id int [pk, increment]
+  code varchar(20) [unique, not null]
+  name varchar(200) [not null]
+  status project_status [not null, default: 'dang_thuc_hien']
+  manager_id int [not null]
+}
+
+Table employees {
+  employee_id int [pk, increment]
+  fullname varchar
+}
+
+Table project_members {
+  id int [pk, increment]
+  project_id int [not null]
+  employee_id int [not null]
+
+  indexes {
+    (project_id, employee_id) [unique]
+  }
+}
+
+Table tasks {
+  id int [pk, increment]
+  project_id int [not null]
+  title varchar(200) [not null]
+  description text
+  assignee_id int [not null]
+  created_by int [not null]
+  due_date date [not null]
+  priority task_priority [not null, default: 'trung_binh']
+  status task_status [not null, default: 'can_lam']
+  completed_at timestamp [note: 'Thời điểm task chuyển sang trạng thái xong']
+  created_at timestamp [not null]
+  updated_at timestamp [not null]
+
+  indexes {
+    assignee_id
+    (project_id, status)
+  }
+}
+
+Ref: tasks.project_id > projects.id
+Ref: tasks.assignee_id > employees.employee_id
+Ref: tasks.created_by > employees.employee_id
+Ref: project_members.project_id > projects.id
+Ref: project_members.employee_id > employees.employee_id
+
+Enum project_status {
+  dang_thuc_hien
+  hoan_thanh
+}
+
+Enum task_priority {
+  thap
+  trung_binh
+  cao
+}
+
+Enum task_status {
+  can_lam
+  dang_lam
+  xong
+}

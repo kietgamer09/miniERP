@@ -10,7 +10,7 @@ import ProjectOverview from './pages/ProjectOverview';
 import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
 import ProjectProgress from './pages/ProjectProgress';
-import MyTasksPage from './pages/MyTasksPage';
+import MyTasks from './pages/MyTasks';
 import MyProfile from './pages/MyProfile';
 import Placeholder from './pages/Placeholder';
 import Attendance from './pages/Attendance';
@@ -29,8 +29,8 @@ const pages = {
   '/du-an/cua-toi': Projects,
   '/du-an/tien-do': ProjectProgress,
   '/quan-ly-nhan-vien': Employees,
-  '/viec-cua-toi': MyTasksPage,
-  '/viec-cua-toi/duoc-giao': MyTasksPage,
+  '/viec-cua-toi': MyTasks,
+  '/viec-cua-toi/duoc-giao': MyTasks,
   '/quan-ly-phong-ban': Departments,
   '/cham-cong/bang-cong-cong-ty': CompanyAttendance,
   '/cham-cong/nghi-phep': LeaveManagement,

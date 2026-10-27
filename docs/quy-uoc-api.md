@@ -280,7 +280,73 @@ Kiểm tra thêm token thiếu/sai/hết hạn → 401; ID dự án sai → 400;
 
 Giao diện `/du-an/:id` có bảng task và form tạo task; chỉ can_manage có nút tạo. Dự án hoàn thành khóa nút với tooltip `Mở lại dự án để tạo task`. Tạo xong tải lại chi tiết, tiến độ và bảng task. Hàng quá hạn đỏ, sắp hạn 0–3 ngày vàng và có nhãn chữ; task xong không nhận cảnh báo hạn. Bảng chuyển due_date/xong sang định dạng của getDueState tại một nơi, không thay quy tắc hiện có.
 
-## 9. Chấm công, lịch sử và giải trình
+## 9. API Kanban và task của tôi (tuần 5, lượt 1)
+
+`completed_at` là thời điểm task chuyển sang `xong`; task chưa xong có giá trị `null`. Trước khi chạy backend phiên bản này, chạy SQL bổ sung một lần trong PostgreSQL rồi tạo lại Prisma Client:
+
+```bash
+psql "$DATABASE_URL" -f backend/prisma/sql/task-completed-at.sql
+cd backend
+npx prisma generate
+```
+
+SQL dùng `ADD COLUMN IF NOT EXISTS` và chỉ điền `updated_at` cho task đã xong đang thiếu thời điểm hoàn thành; các dữ liệu khác được giữ nguyên.
+
+| Thao tác | Phương thức và đường dẫn | Quyền | Thành công |
+|---|---|---|---|
+| Task của tôi | `GET /api/tasks/mine` | Mọi người đăng nhập có hồ sơ nhân viên đang làm việc | `200`, mảng task |
+| Task của dự án | `GET /api/projects/:id/tasks` | Thành viên dự án hoặc admin | `200`, mảng task |
+
+Task trả về có dạng chung:
+
+```json
+{
+  "id": 12,
+  "project_id": 1,
+  "project_name": "Bảo trì dây chuyền mạ kẽm",
+  "project_status": "dang_thuc_hien",
+  "title": "Kiểm tra cảm biến nhiệt",
+  "description": null,
+  "assignee_id": 3,
+  "assignee_name": "Trần Minh Anh",
+  "created_by": 2,
+  "created_by_name": "Nguyễn Văn A",
+  "due_date": "2026-11-15",
+  "priority": "cao",
+  "status": "dang_lam",
+  "completed_at": null,
+  "created_at": "2026-10-26T03:00:00.000Z",
+  "updated_at": "2026-10-26T03:00:00.000Z",
+  "is_mine": true,
+  "can_edit": false,
+  "allowed_moves": ["can_lam", "xong"]
+}
+```
+
+`allowed_moves` dùng chung quy tắc quyền: người làm được chuyển task của mình `can_lam` ⇄ `dang_lam` và `dang_lam` → `xong`; Quản lý dự án/Admin được chuyển giữa các cột kề nhau theo cả hai chiều. Task thuộc dự án đã hoàn thành hoặc người gọi không có quyền chuyển luôn có mảng rỗng. API danh sách dự án trả 403 `Bạn không thuộc dự án này` cho người ngoài dự án; admin xem được mọi dự án. Danh sách sắp theo hạn chót tăng dần, sau đó ID tăng dần.
+
+`GET /api/tasks/mine` chỉ trả task được giao cho nhân viên hiện tại: mọi task chưa xong và task xong có `completed_at` trong tuần hiện tại (Thứ 2 00:00 đến trước Thứ 2 tuần sau, theo giờ máy chủ). Kết quả sắp theo hạn chót rồi ID tăng dần. Không nhận `employee_id` từ query string.
+
+### Postman: task của tôi và danh sách task dự án
+
+Chuẩn bị `base_url = http://localhost:5000`, cùng token admin, token Quản lý dự án, token thành viên và `project_id` dự án đang thực hiện. Lấy token bằng `POST {{base_url}}/api/auth/login`; chọn Authorization → Bearer Token. Các GET không cần body.
+
+| # | Request | Kỳ vọng |
+|---|---|---|
+| 1 | Dùng token nhân viên, `GET {{base_url}}/api/tasks/mine` | 200; chỉ task giao cho nhân viên đó; mỗi task có tên dự án, quyền và trạng thái chuyển |
+| 2 | Task xong với `completed_at` tuần trước | Không có trong kết quả task của tôi |
+| 3 | Task xong với `completed_at` tuần này | Có trong kết quả task của tôi |
+| 4 | Bỏ Bearer token khi gọi hai API | 401 |
+| 5 | Thành viên gọi `GET {{base_url}}/api/projects/{{project_id}}/tasks` | 200; task của mình có `is_mine=true` và move phù hợp; task người khác có `allowed_moves=[]` |
+| 6 | Quản lý dự án gọi API danh sách task | 200; task có `can_edit=true`, `allowed_moves` chỉ gồm cột kề |
+| 7 | Gọi API danh sách task của dự án hoàn thành | Mọi task có `allowed_moves=[]` |
+| 8 | Nhân viên ngoài dự án gọi API danh sách task | 403 `Bạn không thuộc dự án này` |
+| 9 | Admin gọi API danh sách task của dự án bất kỳ | 200; `can_edit=true` và được chuyển giữa các cột kề |
+| 10 | ID dự án không phải số nguyên dương hoặc không tồn tại | 400 hoặc 404 tương ứng |
+
+Tạo task mẫu test trước bằng API tuần 4 hoặc dùng dữ liệu mẫu hiện có; không chạy seed nếu muốn giữ thay đổi thủ công trong các dự án `MAU-*`.
+
+## 10. Chấm công, lịch sử và giải trình
 
 Xem cách chuẩn bị bảng bổ sung trong `backend/README.md`. Cần chạy `npm run setup:attendance`, `npx prisma generate` và khởi động lại backend. Không xóa hay sửa công gốc khi chuẩn bị bảng hoặc khi duyệt giải trình.
 
@@ -304,3 +370,85 @@ Xem cách chuẩn bị bảng bổ sung trong `backend/README.md`. Cần chạy 
 - Giải trình chỉ cho ngày bất thường; lý do bắt buộc 1–2000 ký tự, ngày đề nghị bù tùy chọn là ngày làm việc không ở quá khứ. Một yêu cầu/ngày; trạng thái đã xử lý được giữ để tra cứu.
 - Chỉ Admin duyệt, không tự duyệt; từ chối cần ghi chú. Duyệt không sửa giờ hoặc màu gốc, không tự cộng giờ bù/lương.
 - GET luôn giới hạn theo nhân viên từ token, không tin employee_id trong query/body. Mọi thao tác ghi công có khóa nhân viên/ngày để tránh chấm trùng giữa trình duyệt. Bản ghi trùng cũ không bị xóa/gộp tự động.
+
+## 11. Đổi trạng thái task và kéo thả Kanban (tuần 5, lượt 3)
+
+`PATCH /api/tasks/:id/status` cần Bearer token và hồ sơ nhân viên đang làm việc. Body chỉ định trạng thái đích:
+
+```json
+{"status":"dang_lam"}
+```
+
+Các trạng thái hợp lệ là `can_lam`, `dang_lam`, `xong`. Chỉ được chuyển sang cột kề. Người làm được chuyển task của mình `can_lam` → `dang_lam` → `xong` và `dang_lam` → `can_lam`; chỉ Quản lý dự án hoặc Admin được kéo lùi task đã `xong`. Quản lý dự án/Admin được chuyển task giữa các cột kề theo cả hai chiều. Admin không cần là thành viên dự án. Dự án `hoan_thanh` khóa mọi thay đổi.
+
+Khi chuyển sang `xong`, backend đặt `completed_at` và `updated_at` theo giờ máy chủ; khi chuyển ra khỏi `xong`, xóa `completed_at` và cập nhật `updated_at`. Cập nhật có điều kiện theo trạng thái cũ để tránh ghi đè thao tác đồng thời. Thành công trả task theo cấu trúc chung ở mục 9; xung đột trả 409 `Task vừa được người khác thay đổi, hãy tải lại`.
+
+Thứ tự kiểm tra: ID → task tồn tại → thuộc dự án (trừ Admin) → trạng thái hợp lệ → dự án chưa hoàn thành → trạng thái đích khác hiện tại → cột kề → quyền. Lỗi quyền và thông điệp theo quy tắc ở trên; các lỗi còn lại trả: ID sai 400 `ID task phải là số nguyên dương hợp lệ`; không tìm thấy 404 `Không tìm thấy task`; trạng thái sai 400 `Trạng thái không hợp lệ`; dự án hoàn thành 409 `Dự án đã hoàn thành, hãy mở lại dự án để đổi trạng thái task`; trùng trạng thái 409 `Task đã ở trạng thái này`; nhảy cột 409 `Chỉ được chuyển task sang cột kề nhau`.
+
+Frontend dùng `@dnd-kit/core` 6.x (`npm install @dnd-kit/core`), `PointerSensor` với khoảng kích hoạt 8 px và `KeyboardSensor`. Thả sai cột không gọi API. Thả hợp lệ cập nhật giao diện trước, sau đó thay bằng phản hồi máy chủ; nếu API lỗi thì khôi phục task và hiện nguyên văn lỗi. Mỗi task chỉ có tối đa một yêu cầu đổi trạng thái đang chạy.
+
+### 10.2. Postman: đổi trạng thái (tuần 5, lượt 3)
+
+Chuẩn bị `base_url = http://localhost:5000`, một dự án đang thực hiện có task ở cả trạng thái cần thử, và token của người làm, thành viên khác, Quản lý dự án, Admin, cùng người ngoài dự án. Lấy token qua `POST {{base_url}}/api/auth/login`; chọn Authorization → Bearer Token. Các request dùng Body → raw → JSON:
+
+```json
+{"status":"dang_lam"}
+```
+
+| # | Trường hợp | Kỳ vọng |
+|---|---|---|
+| 1 | Người làm kéo task của mình `can_lam` → `dang_lam` | 200; `completed_at = null` |
+| 2 | Người làm kéo task của mình `dang_lam` → `xong` | 200; `completed_at` có giá trị |
+| 3 | Người làm kéo lùi task `xong` → `dang_lam` | 403 `Chỉ Quản lý dự án hoặc Admin được kéo lùi task đã Xong` |
+| 4 | Quản lý dự án kéo lùi task `xong` → `dang_lam` | 200; `completed_at = null` |
+| 5 | Nhảy cóc `can_lam` → `xong` | 409 `Chỉ được chuyển task sang cột kề nhau` |
+| 6 | Thành viên khác kéo task của người khác | 403 `Bạn chỉ được đổi trạng thái task do mình phụ trách` |
+| 7 | Người ngoài dự án gọi API | 403 `Bạn không thuộc dự án này` |
+| 8 | Dự án đã hoàn thành | 409 `Dự án đã hoàn thành, hãy mở lại dự án để đổi trạng thái task` |
+| 9 | Trạng thái thiếu/sai, ID sai hoặc task không tồn tại | 400 / 400 / 400 / 404 theo thứ tự tương ứng |
+| 10 | Chuyển sang trạng thái hiện tại | 409 `Task đã ở trạng thái này` |
+| 11 | Admin không thuộc dự án chuyển task sang cột kề | 200 |
+
+Các request thành công sửa dữ liệu thật; nên dùng task/dự án kiểm tra riêng. Không thử tạo xung đột đồng thời trên dữ liệu cần giữ.
+
+## 12. Chi tiết và sửa task (tuần 5, lượt 5)
+
+Hai endpoint cần Bearer token và hồ sơ nhân viên đang làm việc. `GET /api/tasks/:id` trả task theo cấu trúc ở mục 9; chỉ thành viên dự án hoặc Admin được xem. `PUT /api/tasks/:id` nhận JSON:
+
+```json
+{
+  "title": "Kiểm tra cảm biến nhiệt",
+  "description": "Ghi nhận kết quả kiểm tra",
+  "assignee_id": 3,
+  "due_date": "2026-11-15",
+  "priority": "cao"
+}
+```
+
+Chỉ Quản lý dự án hoặc Admin được sửa. Trạng thái, người tạo và thời điểm hoàn thành không nhận từ body, nên không đổi khi cập nhật. Dự án hoàn thành trả 409. Tiêu đề, người làm, hạn chót và ưu tiên bắt buộc, dùng cùng quy tắc kiểm tra khi tạo task. Mô tả có thể bỏ trống hoặc là `null`; khi bỏ khỏi body, mô tả cũ được giữ. Nếu đổi người làm thì người mới phải là thành viên đang làm việc; người làm cũ đã nghỉ việc vẫn được giữ nếu không đổi. Hạn chót phải không sau ngày kết thúc dự án, có thể trùng ngày kết thúc.
+
+Thứ tự kiểm tra PUT: task tồn tại → quyền quản lý → dự án chưa hoàn thành → dữ liệu bắt buộc/hợp lệ → thành viên và trạng thái nhân viên (chỉ khi đổi người làm) → hạn chót dự án. Thành công trả task đã cập nhật với `200`; lỗi trả `{ "error": "..." }` bằng thông điệp tiếng Việt, không trả thông tin Prisma.
+
+### 10.3. Postman: chi tiết và sửa task
+
+Chuẩn bị một dự án đang thực hiện có các task kiểm tra riêng, token thành viên, quản lý dự án, admin, nhân viên thường và người ngoài dự án. Lấy token bằng `POST {{base_url}}/api/auth/login`, dùng Authorization → Bearer Token. Khai báo `task_id`, `project_id`, `member_assignee_id`, `inactive_assignee_id` và `project_end_date` theo dữ liệu thật. PUT chọn Body → raw → JSON.
+
+| # | Request | Kỳ vọng |
+|---|---|---|
+| 1 | Thành viên gọi `GET {{base_url}}/api/tasks/{{task_id}}` | 200; đủ thông tin task, quyền và `allowed_moves` |
+| 2 | Người ngoài dự án gọi GET | 403 `Bạn không thuộc dự án này` |
+| 3 | Admin gọi GET task bất kỳ | 200 |
+| 4 | GET task không tồn tại / ID không hợp lệ | 404 / 400 |
+| 5 | Quản lý dự án PUT đổi tiêu đề, ưu tiên, hạn chót hợp lệ | 200; trạng thái không đổi |
+| 6 | Nhân viên không quản lý PUT task | 403 `Chỉ Quản lý dự án hoặc Admin được sửa task` |
+| 7 | Quản lý giao lại cho người không thuộc dự án | 400 `Người làm task phải là thành viên của dự án` |
+| 8 | Quản lý giao lại cho thành viên đã nghỉ việc | 400 `Nhân viên đã nghỉ việc` |
+| 9 | Đổi hạn sau ngày kết thúc dự án | 400; trùng ngày kết thúc được 200 |
+| 10 | PUT task thuộc dự án hoàn thành | 409 `Dự án đã hoàn thành, hãy mở lại dự án để sửa task` |
+| 11 | Task có người làm cũ đã nghỉ việc, PUT giữ nguyên `assignee_id` | 200 nếu các trường khác hợp lệ |
+| 12 | Giao lại task cho thành viên mới, sau đó GET `/api/tasks/mine` bằng hai tài khoản | Task xuất hiện ở người mới và biến mất khỏi người cũ |
+| 13 | Sau khi giao lại hết task chưa xong, gọi API bớt thành viên tuần 4 | 204 nếu người đó không phải Quản lý dự án |
+
+Kiểm tra thêm body thiếu/sai tiêu đề, người làm, ngày, ưu tiên và mô tả sai kiểu; lần lượt phải nhận 400 với thông điệp tương ứng. Các PUT thành công thay đổi dữ liệu thật; dùng task thử riêng. Không chạy seed chỉ để chuẩn bị một request.
+
+Seed task mẫu đặt `completed_at` xác định theo ngày chạy: khoảng một nửa task xong ở MAU-01/MAU-03 thuộc tuần hiện tại; phần còn lại cách 8–14 ngày. Task xong MAU-02 được hoàn thành 3–10 ngày trước và không sau ngày kết thúc dự án. Task chưa xong giữ `completed_at = null`. Có thể chạy `npm run seed:cong-viec` trong `backend`; script thay thế các dự án có mã `MAU-*` và dữ liệu phụ thuộc, nên chỉ chạy khi chấp nhận đặt lại dữ liệu mẫu đó.
