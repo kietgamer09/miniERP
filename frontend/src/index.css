@@ -18,6 +18,26 @@ body {
   gap: 12px;
 }
 
+.history-navigation {
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    gap: 4px;
+  }
+
+  .app-header > .ant-space:first-child {
+    gap: 0;
+  }
+
+  .history-navigation .ant-btn {
+    width: 28px;
+    min-width: 28px;
+    padding-inline: 4px;
+  }
+}
+
 .header-user-name {
   white-space: nowrap;
 }
