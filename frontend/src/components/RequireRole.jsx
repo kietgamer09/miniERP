@@ -4,7 +4,7 @@
  */
 import { Button, Result } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { useRole } from '../context/AuthContext';
+import { useRole } from '../hooks/useAuth';
 import { getRolesForPath } from '../config/menu';
 
 function RequireRole({ path, children }) {

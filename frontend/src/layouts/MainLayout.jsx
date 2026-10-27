@@ -1,9 +1,3 @@
-/**
- * MainLayout – Khung giao diện chính: thanh trên + menu trái + vùng nội dung.
- *
- * Dùng Ant Design Layout. Menu lọc theo vai trò tài khoản đăng nhập.
- * Tách layout riêng vì mọi trang đều dùng chung khung này (qua Outlet).
- */
 import { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
@@ -12,7 +6,7 @@ import {
 import {
   MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined, RightOutlined, MoonOutlined, SunOutlined,
 } from '@ant-design/icons';
-import { useAuth, useRole } from '../context/AuthContext';
+import { useAuth, useRole } from '../hooks/useAuth';
 import { filterMenuByRole, fullMenuItems, findOpenKeys } from '../config/menu';
 import HistoryNavigation from '../components/HistoryNavigation';
 import { useTheme } from '../hooks/useTheme';
@@ -99,7 +93,6 @@ function MainLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      {/* ===== THANH TRÊN (bám sát phac_thao_menu.png) ===== */}
       <Header
         className="app-header"
         style={{
@@ -116,7 +109,6 @@ function MainLayout() {
           lineHeight: '52px',
         }}
       >
-        {/* Bên trái: nút thu gọn + tên hệ thống */}
         <Space>
           <Button
             type="text"
@@ -134,8 +126,6 @@ function MainLayout() {
             Hệ thống miniERP
           </Text>
         </Space>
-
-        {/* Bên phải: thông tin người dùng */}
         <Space size="middle" className="app-header-actions">
           <Tooltip title={mode === 'dark' ? 'Chuyển sang nền sáng' : 'Chuyển sang nền tối'}>
             <Button type="text" icon={mode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
@@ -159,7 +149,6 @@ function MainLayout() {
       </Header>
 
       <Layout>
-        {/* ===== MENU TRÁI ===== */}
         <Sider
           className="desktop-sider"
           collapsible
@@ -182,10 +171,7 @@ function MainLayout() {
         >
           {renderMenu()}
         </Drawer>
-
-        {/* ===== VÙNG NỘI DUNG ===== */}
         <Content className="app-content" style={{ padding: 16, background: 'var(--page-bg)', overflow: 'auto', minWidth: 0 }}>
-          {/* Outlet render trang con theo Route */}
           <Outlet />
         </Content>
       </Layout>

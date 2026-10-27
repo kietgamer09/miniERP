@@ -8,20 +8,11 @@ class AttendanceError extends Error {
 const fail = (status, message) => { throw new AttendanceError(status, message); };
 const asDate = value => new Date(`${value}T00:00:00Z`);
 
-// Format chuẩn chuỗi HH:mm:ss trực tiếp từ giá trị Date lưu trong DB theo giờ VN
-const formatTimeVN = (dateObj) => {
-  if (!dateObj) return null;
-  const d = new Date(dateObj);
-  // Dùng getHours/getMinutes/getSeconds nếu DB lưu giờ local hoặc UTC tùy thuộc vào cách bạn insert
-  // Ở đây dùng phương thức UTC vì khi insert ta dùng chuỗi Z (UTC)
-  const hours = String(d.getUTCHours()).padStart(2, '0');
-  const minutes = String(d.getUTCMinutes()).padStart(2, '0');
-  const seconds = String(d.getUTCSeconds()).padStart(2, '0');
-  return `${hours}:${minutes}:${seconds}`;
-};
+// Cột TIME của Prisma dùng mốc 1970 UTC; không cộng lại múi giờ.
+const formatTimeVN = value => value == null ? null : value.toISOString().slice(11, 19);
 
 const recordData = row => row ? {
-  attendances_id: row.attendances_id || row.id,
+  attendances_id: row.attendances_id,
   employee_id: row.employee_id,
   date: dateOnly(row.date),
   check_in: formatTimeVN(row.check_in),
@@ -61,8 +52,7 @@ async function employeeFor(req) {
   const userId = parseId(req.user?.user_id);
   if (!userId) fail(403, 'Tài khoản chưa có hồ sơ nhân viên.');
 
-  const employee = await prisma.employees?.findUnique({ where: { user_id: userId } })
-                || await prisma.employee?.findUnique({ where: { user_id: userId } });
+  const employee = await prisma.employees.findUnique({ where: { user_id: userId } });
 
   if (!employee) fail(404, 'Không tìm thấy hồ sơ nhân viên của tài khoản này.');
   if (employee.status !== 'dang_lam_viec') fail(403, 'Nhân viên đã nghỉ việc.');
@@ -71,7 +61,7 @@ async function employeeFor(req) {
 
 async function requireCurrentAdmin(req) {
   const userId = parseId(req.user?.user_id);
-  const user = userId && await prisma.users?.findUnique({
+  const user = userId && await prisma.users.findUnique({
     where: { user_id: userId },
     select: { role: true, employees: { select: { status: true } } }
   });
@@ -86,26 +76,13 @@ async function lockDay(tx, employeeId, date) {
 
 async function rangeData(employee, start, end, db = prisma) {
   const where = { employee_id: employee.employee_id, date: { gte: asDate(start), lte: asDate(end) } };
-
-  const attendanceModel = db.attendances || db.attendance;
-  const leaveModel = db.day_off_requests || db.dayOffRequest;
-  const explanationModel = db.attendance_explanations || db.attendanceExplanation;
-
   const [records, leaves, explanations] = await Promise.all([
-    attendanceModel.findMany({ where, orderBy: { attendances_id: 'asc' } }).catch(() => []),
-    leaveModel ? leaveModel.findMany({
-      where: {
-        employee_send_id: employee.employee_id,
-        status: 'da_duoc_duyet',
-        start_date: { lte: asDate(end) }
-      }
-    }).catch(() => []) : [],
-    explanationModel ? explanationModel.findMany({
-      where,
-      include: { employees: { select: { fullname: true, user_id: true } }, reviewer: { select: { username: true } } }
-    }).catch(() => []) : [],
+    db.attendances.findMany({ where, orderBy: { attendances_id: 'asc' } }),
+    db.day_off_requests.findMany({ where: { employee_send_id: employee.employee_id, status: 'da_duoc_duyet',
+      start_date: { lte: asDate(end) }, OR: [{ end_date: { gte: asDate(start) } }, { end_date: null, start_date: { gte: asDate(start) } }] } }),
+    db.attendance_explanations.findMany({ where, include: { employees: { select: { fullname: true, user_id: true } },
+      reviewer: { select: { username: true } } } }),
   ]);
-
   return { records, leaves, explanations };
 }
 
@@ -152,8 +129,6 @@ function punch(action) {
     const clock = vietnamClock();
     if (weekend(clock.date)) fail(400, 'Hôm nay là cuối tuần (Thứ 7 hoặc Chủ Nhật), không cần chấm công!');
     if (employee.start_date && clock.date < dateOnly(employee.start_date)) fail(400, 'Chưa đến ngày bắt đầu làm việc.');
-
-    // Kiểm tra cờ xác nhận ra ca sớm từ phía client gửi lên
     const { confirmedEarly } = req.body ?? {};
 
     const result = await prisma.$transaction(async tx => {
@@ -161,8 +136,7 @@ function punch(action) {
       const actual = vietnamClock();
       if (actual.date !== clock.date) fail(409, 'Ngày chấm công vừa thay đổi, vui lòng tải lại.');
 
-      const attendanceModel = tx.attendances || tx.attendance;
-      const rows = await attendanceModel.findMany({ where: { employee_id: employee.employee_id, date: asDate(clock.date) } });
+      const rows = await tx.attendances.findMany({ where: { employee_id: employee.employee_id, date: asDate(clock.date) } });
       if (rows.length > 1) fail(409, 'Ngày này có nhiều bản ghi công, cần quản trị viên kiểm tra.');
 
       const row = rows[0];
@@ -172,21 +146,16 @@ function punch(action) {
 
       const checkInStr = row?.check_in ? formatTimeVN(row.check_in) : '00:00:00';
       if (action === 'out' && actual.time < checkInStr) fail(409, 'Giờ ra ca không được trước giờ vào ca.');
-
-      // LOGIC XÁC NHẬN RA CA SỚM (Trước 17:00)
-      if (action === 'out' && actual.time < '17:00:00' && !confirmedEarly) {
-        // Ném kết quả đặc biệt để controller bắt hoặc trả về JSON yêu cầu confirm ngay
+      if (action === 'out' && actual.time < '17:00:00' && confirmedEarly !== true) {
         return { requireConfirmation: true, message: 'Hiện tại chưa đến 17:00 (chưa hết giờ làm). Bạn có chắc chắn muốn ra ca sớm không?' };
       }
 
       const field = action === 'in' ? 'check_in' : 'check_out';
       const value = new Date(`1970-01-01T${actual.time}Z`);
 
-      return row ? attendanceModel.update({ where: { attendances_id: row.attendances_id || row.id }, data: { [field]: value } })
-        : attendanceModel.create({ data: { employee_id: employee.employee_id, date: asDate(clock.date), check_in: value, created_at: new Date() } });
+      return row ? tx.attendances.update({ where: { attendances_id: row.attendances_id }, data: { [field]: value } })
+        : tx.attendances.create({ data: { employee_id: employee.employee_id, date: asDate(clock.date), check_in: value, created_at: new Date() } });
     });
-
-    // Nếu trả về yêu cầu xác nhận ra ca sớm
     if (result && result.requireConfirmation) {
       return res.json({
         success: false,

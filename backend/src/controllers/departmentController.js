@@ -1,6 +1,4 @@
 import prisma from '../config/prisma.js';
-
-// Lấy danh sách toàn bộ phòng ban
 export const listDepartments = async (req, res) => {
   try {
     const departments = await prisma.departments.findMany({

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Badge, Button, Drawer, Empty, Space, Spin, Switch, Typography } from 'antd';
 import { MailOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useMyWork } from '../hooks/useMyWork';
 import { useAttendance } from '../hooks/useAttendance';
 import { attendanceReminders, taskNotifications } from '../utils/notifications';

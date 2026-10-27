@@ -1,10 +1,9 @@
-/** Quản lý tài khoản và phiên đăng nhập trong giao diện. */
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { AuthContext } from './appContexts';
 import { login as loginRequest, normalizeRole } from '../services/authApi';
 import { setAuthToken } from '../services/http';
 
 const STORAGE_KEY = 'miniErpAuth';
-const AuthContext = createContext(null);
 
 function readSession() {
   try {
@@ -70,16 +69,4 @@ function AuthProvider({ children }) {
   );
 }
 
-function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth phải nằm trong AuthProvider');
-  return context;
-}
-
-/** Giữ API hook cũ để các component chỉ cần lấy vai trò tiếp tục hoạt động. */
-function useRole() {
-  const { user } = useAuth();
-  return { role: user?.role ?? null };
-}
-
-export { AuthProvider, useAuth, useRole };
+export { AuthProvider };

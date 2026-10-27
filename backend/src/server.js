@@ -27,8 +27,8 @@ app.get('/api/health', async (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
-app.use('/api/departments', departmentRoutes)
-app.use('/api/attendances', attendancesRoutes)
+app.use('/api/departments', departmentRoutes);
+app.use('/api/attendances', attendancesRoutes);
 
 const server = app.listen(PORT);
 server.once('listening', () => {

@@ -1,9 +1,3 @@
-/**
- * Placeholder – Trang trống cho các mục menu chưa có nội dung.
- *
- * Hiển thị đường dẫn hiện tại làm tiêu đề để biết đang ở trang nào.
- * Sẽ thay bằng trang thật khi phát triển từng chức năng.
- */
 import { useLocation } from 'react-router-dom';
 import { Card, Typography } from 'antd';
 

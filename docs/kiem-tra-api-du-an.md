@@ -10,9 +10,7 @@
 6. Admin hoặc người có employee_id trùng manager_id thấy nút Sửa. Mã dự án bị khóa; lưu gửi PUT với name, description, start_date, end_date. Kiểm tra dữ liệu đã lưu sau khi tải lại trang.
 7. Thử tên trống, ngày kết thúc trước ngày bắt đầu, mã trùng hoặc ngày kết thúc trước hạn task. Form giữ dữ liệu để sửa và hiển thị lỗi; không đóng khi API thất bại.
 
-Tài khoản hiện có phải gắn với hồ sơ nhân viên đang làm việc. Ngày 26/10/2026 đã sửa bộ tài khoản mẫu trên database hiện tại: admin → user_id 7 / employee_id 1; quan_ly → user_id 8 / employee_id 2; nhan_vien → user_id 9 / employee_id 3 (role employee). Mật khẩu giữ nguyên. Các bản ghi trùng còn lại được đổi tên theo mẫu `<username>_legacy_<user_id>`, không xóa hoặc chuyển liên kết. Cần đăng xuất và đăng nhập lại để token dùng đúng user_id.
-
-Script `backend/scripts/repair-sample-logins.mjs` ghi lại thao tác sửa cho đúng bộ dữ liệu mẫu này. Mặc định chỉ xem kế hoạch rồi rollback; `--apply` mới lưu. Không dùng cho database khác nếu chưa đối chiếu các ID. Nếu xuất hiện username trùng mới, API login trả 409 thay vì chọn ngẫu nhiên một tài khoản.
+Tài khoản phải gắn với hồ sơ nhân viên đang làm việc. Khi đổi tên hoặc vai trò tài khoản trong DB, cần đăng xuất và đăng nhập lại. API login trả 409 nếu username bị trùng.
 
 ## 1. Chuẩn bị
 

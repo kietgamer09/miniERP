@@ -1,10 +1,3 @@
-/**
- * App.jsx – Khai báo Route cho toàn bộ ứng dụng.
- *
- * Dùng react-router-dom v7 với layout lồng (nested route).
- * Route "/" hiện Home; bảng pages nối menu với các màn hình đã hoàn thành.
- * getAllPaths lấy danh sách đường dẫn từ cây menu để không phải viết thủ công.
- */
 import { Routes, Route } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import RequireAuth from './components/RequireAuth';
@@ -45,13 +38,8 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAuth />}>
         <Route element={<MainLayout />}>
-          {/* Trang chủ */}
           <Route path="/" element={<Home />} />
-
-          {/* Backend kiểm tra thành viên; route động không nằm trong cây menu. */}
           <Route path="/du-an/:id" element={<ProjectDetail />} />
-
-          {/* Mỗi route menu dùng quyền khai báo ngay trong menu.jsx */}
           {allPaths.map((path) => {
             const Page = pages[path] ?? Placeholder;
             return (
@@ -62,8 +50,6 @@ function App() {
               />
             );
           })}
-
-          {/* Đường dẫn không tồn tại */}
           <Route path="*" element={<Placeholder />} />
         </Route>
       </Route>

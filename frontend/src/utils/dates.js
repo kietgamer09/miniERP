@@ -1,10 +1,3 @@
-/**
- * utils/dates.js – Hàm tiện ích xử lý ngày tháng kiểu Việt.
- *
- * Tách riêng vì nhiều component cần dùng chung (Chấm công, Bảng công, TaskCard).
- * Tất cả là hàm thuần (pure function), dễ test và tái sử dụng.
- */
-
 const DAY_NAMES = [
   'Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7',
 ];

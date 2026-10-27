@@ -1,16 +1,4 @@
-/**
- * utils/taskStatus.js – Quy tắc nghiệp vụ về trạng thái task.
- *
- * Tách thành hàm thuần (pure function) vì:
- * 1. Dễ unit test – không phụ thuộc React hay DOM.
- * 2. Dùng lại ở nhiều nơi: TaskCard, MyTasksBoard, Kanban dự án (ngày sau).
- *
- * Quy tắc (từ BRD mục 1.2):
- * - Quá hạn: hôm nay > hạn chót VÀ task chưa Xong → đỏ
- * - Sắp hạn: chưa quá hạn, còn 0–3 ngày lịch đến hạn chót, chưa Xong → vàng
- * - Chưa đến hạn: task chưa Xong, không quá hạn, không sắp hạn → xanh lơ
- * - Task Xong: không có màu cảnh báo
- */
+// BRD: quá hạn đỏ, sắp hạn 0–3 ngày vàng; task xong không cảnh báo.
 import { startOfDay, formatDateVN } from './dates';
 
 /** Mã trạng thái nội bộ dùng trong code */
@@ -28,7 +16,7 @@ const PRIORITY_ORDER = { 'Cao': 0, 'Trung bình': 1, 'Thấp': 2 };
  * @returns {'overdue' | 'near-due' | 'normal' | 'done'}
  */
 function getDueState(task, today = new Date()) {
-  // Task đã xong thì không cảnh báo (BRD: "Task Xong không hiện màu cảnh báo")
+
   if (task.status === STATUS.DONE) return 'done';
 
   const todayStart = startOfDay(today);
@@ -36,21 +24,20 @@ function getDueState(task, today = new Date()) {
   const diffMs = dueStart.getTime() - todayStart.getTime();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-  // Quá hạn: hôm nay đã qua hạn chót (diffDays < 0)
   if (diffDays < 0) return 'overdue';
   // Sắp hạn: còn 0–3 ngày lịch (kể cả đúng ngày hạn)
   if (diffDays <= 3) return 'near-due';
-  // Chưa đến hạn
+
   return 'normal';
 }
 
 /** Màu nền/viền theo trạng thái cảnh báo */
 function getDueColor(dueState) {
   switch (dueState) {
-    case 'overdue': return { bg: '#fff1f0', border: '#ff4d4f' };   // đỏ
-    case 'near-due': return { bg: '#fffbe6', border: '#faad14' };  // vàng
-    case 'normal': return { bg: '#e6f7ff', border: '#91d5ff' };    // xanh lơ
-    case 'done': return { bg: '#ffffff', border: '#d9d9d9' };      // trắng xám
+    case 'overdue': return { bg: '#fff1f0', border: '#ff4d4f' };
+    case 'near-due': return { bg: '#fffbe6', border: '#faad14' };
+    case 'normal': return { bg: '#e6f7ff', border: '#91d5ff' };
+    case 'done': return { bg: '#ffffff', border: '#d9d9d9' };
     default: return { bg: '#ffffff', border: '#d9d9d9' };
   }
 }
@@ -89,19 +76,16 @@ function sortTasks(tasks, mode = 'due', today = new Date()) {
     if (isOverdueA !== isOverdueB) return isOverdueA - isOverdueB;
 
     if (mode === 'priority') {
-      // Cùng trạng thái quá hạn: Cao -> Trung bình -> Thấp.
+
       const priDiff = (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9);
       if (priDiff !== 0) return priDiff;
 
       return new Date(a.dueDate) - new Date(b.dueDate);
     }
 
-    // mode === 'due'
-    // Cùng trạng thái quá hạn thì hạn gần -> xa.
     const dateDiff = new Date(a.dueDate) - new Date(b.dueDate);
     if (dateDiff !== 0) return dateDiff;
 
-    // Bằng hạn -> ưu tiên Cao -> Thấp.
     return (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9);
   });
 }

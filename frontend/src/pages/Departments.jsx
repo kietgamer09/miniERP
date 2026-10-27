@@ -4,7 +4,7 @@ import { Alert, Button, Popconfirm, Space, Table, Typography, message } from 'an
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import { deleteDepartment, listDepartments } from '../services/departmentApi';
 import DepartmentFormModal from '../components/DepartmentFormModal';
-import { useRole } from '../context/AuthContext';
+import { useRole } from '../hooks/useAuth';
 
 const { Title } = Typography;
 

@@ -30,7 +30,3 @@ export function listAttendanceExplanations(status) {
 export function reviewAttendanceExplanation(id, body) {
   return request(`/api/attendances/explanations/${id}/review`, { method: 'PUT', body });
 }
-
-export const checkInApi = checkIn;
-export const checkOutApi = checkOut;
-export const getTodayAttendanceApi = getTodayAttendance;

@@ -50,8 +50,12 @@ const cases = [
   [() => attendance.reviewAttendanceExplanation(1, { decision: 'approved' }), '/api/attendances/explanations/1/review', 'PUT', { decision: 'approved' }, { message: 'Đã duyệt' }],
   [() => attendance.checkIn(), '/api/attendances/check-in', 'POST', undefined,
     { message: 'Vào ca thành công', data: { attendances_id: 1, check_in: '1970-01-01T08:00:00.000Z' } }],
-  [() => attendance.checkOut(), '/api/attendances/check-out', 'POST', undefined,
+  [() => attendance.checkOut(), '/api/attendances/check-out', 'POST', { confirmedEarly: false },
     { message: 'Ra ca thành công', data: { attendances_id: 1, check_out: '1970-01-01T17:00:00.000Z' } }],
+  [() => attendance.checkOut(), '/api/attendances/check-out', 'POST', { confirmedEarly: false },
+    { success: false, requireConfirmation: true, message: 'Xác nhận ra ca sớm' }],
+  [() => attendance.checkOut(true), '/api/attendances/check-out', 'POST', { confirmedEarly: true },
+    { message: 'Ra ca thành công', data: { attendances_id: 1, check_out: '16:00:00' } }],
   [() => projects.listProjects(), '/api/projects', 'GET', undefined, [{ id: 1, progress_percent: 50 }]],
   [() => projects.createProject(projectBody), '/api/projects', 'POST', projectBody, { id: 1, ...projectBody }],
   [() => projects.updateProject(12, projectBody), '/api/projects/12', 'PUT', projectBody, { id: 12 }],
@@ -85,4 +89,4 @@ const session = await auth.login('test', 'test-only');
 assert.equal(session.user.id, 99);
 assert.equal(session.user.employee_id, 7);
 assert.equal(lastRequest.url, 'http://api.test/api/auth/login');
-console.log('PASS: 13 API calls including attendance/history/explanations, Bearer token, request bodies, response shapes, error handling, employee_id mapping.');
+console.log('PASS: 15 API calls including attendance/history/explanations, Bearer token, request bodies, response shapes, error handling, employee_id mapping.');
