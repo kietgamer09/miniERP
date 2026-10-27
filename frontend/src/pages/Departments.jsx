@@ -98,17 +98,18 @@ function Departments() {
       key: 'actions',
       render: (_, department) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEditForm(department)}>
+          <Button disabled title="Backend chưa hỗ trợ sửa phòng ban" size="small" icon={<EditOutlined />} onClick={() => openEditForm(department)}>
             Sửa
           </Button>
           <Popconfirm
+            disabled
             title="Bạn chắc chắn xóa phòng ban này?"
             okText="Xóa"
             cancelText="Hủy"
             okButtonProps={{ loading: deletingId === department.department_id }}
             onConfirm={() => handleDelete(department)}
           >
-            <Button size="small" danger icon={<DeleteOutlined />} loading={deletingId === department.department_id}>
+            <Button disabled title="Backend chưa hỗ trợ xóa phòng ban" size="small" danger icon={<DeleteOutlined />} loading={deletingId === department.department_id}>
               Xóa
             </Button>
           </Popconfirm>
@@ -120,20 +121,23 @@ function Departments() {
   return (
     <>
       {contextHolder}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0 }}>Quản lý phòng ban</Title>
         {isAdmin && (
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateForm}>
+          <Button disabled title="Backend chưa hỗ trợ thêm phòng ban" type="primary" icon={<PlusOutlined />} onClick={openCreateForm}>
             Thêm phòng ban
           </Button>
         )}
       </div>
 
+      {isAdmin && <Alert type="info" showIcon title="Hiện chỉ hỗ trợ xem phòng ban"
+        description="Backend chưa cung cấp API thêm, sửa, xóa phòng ban." style={{ marginBottom: 16 }} />}
+
       {loadError && (
         <Alert
           type="error"
           showIcon
-          message={loadError}
+          title={loadError}
           action={<Button size="small" type="link" onClick={retryLoading}>Tải lại</Button>}
           style={{ marginBottom: 16 }}
         />

@@ -1,0 +1,32 @@
+.employees-page {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 12px;
+}
+
+.employees-header,
+.employees-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.employees-filter-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  flex: 1 1 440px;
+  gap: 12px;
+  min-width: 0;
+}
+
+.employee-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}

@@ -12,20 +12,24 @@
  */
 import { Card, Typography } from 'antd';
 import { getDueState, getDueColor, getDueLabel } from '../utils/taskStatus';
+import { formatDateVN } from '../utils/dates';
 
 const { Text } = Typography;
 
 function TaskCard({ task }) {
   const dueState = getDueState(task);
-  const { bg, border } = getDueColor(dueState);
-  const label = getDueLabel(task, dueState);
+  const { border } = getDueColor(dueState);
+  const bg = dueState === 'overdue' ? 'var(--red-bg)' : dueState === 'near-due' ? 'var(--gold-bg)'
+    : dueState === 'done' ? 'var(--surface)' : 'var(--blue-bg)';
+  const label = dueState === 'done' && !task.completedAt
+    ? `Đã xong · Hạn ${formatDateVN(task.dueDate)}` : getDueLabel(task, dueState);
 
   // Màu chữ trạng thái theo loại cảnh báo
   const labelColor =
-    dueState === 'overdue' ? '#cf1322' :
-    dueState === 'near-due' ? '#d48806' :
-    dueState === 'done' ? '#8c8c8c' :
-    '#096dd9';
+    dueState === 'overdue' ? 'var(--red-text)' :
+    dueState === 'near-due' ? 'var(--gold-text)' :
+    dueState === 'done' ? 'var(--muted)' :
+    'var(--blue-text)';
 
   return (
     <Card

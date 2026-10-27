@@ -42,7 +42,7 @@ function AttendanceCard() {
       <div
         className="attendance-summary"
         style={{
-          background: '#f0f0f0',
+          background: 'var(--subtle-bg)',
           padding: '10px 16px',
           display: 'flex',
           alignItems: 'center',
@@ -74,14 +74,14 @@ function AttendanceCard() {
       <div style={{ padding: 16 }}>
         <div
           style={{
-            background: '#fafafa',
-            border: '1px solid #e8e8e8',
+            background: 'var(--subtle-bg)',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: 16,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Text type="secondary" style={{ background: '#e8e8e8', padding: '2px 8px', borderRadius: 4 }}>
+            <Text type="secondary" style={{ background: 'var(--border)', padding: '2px 8px', borderRadius: 4 }}>
               Hôm nay
             </Text>
           </div>
@@ -94,7 +94,7 @@ function AttendanceCard() {
           <Alert
             type="info"
             showIcon
-            message="Backend chưa cung cấp API chấm công."
+            title="Backend chưa cung cấp API chấm công."
             style={{ marginBottom: 12 }}
           />
 
