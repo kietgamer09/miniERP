@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, Button, Card, Col, Empty, Row, Space, Spin, Tag, Typography, message } from 'antd';
 import { EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
-import { useRole } from '../context/AuthContext';
+import { useRole } from '../hooks/useAuth';
 import useProjects from '../hooks/useProjects';
 import ProjectFormModal from '../components/ProjectFormModal';
 import ProgressBar from '../components/ProgressBar';

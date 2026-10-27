@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { Button, Space, Tooltip } from 'antd';
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { getHistory, recordNavigation, subscribeHistory } from '../utils/navigationHistory';
 
 export default function HistoryNavigation() {

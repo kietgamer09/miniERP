@@ -1,11 +1,10 @@
-/** Trang quản lý danh sách nhân viên, chuẩn hóa theo mẫu Departments.jsx */
 import { useEffect, useState } from 'react';
 import { Alert, Avatar, Button, Input, Modal, Select, Space, Table, Typography, message } from 'antd';
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { listEmployees } from '../services/employeeApi';
 import { listDepartments } from '../services/departmentApi';
 import EmployeeFormModal from '../components/EmployeeFormModal';
-import { useRole } from '../context/AuthContext';
+import { useRole } from '../hooks/useAuth';
 import './Employees.css';
 
 const { Title, Text } = Typography;
@@ -17,7 +16,7 @@ function Employees() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const [searchText, setSearchText] = useState('');
   const [selectedDept, setSelectedDept] = useState('all');
@@ -29,20 +28,16 @@ function Employees() {
   const [messageApi, contextHolder] = message.useMessage();
   const { role } = useRole();
   const isAdmin = role === 'admin';
-
-  // Gọi API lấy danh sách nhân viên ban đầu và danh sách phòng ban
   useEffect(() => {
     let isMounted = true;
-    
+
     async function fetchData() {
       try {
         setLoading(true);
         setLoadError('');
-
-        // Không truyền params tĩnh ở đây để lấy toàn bộ dữ liệu về thực hiện lọc mượt mà ở Client hoặc tùy chỉnh linh hoạt
         const [empData, deptData] = await Promise.all([
-          listEmployees(), 
-          listDepartments() // Sử dụng service vừa tạo thay vì request thô
+          listEmployees(),
+          listDepartments()
         ]);
 
         if (isMounted) {
@@ -89,19 +84,13 @@ function Employees() {
   function reloadEmployees() {
     setReloadKey((key) => key + 1);
   }
-
-  // Lọc dữ liệu theo Tên nhân viên, SĐT hoặc Email và theo Phòng ban
   const filteredData = employees.filter((emp) => {
     const keyword = searchText.toLowerCase().trim();
-    
-    // Kiểm tra khớp từ khóa tìm kiếm (Tên, SĐT, Email)
     const matchSearch = !keyword || (
       (emp.fullname && emp.fullname.toLowerCase().includes(keyword)) ||
       (emp.phone_number && emp.phone_number.toLowerCase().includes(keyword)) ||
       (emp.email && emp.email.toLowerCase().includes(keyword))
     );
-
-    // Kiểm tra khớp phòng ban
     const matchDept = selectedDept === 'all' || String(emp.department_id) === String(selectedDept);
 
     return matchSearch && matchDept;
@@ -210,8 +199,8 @@ function Employees() {
       width: '12%',
       render: (_, record) => (
         <Space>
-          <Button 
-            icon={<EditOutlined />} 
+          <Button
+            icon={<EditOutlined />}
             onClick={() => openEditForm(record)}
             style={{ height: 34, paddingInline: 12, borderRadius: 6 }}
           >
@@ -233,8 +222,6 @@ function Employees() {
   return (
     <div className="employees-page">
       {contextHolder}
-      
-      {/* Header tiêu đề */}
       <div className="employees-header">
         <div>
           <Space wrap align="center" size={12}>
@@ -258,9 +245,9 @@ function Employees() {
         </div>
 
         {isAdmin && (
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
             onClick={openCreateForm}
             style={{ height: 38, paddingInline: 16, borderRadius: 8, fontWeight: 500 }}
           >
@@ -278,8 +265,6 @@ function Employees() {
           style={{ marginBottom: 12, flexShrink: 0 }}
         />
       )}
-
-      {/* Thanh tìm kiếm và bộ lọc phòng ban */}
       <div className="employees-filters">
         <div className="employees-filter-inputs">
           <Input
@@ -316,8 +301,6 @@ function Employees() {
           {totalItems} kết quả
         </Text>
       </div>
-
-      {/* Bảng hiển thị dữ liệu */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--surface)', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <Table
@@ -330,8 +313,6 @@ function Employees() {
             scroll={{ x: 1100 }}
           />
         </div>
-
-        {/* Thanh phân trang tùy chỉnh ở đáy bảng */}
         <div
           style={{
             display: 'flex',
@@ -372,9 +353,7 @@ function Employees() {
           </Space>
         </div>
       </div>
-
-      {/* Modal Thêm / Sửa Nhân viên */}
-      {isAdmin && (
+      {isAdmin && formOpen && (
         <EmployeeFormModal
           open={formOpen}
           employee={selectedEmployee}

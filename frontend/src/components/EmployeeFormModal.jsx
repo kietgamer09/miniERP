@@ -26,7 +26,7 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [isEditingMode, setIsEditingMode] = useState(false);
+  const [isEditingMode, setIsEditingMode] = useState(!employee);
   const submitting = useRef(false);
 
   const isEditing = !!employee;
@@ -35,11 +35,9 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
     if (open) {
       if (employee) {
         form.setFieldsValue(employeeValues(employee));
-        setIsEditingMode(false);
       } else {
         form.resetFields();
         form.setFieldsValue({ status: 'dang_lam_viec' });
-        setIsEditingMode(true);
       }
     }
   }, [open, employee, form]);
@@ -105,7 +103,7 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
             {isEditing ? 'Thông tin nhân viên' : 'Thêm nhân viên mới'}
           </Title>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            {isEditing ? 'Chi tiết thông tin chi tiết của thành viên' : 'Nhập thông tin để khởi tạo nhân sự mới'}
+            {isEditing ? 'Thông tin chi tiết của nhân viên' : 'Nhập thông tin để khởi tạo nhân sự mới'}
           </Text>
         </div>
 
@@ -115,8 +113,8 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
               <Button disabled={confirmLoading} onClick={onCancel} style={cancelButtonStyle} {...cancelBtnHoverProps}>
                 Hủy
               </Button>
-              <Button 
-                type="primary" 
+              <Button
+                type="primary"
                 loading={confirmLoading}
                 onClick={() => form.submit()}
                 style={{ borderRadius: 6 }}
@@ -129,8 +127,8 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
               <Button onClick={onCancel} style={cancelButtonStyle} {...cancelBtnHoverProps}>
                 Đóng
               </Button>
-              <Button 
-                type="primary" 
+              <Button
+                type="primary"
                 icon={<EditOutlined />}
                 onClick={() => setIsEditingMode(true)}
                 style={{ borderRadius: 6 }}
@@ -146,8 +144,8 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
               }} style={cancelButtonStyle} {...cancelBtnHoverProps}>
                 Hủy
               </Button>
-              <Button 
-                type="primary" 
+              <Button
+                type="primary"
                 loading={confirmLoading}
                 onClick={() => form.submit()}
                 style={{ borderRadius: 6 }}
@@ -161,9 +159,9 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', marginBottom: 20 }} />
 
-      <Form 
-        form={form} 
-        layout="vertical" 
+      <Form
+        form={form}
+        layout="vertical"
         onFinish={handleSubmit}
         disabled={confirmLoading}
       >
@@ -271,8 +269,6 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
             </Form.Item>
           </Col>
         </Row>
-
-        {/* Trường Trạng thái làm việc */}
         {isEditing && (
           <Row gutter={24}>
             <Col xs={24} sm={12}>

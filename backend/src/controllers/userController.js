@@ -1,7 +1,5 @@
 import bcrypt from 'bcrypt';
 import prisma from '../config/prisma.js';
-
-// 1. Đổi mật khẩu cá nhân
 export const changePassword = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -38,24 +36,16 @@ export const changePassword = async (req, res) => {
     return res.status(500).json({ error: 'Lỗi server khi đổi mật khẩu!' });
   }
 };
-
-// 2. GET /api/users/employee-list - Lấy danh sách nhân viên kèm tìm kiếm theo tên và lọc theo phòng ban
 export const getUsers = async (req, res) => {
   try {
     const { search, department_id } = req.query;
-
-    // Xây dựng điều kiện lọc động
     const whereCondition = {};
-
-    // 1. Tìm theo tên nhân viên (fullname)
     if (search && search.trim()) {
       whereCondition.fullname = {
         contains: search.trim(),
         mode: 'insensitive', // Giúp tìm kiếm không phân biệt hoa thường (hoặc bỏ mode nếu dùng MySQL cũ)
       };
     }
-
-    // 2. Lọc theo phòng ban
     if (department_id) {
       whereCondition.department_id = Number(department_id);
     }
@@ -119,18 +109,12 @@ export const createUser = async (req, res) => {
       phone_number,
       birthday
     } = req.body;
-
-    // 1. Kiểm tra các trường bắt buộc (bắt buộc phải có sđt để làm username)
     if (!phone_number || !fullname || !department_id) {
       return res.status(400).json({
         error: 'Số điện thoại, họ tên và phòng ban là bắt buộc để hệ thống tự khởi tạo tài khoản.'
       });
     }
-
-    // 2. Tự động lấy số điện thoại làm username ban đầu
     const autoUsername = phone_number.trim();
-
-    // 3. Kiểm tra xem số điện thoại (username) này đã tồn tại trong hệ thống chưa
     const existingUser = await prisma.users.findFirst({
       where: { username: autoUsername },
     });
@@ -138,14 +122,9 @@ export const createUser = async (req, res) => {
     if (existingUser) {
       return res.status(409).json({ error: 'Số điện thoại này đã được sử dụng làm tài khoản trong hệ thống.' });
     }
-
-    // 4. Cố định mật khẩu mặc định là '12345' và mã hóa nó
     const defaultPassword = '12345';
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-
-    // 5. Sử dụng Transaction để tạo tài khoản và thông tin nhân viên cùng lúc
     const result = await prisma.$transaction(async (prismaClient) => {
-      // Tạo tài khoản user với username là SĐT và password mặc định '12345'
       const newUser = await prismaClient.users.create({
         data: {
           username: autoUsername,
@@ -153,8 +132,6 @@ export const createUser = async (req, res) => {
           role: role || 'employee',
         },
       });
-
-      // Tạo thông tin nhân viên liên kết
       const newEmployee = await prismaClient.employees.create({
         data: {
           user_id: newUser.user_id,
@@ -196,8 +173,6 @@ export const createUser = async (req, res) => {
     return res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
   }
 };
-
-// 4. PUT /api/users/employee-update/:id - Cập nhật thông tin cơ bản nhân viên
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;

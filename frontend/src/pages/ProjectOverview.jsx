@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { deleteProject as deleteProjectRequest, listProjects } from '../services/projectApi';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import ProjectFormModal from '../components/ProjectFormModal';
 import DepartmentPreview from '../components/DepartmentPreview';
 

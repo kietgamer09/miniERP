@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { AttendanceContext } from './appContexts';
-import { checkInApi, checkOutApi, getTodayAttendanceApi } from '../services/attendanceApi';
+import { checkIn, checkOut, getTodayAttendance } from '../services/attendanceApi';
 import { attendanceDay, isAttendanceWeekend, normalizeAttendance } from '../utils/attendance';
 
 function AttendanceSession({ children, identity }) {
@@ -50,14 +50,14 @@ function AttendanceSession({ children, identity }) {
     };
   }, [refresh, identity]);
 
-  async function submitAttendance(action) {
+  async function submitAttendance(action, confirmedEarly = false) {
     if (pending.current || !['in', 'out'].includes(action)) return null;
     pending.current = true;
     sequence.current++;
     setBusy(action);
     setState(previous => ({ ...previous, error: '' }));
     try {
-      const result = await (action === 'in' ? checkInApi() : checkOutApi());
+      const result = await (action === 'in' ? checkIn() : checkOut(confirmedEarly));
       await refresh();
       channel.current?.postMessage({ identity });
       return result;
