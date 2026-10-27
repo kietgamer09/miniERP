@@ -1,7 +1,8 @@
 /** Màn hình tiến độ riêng, dùng trường tổng hợp do API dự án trả về. */
-import { Alert, Button, Card, Empty, List, Progress, Space, Spin, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Empty, List, Space, Spin, Tag, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import useProjects from '../hooks/useProjects';
+import ProgressBar from '../components/ProgressBar';
 
 const { Title, Text } = Typography;
 
@@ -48,10 +49,7 @@ function ProjectProgress() {
                   <Text type="secondary">
                     Thời hạn: {formatDate(project.start_date)} – {formatDate(project.end_date)}
                   </Text>
-                  <Progress percent={project.progress_percent ?? 0} />
-                  <Text type="secondary">
-                    {project.tasks_done ?? 0} / {project.tasks_total ?? 0} công việc hoàn thành
-                  </Text>
+                  <ProgressBar {...project} />
                 </Card>
               </List.Item>
             )}

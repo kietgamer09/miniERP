@@ -139,6 +139,7 @@ model tasks {
   due_date                               DateTime        @db.Date
   priority                               task_priority   @default(trung_binh)
   status                                 task_status     @default(can_lam)
+  completed_at                          DateTime?       @db.Timestamp(6)
   created_at                             DateTime        @default(now()) @db.Timestamp(6)
   updated_at                             DateTime        @default(now()) @db.Timestamp(6)
   task_comments                          task_comments[]

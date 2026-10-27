@@ -46,6 +46,16 @@
     min-height: 0;
   }
 
+  .my-tasks-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .my-tasks-page > .ant-typography { flex: 0 0 auto; margin-bottom: 16px; }
+  .my-tasks-page > .my-tasks-board { flex: 1; min-height: 0; }
+
   .list-page-header { flex-shrink: 0; margin-bottom: 16px; }
   .list-page-header h3.ant-typography { font-size: 24px; }
   .list-page-subtitle { margin-top: 4px; font-size: 13px; }
@@ -93,14 +103,20 @@
   .home-top .timesheet-days-strip { padding-bottom: 3px; }
   .home-top .timesheet-summary-footer { padding-top: 0; }
 
-  .home-tasks > .ant-card-body { height: 100%; padding: 12px !important; overflow: hidden; }
-  .home-tasks .task-board { height: 100%; gap: 10px !important; }
-  .home-tasks .task-board > .ant-space-item:last-child { flex: 1; min-height: 0; }
-  .home-tasks .task-board > .ant-space-item:last-child > .ant-row { height: 100%; }
-  .home-tasks .task-board .ant-col { height: 100%; min-height: 0; }
-  .home-tasks .task-column { display: flex; flex-direction: column; }
-  .home-tasks .task-column > .ant-card-head { flex-shrink: 0; min-height: 34px; }
-  .home-tasks .task-column > .ant-card-body { flex: 1; min-height: 0; max-height: none; overflow: auto; }
+  .home-tasks { display: flex; flex-direction: column; min-height: 0; }
+  .home-tasks > .ant-card-body { display: flex; flex: 1; height: auto; min-height: 0; padding: 12px !important; overflow: hidden; }
+  .home-tasks .task-board { width: 100%; height: 100%; min-height: 0; gap: 10px !important; }
+  .home-tasks .task-board > .ant-space-item:last-child { display: flex; flex: 1; min-height: 0; }
+  .home-tasks .task-board > .ant-space-item:last-child .ant-spin-nested-loading,
+  .home-tasks .task-board > .ant-space-item:last-child .ant-spin-container { height: 100%; min-height: 0; }
+  .home-tasks .kanban-board { height: 100%; min-height: 0; }
+  .home-tasks .kanban-board > .ant-col { height: 100%; min-height: 0; }
+  .home-tasks .kanban-drop-target, .home-tasks .kanban-column { height: 100%; min-height: 0; }
+  .home-tasks .kanban-column { display: flex; flex-direction: column; }
+  .home-tasks .kanban-column > .ant-card-head { flex: 0 0 auto; min-height: 34px; }
+  .home-tasks .kanban-column > .ant-card-body {
+    flex: 1; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior: contain;
+  }
 
   .project-overview {
     height: 100%;

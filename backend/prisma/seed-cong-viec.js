@@ -49,6 +49,24 @@ function relativeDate(today, offset) {
   return date;
 }
 
+function startOfLocalDate(date) {
+  const [year, month, day] = toDateOnly(date).split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function dateInVietnam(date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function daysSinceMonday(dateOnly) {
+  const weekday = new Date(`${dateOnly}T00:00:00.000Z`).getUTCDay();
+  return (weekday + 6) % 7;
+}
+
 function buildProjects(employees, today) {
   const manager = employees.find((employee) => employee.users.role === 'manager');
   if (employees.length < 8 || !manager) {
@@ -68,6 +86,7 @@ function buildProjects(employees, today) {
     { code: 'MAU-03', name: 'Đào tạo an toàn lao động', manager,
       members: [manager, ...selected.slice(2, 7)], titles: trainingTitles, completed: false },
   ];
+  let activeCompletedIndex = 0;
   return definitions.map((definition) => {
     const managerId = definition.manager.employee_id;
     return {
@@ -82,10 +101,26 @@ function buildProjects(employees, today) {
         const [offset, status, priority] = definition.completed
           ? [[-20, -17, -14, -10, -6, -2][index], 'xong', priorities[index % priorities.length]]
           : activeTaskPlan[index];
+        let completedAt = null;
+        if (status === 'xong') {
+          let completedOffset;
+          if (definition.completed) {
+            completedOffset = [-3, -4, -5, -6, -8, -10][index];
+          } else {
+            const sequence = activeCompletedIndex++;
+            if (sequence < 3) {
+              const sinceMonday = daysSinceMonday(today);
+              completedOffset = -sinceMonday + Math.min(sequence, sinceMonday);
+            } else {
+              completedOffset = [-8, -11, -14][sequence - 3];
+            }
+          }
+          completedAt = startOfLocalDate(relativeDate(today, completedOffset));
+        }
         return {
           title, description: 'Công việc phục vụ buổi demo',
           assignee_id: definition.members[index % definition.members.length].employee_id,
-          created_by: managerId, due_date: relativeDate(today, offset), priority, status,
+          created_by: managerId, due_date: relativeDate(today, offset), priority, status, completed_at: completedAt,
         };
       }),
     };
@@ -127,6 +162,18 @@ function validateProjects(projects, employees, today) {
       requireValid(toDateOnly(task.due_date) <= toDateOnly(data.end_date), `${data.code}: hạn chót vượt ngày kết thúc`);
       requireValid(statuses.includes(task.status) && priorities.includes(task.priority), `${data.code}: sai trạng thái hoặc ưu tiên`);
       requireValid(task.title.trim().length > 0 && task.title.length <= 200, `${data.code}: tiêu đề không hợp lệ`);
+      if (task.status === 'xong') {
+        requireValid(task.completed_at instanceof Date && !Number.isNaN(task.completed_at.getTime()), `${data.code}: task xong thiếu completed_at`);
+        const completedDate = dateInVietnam(task.completed_at);
+        if (completed) {
+          const age = Math.round((new Date(`${today}T00:00:00.000Z`) - new Date(`${completedDate}T00:00:00.000Z`)) / 86400000);
+          requireValid(age >= 3 && age <= 10 && completedDate <= toDateOnly(data.end_date), `${data.code}: completed_at phải cách 3–10 ngày và không sau ngày kết thúc`);
+        } else {
+          const age = Math.round((new Date(`${today}T00:00:00.000Z`) - new Date(`${completedDate}T00:00:00.000Z`)) / 86400000);
+          const monday = toDateOnly(relativeDate(today, -daysSinceMonday(today)));
+          requireValid((completedDate >= monday && completedDate <= today) || (age >= 8 && age <= 14), `${data.code}: completed_at phải trong tuần này hoặc cách 8–14 ngày`);
+        }
+      } else requireValid(task.completed_at === null, `${data.code}: task chưa xong phải có completed_at = null`);
       if (completed) requireValid(task.status === 'xong', `${data.code}: còn task chưa xong`);
     }
     if (!completed) requireValid(statuses.every((status) => tasks.some((task) => task.status === status)), `${data.code}: thiếu trạng thái task`);
@@ -145,6 +192,13 @@ function validateProjects(projects, employees, today) {
   requireValid(priorities.every((priority) => activeTasks.some((task) => task.priority === priority)), 'thiếu mức ưu tiên');
   requireValid(activeTasks.some((task) => task.status === 'xong' && toDateOnly(task.due_date) < today), 'thiếu task xong có hạn đã qua');
   requireValid(activeTasks.some((task) => task.status !== 'xong' && toDateOnly(task.due_date) > toDateOnly(relativeDate(today, 3))), 'thiếu task còn hạn xa');
+  const activeDoneTasks = activeTasks.filter((task) => task.status === 'xong');
+  const monday = toDateOnly(relativeDate(today, -daysSinceMonday(today)));
+  const completedThisWeek = activeDoneTasks.filter((task) => {
+    const date = dateInVietnam(task.completed_at);
+    return date >= monday && date <= today;
+  }).length;
+  requireValid(completedThisWeek === Math.ceil(activeDoneTasks.length / 2), 'khoảng một nửa task xong của dự án đang thực hiện phải hoàn thành trong tuần này');
   return summaries;
 }
 
@@ -187,6 +241,15 @@ async function seed() {
   })));
   const total = (field) => summaries.reduce((sum, summary) => sum + summary[field], 0);
   console.log(`Tổng: ${total('tasks')} task; ${total('overdue')} quá hạn; ${total('near_due')} sắp hạn (không tính task xong).`);
+  const monday = toDateOnly(relativeDate(today, -daysSinceMonday(today)));
+  const completedThisWeek = await prisma.tasks.count({
+    where: {
+      status: 'xong',
+      completed_at: { gte: startOfLocalDate(new Date(`${monday}T00:00:00.000Z`)), lte: new Date() },
+      projects: { code: { startsWith: 'MAU-' } },
+    },
+  });
+  console.log(`Task xong trong tuần này: ${completedThisWeek}.`);
   console.log('Đã tạo dữ liệu mẫu, chạy lại an toàn. Chỉ thay thế các dự án có mã bắt đầu bằng MAU- và dữ liệu phụ thuộc.');
 }
 
