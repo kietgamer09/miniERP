@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, Typography, Space, DatePicker, message, Button, Modal, Form, Input, Alert, Spin, Tag, Statistic } from 'antd';
 import { PlusOutlined, SendOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -21,7 +21,29 @@ function LeaveManagement() {
   
   const [messageApi, contextHolder] = message.useMessage();
 
-  // Tải thông tin số phép và danh sách đơn đã đăng ký
+  // Tự động nhận diện chế độ Sáng / Tối từ hệ thống
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    const checkTheme = () => {
+      const isDarkMode = document.body.classList.contains('dark') || 
+                         document.documentElement.classList.contains('dark') ||
+                         document.body.getAttribute('data-theme') === 'dark' ||
+                         document.documentElement.getAttribute('data-theme') === 'dark' ||
+                         window.getComputedStyle(document.body).backgroundColor === 'rgb(20, 20, 20)' ||
+                         window.getComputedStyle(document.body).backgroundColor === '#141414';
+      setIsDark(isDarkMode);
+    };
+
+    checkTheme();
+
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'data-theme', 'style'] });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+
+    return () => observer.disconnect();
+  }, []);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -46,14 +68,12 @@ function LeaveManagement() {
     fetchData();
   }, [selectedMonth]);
 
-  // Xây dựng dữ liệu lịch tháng kèm trạng thái đơn nghỉ
   useEffect(() => {
     const monthStr = selectedMonth.format('YYYY-MM');
     const [year, month] = monthStr.split('-').map(Number);
     const totalDays = new Date(year, month, 0).getDate();
     const todayStr = dayjs().format('YYYY-MM-DD');
 
-    // Chuyển đổi các đơn nghỉ của user thành danh sách các ngày chi tiết kèm requestId
     const bookedDaysMap = {};
     myLeaveRequests.forEach(req => {
       if (req.start_date && req.end_date) {
@@ -63,7 +83,7 @@ function LeaveManagement() {
           const dateStr = curr.format('YYYY-MM-DD');
           bookedDaysMap[dateStr] = {
             id: req.Day_off_id,
-            status: req.status, // 'cho_xac_thuc', 'da_duoc_duyet', etc.
+            status: req.status,
             startDate: dayjs(req.start_date).format('DD/MM/YYYY'),
             endDate: dayjs(req.end_date).format('DD/MM/YYYY')
           };
@@ -94,14 +114,12 @@ function LeaveManagement() {
     setMonthData(days);
   }, [selectedMonth, myLeaveRequests]);
 
-  // Xử lý click vào ngày trên lịch
   const handleDayClick = (item) => {
-    // Nếu ngày này đã có đơn đang chờ xác thực -> Mở modal hỏi hủy đơn
     if (item.bookingInfo && item.bookingInfo.status === 'cho_xac_thuc') {
       Modal.confirm({
         title: 'Hủy đơn xin nghỉ phép',
         icon: <ExclamationCircleOutlined />,
-        content: `Bạn có chắc chắn muốn hủy đơn nghỉ từ ngày ${item.bookingInfo.startDate} đến ${item.bookingInfo.endDate} không? (Thao tác này sẽ hủy toàn bộ các ngày chung trong đơn và hoàn lại số phép).`,
+        content: `Bạn có chắc chắn muốn hủy đơn nghỉ từ ngày ${item.bookingInfo.startDate} đến ${item.bookingInfo.endDate} không?`,
         okText: 'Xác nhận hủy',
         okType: 'danger',
         cancelText: 'Quay lại',
@@ -178,20 +196,72 @@ function LeaveManagement() {
   const monthStr = selectedMonth.format('YYYY-MM');
   const offset = (new Date(`${monthStr}-01T00:00:00Z`).getUTCDay() + 6) % 7;
 
+  // Bảng màu: Chế độ tối nền đen y hệt bản gốc, Chế độ sáng tối ưu màu đậm rõ nét, không bị chói
+  const themeStyles = isDark ? {
+    pageBg: '#141414',
+    cardBg: '#141414',
+    textColor: '#ffffff',
+    textSecondary: '#aaa',
+    weekdayColor: '#fff',
+    normalBg: '#1f2937',
+    normalBorder: '#374151',
+    normalText: '#fff',
+    weekendBg: '#1a1a1a',
+    weekendBorder: '#2a2a2a',
+    weekendText: '#777',
+    pastBg: '#3a1c1c',
+    pastBorder: '#5c2222',
+    pastText: '#ff9999',
+    pendingBg: 'rgba(250, 173, 20, 0.2)',
+    pendingBorder: '#faad14',
+    pendingText: '#faad14',
+    approvedBg: 'rgba(82, 196, 26, 0.2)',
+    approvedBorder: '#52c41a',
+    approvedText: '#52c41a',
+    selectedBg: 'rgba(24, 144, 255, 0.2)',
+    selectedBorder: '#1890ff',
+    selectedText: '#fff',
+  } : {
+    pageBg: '#f0f2f5',
+    cardBg: '#ffffff',
+    textColor: '#1f2937',
+    textSecondary: '#4b5563',
+    weekdayColor: '#1f2937',
+    normalBg: '#ffffff',
+    normalBorder: '#cbd5e1',
+    normalText: '#0f172a',
+    weekendBg: '#e2e8f0',
+    weekendBorder: '#cbd5e1',
+    weekendText: '#475569',
+    // Chế độ sáng: Tăng độ đậm và rõ nét cho các trạng thái để dễ nhìn, không bị chói
+    pastBg: '#fecaca',       // Đỏ hồng đậm rõ nét
+    pastBorder: '#f87171',
+    pastText: '#991b1b',
+    pendingBg: '#fde68a',    // Vàng cam đậm
+    pendingBorder: '#fbbf24',
+    pendingText: '#92400e',
+    approvedBg: '#bbf7d0',   // Xanh lá đậm rõ ràng
+    approvedBorder: '#4ade80',
+    approvedText: '#166534',
+    selectedBg: '#bae6fd',   // Xanh dương đậm
+    selectedBorder: '#38bdf8',
+    selectedText: '#0369a1',
+  };
+
   return (
-    <div style={{ padding: '24px', height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--layout-body-background, #141414)' }}>
+    <div style={{ padding: '24px', height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: themeStyles.pageBg, transition: 'background 0.3s' }}>
       {contextHolder}
 
       {/* Header & Thống kê số phép */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
         <div>
-          <Title level={3} style={{ margin: 0 }}>Quản lý & Đăng ký nghỉ phép</Title>
-          <Text type="secondary">Chọn các ngày trong tương lai trên lịch để tiến hành xin nghỉ phép (Tối đa 12 ngày/năm, không cộng dồn).</Text>
+          <Title level={3} style={{ margin: 0, color: themeStyles.textColor }}>Quản lý & Đăng ký nghỉ phép</Title>
+          <Text style={{ color: themeStyles.textSecondary }}>Chọn các ngày trong tương lai trên lịch để tiến hành xin nghỉ phép (Tối đa 12 ngày/năm, không cộng dồn).</Text>
         </div>
         <Space size={16}>
-          <Card bordered={false} style={{ background: '#1f2937', borderRadius: 8 }} bodyStyle={{ padding: '8px 16px' }}>
+          <Card bordered={false} style={{ background: isDark ? '#1f2937' : themeStyles.cardBg, borderRadius: 8, boxShadow: isDark ? 'none' : '0 1px 3px 0 rgba(0, 0, 0, 0.08)' }} bodyStyle={{ padding: '8px 16px' }}>
             <Statistic 
-              title={<span style={{ fontSize: '12px', color: '#aaa' }}>Phép còn lại trong năm</span>}
+              title={<span style={{ fontSize: '12px', color: themeStyles.textSecondary, fontWeight: 500 }}>Phép còn lại trong năm</span>}
               value={leaveSummary.remaining_days} 
               suffix={`/ ${leaveSummary.max_days} ngày`}
               valueStyle={{ color: '#52c41a', fontSize: '18px', fontWeight: 'bold' }}
@@ -215,18 +285,18 @@ function LeaveManagement() {
         </Space>
       </div>
 
-      {/* Thển chứa lịch toàn màn hình */}
+      {/* Thẻ chứa lịch đồng bộ màu sắc */}
       <Card 
         bordered={false} 
-        style={{ borderRadius: 8, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}
-        bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', padding: '24px' }}
+        style={{ background: themeStyles.cardBg, borderRadius: 8, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', boxShadow: isDark ? 'none' : '0 1px 3px 0 rgba(0, 0, 0, 0.08)' }}
+        bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', padding: '24px', background: themeStyles.cardBg }}
       >
         {loading ? (
           <div style={{ textAlign: 'center', padding: '100px' }}><Spin size="large" /></div>
         ) : (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <Text strong style={{ fontSize: 16 }}>Lịch làm việc tháng {selectedMonth.format('MM/YYYY')}</Text>
+              <Text strong style={{ fontSize: 16, color: themeStyles.textColor }}>Lịch làm việc tháng {selectedMonth.format('MM/YYYY')}</Text>
               <Space>
                 <Tag color="processing">Đang chọn: {selectedDates.length} ngày</Tag>
                 {selectedDates.length > 0 && (
@@ -236,9 +306,9 @@ function LeaveManagement() {
             </div>
 
             {/* Lưới lịch dạng grid */}
-            <div className="attendance-calendar" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            <div className="attendance-calendar" style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
               {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(label => (
-                <div className="attendance-weekday" key={label} style={{ textAlign: 'center', fontWeight: 'bold' }}>{label}</div>
+                <div className="attendance-weekday" key={label} style={{ textAlign: 'center', fontWeight: 'bold', color: themeStyles.weekdayColor, paddingBottom: '8px' }}>{label}</div>
               ))}
               {Array.from({ length: offset }, (_, i) => (
                 <div key={`empty-${i}`} />
@@ -246,43 +316,42 @@ function LeaveManagement() {
               {monthData.map(item => {
                 const isSelected = selectedDates.includes(item.date);
                 
-                let bgColor = '#1f2937';
-                let borderColor = '#374151';
-                let textColor = '#fff';
+                let bgColor = themeStyles.normalBg;
+                let borderColor = themeStyles.normalBorder;
+                let textColor = themeStyles.normalText;
                 let labelText = 'Tương lai';
-                let labelColor = '#bbb';
+                let labelColor = themeStyles.textSecondary;
 
                 if (item.isWeekend) {
-                  bgColor = '#1a1a1a';
-                  borderColor = '#2a2a2a';
-                  textColor = '#777';
+                  bgColor = themeStyles.weekendBg;
+                  borderColor = themeStyles.weekendBorder;
+                  textColor = themeStyles.weekendText;
                   labelText = 'Ngày nghỉ';
-                  labelColor = '#888';
+                  labelColor = themeStyles.weekendText;
                 } else if (item.isPast) {
-                  bgColor = '#3a1c1c';
-                  borderColor = '#5c2222';
-                  textColor = '#ff9999';
+                  bgColor = themeStyles.pastBg;
+                  borderColor = themeStyles.pastBorder;
+                  textColor = themeStyles.pastText;
                   labelText = 'Đã qua';
-                  labelColor = '#ff7875';
+                  labelColor = themeStyles.pastText;
                 } else if (item.bookingInfo) {
                   if (item.bookingInfo.status === 'cho_xac_thuc') {
-                    // Màu vàng cho trạng thái chờ duyệt
-                    bgColor = 'rgba(250, 173, 20, 0.2)';
-                    borderColor = '#faad14';
-                    textColor = '#faad14';
+                    bgColor = themeStyles.pendingBg;
+                    borderColor = themeStyles.pendingBorder;
+                    textColor = themeStyles.pendingText;
                     labelText = 'Đã xin nghỉ (chờ duyệt)';
-                    labelColor = '#faad14';
+                    labelColor = themeStyles.pendingText;
                   } else if (item.bookingInfo.status === 'da_duoc_duyet') {
-                    // Màu xanh lá cho đã duyệt
-                    bgColor = 'rgba(82, 196, 26, 0.2)';
-                    borderColor = '#52c41a';
-                    textColor = '#52c41a';
+                    bgColor = themeStyles.approvedBg;
+                    borderColor = themeStyles.approvedBorder;
+                    textColor = themeStyles.approvedText;
                     labelText = 'Đã duyệt';
-                    labelColor = '#52c41a';
+                    labelColor = themeStyles.approvedText;
                   }
                 } else if (isSelected) {
-                  bgColor = 'rgba(24, 144, 255, 0.2)';
-                  borderColor = '#1890ff';
+                  bgColor = themeStyles.selectedBg;
+                  borderColor = themeStyles.selectedBorder;
+                  textColor = themeStyles.selectedText;
                 }
 
                 return (
@@ -290,10 +359,10 @@ function LeaveManagement() {
                     key={item.date} 
                     type="button"
                     style={{
-                      border: `1px solid ${borderColor}`,
+                      border: `1.5px solid ${borderColor}`,
                       background: bgColor,
                       cursor: (item.isPast || item.isWeekend) ? 'not-allowed' : 'pointer',
-                      opacity: (item.isPast || item.isWeekend) ? 0.6 : 1,
+                      opacity: (item.isPast || item.isWeekend) ? 0.9 : 1,
                       minHeight: '85px',
                       display: 'flex',
                       flexDirection: 'column',
@@ -305,11 +374,11 @@ function LeaveManagement() {
                     onClick={() => handleDayClick(item)}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                      <strong style={{ fontSize: '15px', color: textColor }}>{Number(item.date.slice(-2))}</strong>
-                      {isSelected && <Tag color="blue" style={{ margin: 0, fontSize: 10 }}>Đã chọn</Tag>}
-                      {item.bookingInfo && item.bookingInfo.status === 'cho_xac_thuc' && <Tag color="warning" style={{ margin: 0, fontSize: 10 }}>Chờ duyệt</Tag>}
+                      <strong style={{ fontSize: '15px', color: textColor, fontWeight: 'bold' }}>{Number(item.date.slice(-2))}</strong>
+                      {isSelected && <Tag color="blue" style={{ margin: 0, fontSize: 10, fontWeight: 600 }}>Đã chọn</Tag>}
+                      {item.bookingInfo && item.bookingInfo.status === 'cho_xac_thuc' && <Tag color="warning" style={{ margin: 0, fontSize: 10, fontWeight: 600 }}>Chờ duyệt</Tag>}
                     </div>
-                    <span style={{ fontSize: '11px', color: labelColor, fontWeight: item.bookingInfo ? 'bold' : 'normal' }}>
+                    <span style={{ fontSize: '11px', color: labelColor, fontWeight: 'bold' }}>
                       {item.isWeekend ? 'Ngày nghỉ' : (item.isPast ? 'Đã qua' : (item.bookingInfo ? labelText : (isSelected ? 'Sẽ xin nghỉ' : 'Tương lai')))}
                     </span>
                   </button>
