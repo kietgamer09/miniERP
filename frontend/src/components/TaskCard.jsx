@@ -5,7 +5,7 @@ import { formatDateVN } from '../utils/dates';
 const { Text } = Typography;
 
 function TaskCard({ task, onClick, clickable = true, draggable = false, dragRef, dragAttributes,
-  dragListeners, dragStyle, isDragging = false, actions = null }) {
+  dragListeners, isDragging = false, actions = null }) {
   const dueState = getDueState(task);
   const { border } = getDueColor(dueState);
   const bg = dueState === 'overdue' ? 'var(--red-bg)' : dueState === 'near-due' ? 'var(--gold-bg)'
@@ -31,8 +31,7 @@ function TaskCard({ task, onClick, clickable = true, draggable = false, dragRef,
         marginBottom: 8,
         borderRadius: 6,
         cursor: isDragging ? 'grabbing' : draggable ? 'grab' : clickable ? 'pointer' : 'default',
-        ...dragStyle,
-        opacity: isDragging ? 0.35 : 1,
+        opacity: isDragging ? 0 : 1,
       }}
       styles={{ body: { padding: '8px 12px' } }}
       ref={dragRef}

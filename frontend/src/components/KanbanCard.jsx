@@ -7,11 +7,10 @@ export default function KanbanCard({ task, locked = false, disabled = false, onO
   const hasAllowedMoves = task.allowed_moves?.length > 0;
   const projectCompleted = locked || task.project_status === 'hoan_thanh';
   const canMove = !projectCompleted && !disabled && hasAllowedMoves;
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `task-${task.id}`,
     disabled: !canMove,
   });
-  const dragStyle = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
   const lockLabel = projectCompleted ? 'Dự án đã hoàn thành'
     : !task.can_edit && task.is_mine && task.status === 'xong'
       ? 'Chỉ Quản lý dự án hoặc Admin được kéo lùi task đã Xong'
@@ -28,7 +27,7 @@ export default function KanbanCard({ task, locked = false, disabled = false, onO
   return (
     <div className="kanban-task-item">
       <TaskCard task={task} onClick={onOpen ? () => onOpen(task) : undefined} clickable={Boolean(onOpen)}
-        dragRef={setNodeRef} dragAttributes={attributes} dragListeners={listeners} dragStyle={dragStyle}
+        dragRef={setNodeRef} dragAttributes={attributes} dragListeners={listeners}
         isDragging={isDragging} draggable={canMove} actions={actions} />
     </div>
   );
