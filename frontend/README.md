@@ -38,9 +38,12 @@ Mở URL mà Vite in ra trong terminal. Thông tin đăng nhập phải là tài
 - Đổi mật khẩu trong menu tài khoản dùng `PUT /api/users/change-password`; hồ sơ cá nhân dùng `GET /api/users/me`.
 - Trang chủ, `/viec-cua-toi` và `/viec-cua-toi/duoc-giao` tổng hợp task từ `GET /api/projects/:id/tasks`, chỉ giữ công việc của nhân viên đăng nhập. Không hỗ trợ kéo thả hay đổi trạng thái khi backend chưa có endpoint.
 - Hòm thông báo bên trái avatar hiển thị việc chưa xong được giao; tự cập nhật mỗi phút khi website hiển thị, cho tải lại thủ công, đánh dấu đã đọc. Trạng thái đọc lưu riêng theo tài khoản trên trình duyệt.
-- Nhắc chấm công theo lịch 08:00 và 17:00, Thứ 2–Thứ 6, giờ Việt Nam; bật/tắt trong hòm thông báo. Chưa có API chấm công nên chưa xác nhận đã chấm công, chưa hỗ trợ nhắc khi đóng website.
+- Chấm công: `POST /api/attendances/check-in`, `POST /api/attendances/check-out`; đọc lại qua `GET /api/attendances/today` và `GET /api/attendances/me?month=YYYY-MM`. Cùng tài khoản xem được lịch sử giữa trình duyệt/tab; tự đồng bộ mỗi 15 giây, khi focus và sau thao tác. Không gửi giờ hoặc employee_id từ trình duyệt, không dùng cache làm nguồn công. Màu do backend tính theo giờ Việt Nam, giữ nguyên phần TIME khi hiển thị.
+- Bảng công vàng: chỉ muộn hoặc sớm; đỏ: muộn và sớm, vắng không phép sau ca, thiếu/trùng công; xanh lá: đúng và đủ ca. Không tô vắng cho ngày tương lai, cuối tuần, trước ngày bắt đầu làm việc; nghỉ phép đã duyệt có nhãn riêng. Bấm ngày để gửi giải trình qua `POST /api/attendances/explanations`.
+- `/phe-duyet` dành cho Admin xem và xử lý giải trình. Duyệt giữ màu và giờ gốc, thêm nhãn; không tự cộng công. Manager thấy thông báo không có quyền duyệt giải trình này.
+- Nhắc chấm công theo lịch 08:00 và 17:00, Thứ 2–Thứ 6, giờ Việt Nam; ẩn nhắc theo trạng thái thực tế đọc từ server; chưa nhắc khi đóng website.
 - Nút mặt trăng/mặt trời chuyển nền sáng/tối cho toàn bộ giao diện và ghi nhớ trên trình duyệt.
-- Backend chưa có API bảng công, chấm công, làm thêm, nghỉ phép, lương, phê duyệt, tài liệu, sửa/giao lại/đổi trạng thái task, bình luận hay lịch sử thông báo đồng bộ.
+- Backend chưa có API làm thêm, tạo/duyệt nghỉ phép, lương, các loại phê duyệt ngoài giải trình công, tài liệu, sửa/giao lại/đổi trạng thái task, bình luận hay lịch sử thông báo đồng bộ. Cần chuẩn bị bảng giải trình theo `backend/README.md` trước khi chạy phiên bản này.
 - `/api/health`, `/api/auth/admin-dashboard` và `/api/auth/reports` là endpoint kiểm tra; hai endpoint sau hiện chỉ trả thông báo và thông tin token, chưa có dữ liệu nghiệp vụ để dựng dashboard/báo cáo.
 
 Để hiển thị dữ liệu thật cho các khu vực đó, backend cần cung cấp endpoint cùng định dạng response và quyền truy cập tương ứng; sau đó mới có thể nối frontend theo hợp đồng API.

@@ -10,6 +10,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { WorkProvider } from './context/WorkContext';
+import { AttendanceProvider } from './context/AttendanceContext';
 import App from './App';
 import './index.css';
 
@@ -18,7 +19,7 @@ createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <WorkProvider><App /></WorkProvider>
+          <AttendanceProvider><WorkProvider><App /></WorkProvider></AttendanceProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

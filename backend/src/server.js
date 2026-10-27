@@ -30,6 +30,13 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/departments', departmentRoutes)
 app.use('/api/attendances', attendancesRoutes)
 
-app.listen(PORT, () => {
+const server = app.listen(PORT);
+server.once('listening', () => {
   console.log(`Server đang chạy tại http://localhost:${PORT}`);
+});
+server.once('error', error => {
+  console.error(error.code === 'EADDRINUSE'
+    ? `Không thể khởi động: cổng ${PORT} đang được sử dụng.`
+    : `Không thể mở cổng ${PORT}: ${error.code || error.name}`);
+  process.exit(1);
 });

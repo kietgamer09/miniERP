@@ -279,3 +279,28 @@ Dùng dự án kiểm tra riêng vì POST thành công ghi dữ liệu thật. K
 Kiểm tra thêm token thiếu/sai/hết hạn → 401; ID dự án sai → 400; dự án không tồn tại → 404; ngày 30/02, ID người làm sai hoặc tiêu đề quá 200 ký tự → 400. Dự án hoàn thành và body thiếu trường phải báo 409 trước; người làm ngoài dự án và hạn vượt ngày kết thúc phải báo lỗi thành viên trước. Gửi thêm status xong/created_by của người khác không làm thay đổi các giá trị backend tự đặt.
 
 Giao diện `/du-an/:id` có bảng task và form tạo task; chỉ can_manage có nút tạo. Dự án hoàn thành khóa nút với tooltip `Mở lại dự án để tạo task`. Tạo xong tải lại chi tiết, tiến độ và bảng task. Hàng quá hạn đỏ, sắp hạn 0–3 ngày vàng và có nhãn chữ; task xong không nhận cảnh báo hạn. Bảng chuyển due_date/xong sang định dạng của getDueState tại một nơi, không thay quy tắc hiện có.
+
+## 9. Chấm công, lịch sử và giải trình
+
+Xem cách chuẩn bị bảng bổ sung trong `backend/README.md`. Cần chạy `npm run setup:attendance`, `npx prisma generate` và khởi động lại backend. Không xóa hay sửa công gốc khi chuẩn bị bảng hoặc khi duyệt giải trình.
+
+| Endpoint | Quyền | Kết quả |
+|---|---|---|
+| GET `/api/attendances/today` | Nhân viên đang làm việc | `{ server_now, day, record }` của chính tài khoản |
+| GET `/api/attendances/me?month=YYYY-MM` | Nhân viên đang làm việc | `{ month, server_now, start_date, days }`, đủ ngày trong tháng |
+| POST `/api/attendances/check-in` | Nhân viên đang làm việc | 200 `{ message, data }`, giờ server theo Việt Nam |
+| POST `/api/attendances/check-out` | Nhân viên đã vào ca | 200 `{ message, data }`; thiếu vào ca hoặc lặp → 400 |
+| POST `/api/attendances/explanations` | Chủ ngày công | 201, `{ date, reason, makeup_date? }`; trùng ngày → 409 |
+| GET `/api/attendances/explanations?status=...` | Admin | Mảng yêu cầu, tối đa 500, mới nhất trước |
+| PUT `/api/attendances/explanations/:id/review` | Admin khác người gửi | `{ decision, review_note? }`; tự duyệt → 403; đã xử lý → 409 |
+
+`day` gồm `date`, `check_in`, `check_out`, `status`, `color`, `label`, `late`, `early`, `can_explain`, `explanation`. `explanation` gồm lý do, ngày đề nghị bù, trạng thái pending/approved/rejected, người duyệt, ghi chú, thời điểm gửi/duyệt và `can_review`. Client không được tự đặt nhân viên, trạng thái duyệt hay giờ công.
+
+- Xanh lá: vào ≤ 08:00:00 và ra ≥ 17:00:00.
+- Vàng: chỉ vào muộn hoặc chỉ ra sớm. Vào muộn trong ca hiện vàng ngay.
+- Đỏ: vừa muộn vừa sớm; hết ngày/ca mà không có công hoặc phép duyệt; thiếu lượt vào/ra hoặc trùng bản ghi cần kiểm tra.
+- Trung tính: ngày chưa kết thúc mà chưa vào ca, ngày tương lai, cuối tuần, trước ngày bắt đầu làm việc. Trong ca đúng giờ hiện xanh dương, chưa được tính là đủ ca. Nghỉ phép đã duyệt có nhãn xanh dương.
+- Mọi quy tắc dùng giờ Việt Nam. Không có lịch nghỉ lễ/ca đặc thù; UI nêu rõ khi thiếu ngày bắt đầu làm việc.
+- Giải trình chỉ cho ngày bất thường; lý do bắt buộc 1–2000 ký tự, ngày đề nghị bù tùy chọn là ngày làm việc không ở quá khứ. Một yêu cầu/ngày; trạng thái đã xử lý được giữ để tra cứu.
+- Chỉ Admin duyệt, không tự duyệt; từ chối cần ghi chú. Duyệt không sửa giờ hoặc màu gốc, không tự cộng giờ bù/lương.
+- GET luôn giới hạn theo nhân viên từ token, không tin employee_id trong query/body. Mọi thao tác ghi công có khóa nhân viên/ngày để tránh chấm trùng giữa trình duyệt. Bản ghi trùng cũ không bị xóa/gộp tự động.
