@@ -7,16 +7,16 @@
   padding: 4px 10px;
   margin: 8px 0 4px;
   overflow: hidden;
-  border: 1px solid #c9d4cf;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #f4f6f5;
-  color: #163525;
+  background: var(--subtle-bg);
+  color: var(--text);
 }
 
 .project-progress-fill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: #95deaa;
+  background: var(--progress-fill, #95deaa);
 }
 
 .project-progress-bar > span {

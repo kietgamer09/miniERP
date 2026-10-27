@@ -32,11 +32,16 @@ Mở URL mà Vite in ra trong terminal. Thông tin đăng nhập phải là tài
 ## Kết nối backend hiện có
 
 - `POST /api/auth/login`: đăng nhập bằng `{ "username": "...", "password": "..." }`; frontend lưu JWT và thông tin người dùng nhận được.
-- Dự án (`/du-an`, `/du-an/cua-toi`, `/du-an/tien-do`): dùng `GET/POST /api/projects` và `PUT /api/projects/:id`. Danh sách hiển thị tiến độ backend trả về; manager/admin được thêm, admin hoặc quản lý dự án được sửa. Đăng nhập lại sau cập nhật để lưu `employee_id` cho quyền sửa.
+- Dự án (`/du-an`, `/du-an/cua-toi`, `/du-an/tien-do`, `/du-an/:id`): danh sách, tạo, sửa, xóa, hoàn thành/mở lại, thành viên, tạo/xem task. Quyền sửa dùng `can_manage` do backend trả về.
 - Nhân viên (`/quan-ly-nhan-vien`): dùng `GET /api/users/employee-list`, `POST /api/users/employee-create`, `PUT /api/users/employee-update/:id`. Mọi vai trò được xem; chỉ admin thấy nút thêm/sửa. Tạo thành công hiển thị `login_info` do backend trả về, chỉ giữ trong bộ nhớ đến khi đóng hộp thoại.
-- Form nhân viên lấy gợi ý phòng ban từ dữ liệu nhân viên hiện có. Chưa có API phòng ban trong backend này; có thể nhập mã phòng ban đã tồn tại nhưng chưa có nhân viên. Thay số điện thoại không thay username theo hợp đồng API hiện tại.
-- `/api/health`, `/api/users/change-password`, `/api/auth/admin-dashboard` và `/api/auth/reports` có trong backend nhưng chưa được frontend sử dụng tại các màn hình hiện tại.
-- Backend hiện chưa có endpoint danh sách task, bảng công hoặc chấm công. Các khu vực này hiển thị thông báo chưa tích hợp; frontend không tự tạo dữ liệu thay thế.
+- Phòng ban và form nhân viên lấy danh sách thật từ `GET /api/departments/department-list`. Backend chưa có API thêm/sửa/xóa phòng ban, nên các nút tương ứng tạm vô hiệu hóa.
+- Đổi mật khẩu trong menu tài khoản dùng `PUT /api/users/change-password`; hồ sơ cá nhân dùng `GET /api/users/me`.
+- Trang chủ, `/viec-cua-toi` và `/viec-cua-toi/duoc-giao` tổng hợp task từ `GET /api/projects/:id/tasks`, chỉ giữ công việc của nhân viên đăng nhập. Không hỗ trợ kéo thả hay đổi trạng thái khi backend chưa có endpoint.
+- Hòm thông báo bên trái avatar hiển thị việc chưa xong được giao; tự cập nhật mỗi phút khi website hiển thị, cho tải lại thủ công, đánh dấu đã đọc. Trạng thái đọc lưu riêng theo tài khoản trên trình duyệt.
+- Nhắc chấm công theo lịch 08:00 và 17:00, Thứ 2–Thứ 6, giờ Việt Nam; bật/tắt trong hòm thông báo. Chưa có API chấm công nên chưa xác nhận đã chấm công, chưa hỗ trợ nhắc khi đóng website.
+- Nút mặt trăng/mặt trời chuyển nền sáng/tối cho toàn bộ giao diện và ghi nhớ trên trình duyệt.
+- Backend chưa có API bảng công, chấm công, làm thêm, nghỉ phép, lương, phê duyệt, tài liệu, sửa/giao lại/đổi trạng thái task, bình luận hay lịch sử thông báo đồng bộ.
+- `/api/health`, `/api/auth/admin-dashboard` và `/api/auth/reports` là endpoint kiểm tra; hai endpoint sau hiện chỉ trả thông báo và thông tin token, chưa có dữ liệu nghiệp vụ để dựng dashboard/báo cáo.
 
 Để hiển thị dữ liệu thật cho các khu vực đó, backend cần cung cấp endpoint cùng định dạng response và quyền truy cập tương ứng; sau đó mới có thể nối frontend theo hợp đồng API.
 
@@ -52,7 +57,7 @@ Mở URL mà Vite in ra trong terminal. Thông tin đăng nhập phải là tài
 
 - `components/`: thành phần giao diện
 - `config/`: cấu hình menu
-- `context/`: trạng thái đăng nhập
+- `context/`: trạng thái đăng nhập, giao diện và dữ liệu công việc dùng chung
 - `layouts/`: khung ứng dụng
 - `pages/`: các trang
 - `services/`: lời gọi API

@@ -1,24 +1,28 @@
 /** Hàm gọi API dùng chung cho các dịch vụ frontend. */
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
-const STORAGE_KEY = 'miniErpAuth';
+let currentToken = '';
+let sessionVersion = 0;
 
-function readToken() {
-  try {
-    const session = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || 'null');
-    return typeof session?.token === 'string' ? session.token : '';
-  } catch {
-    return '';
-  }
+// AuthProvider đồng bộ token trước khi giao diện gửi yêu cầu API.
+function setAuthToken(token) {
+  currentToken = typeof token === 'string' ? token : '';
+  sessionVersion += 1;
 }
 
-async function request(path, { method = 'GET', body } = {}) {
+async function request(path, { method = 'GET', body, params } = {}) {
   const headers = { 'Content-Type': 'application/json' };
-  const token = readToken();
+  const token = currentToken;
+  const requestSession = sessionVersion;
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let response;
   try {
-    response = await fetch(`${API_URL}${path}`, {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params || {})) {
+      if (value !== undefined && value !== null && value !== '') query.set(key, String(value));
+    }
+    const suffix = query.size ? `${path.includes('?') ? '&' : '?'}${query}` : '';
+    response = await fetch(`${API_URL}${path}${suffix}`, {
       method,
       headers,
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -41,7 +45,7 @@ async function request(path, { method = 'GET', body } = {}) {
   if (!response.ok) {
     const error = new Error(payload?.error || 'Có lỗi xảy ra');
     error.status = response.status;
-    if (response.status === 401) {
+    if (response.status === 401 && token && requestSession === sessionVersion) {
       window.dispatchEvent(new Event('auth:unauthorized'));
     }
     throw error;
@@ -50,4 +54,4 @@ async function request(path, { method = 'GET', body } = {}) {
   return payload;
 }
 
-export { request };
+export { request, setAuthToken };

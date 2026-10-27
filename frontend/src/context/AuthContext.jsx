@@ -1,6 +1,7 @@
 /** Quản lý tài khoản và phiên đăng nhập trong giao diện. */
 import { createContext, useContext, useEffect, useState } from 'react';
 import { login as loginRequest, normalizeRole } from '../services/authApi';
+import { setAuthToken } from '../services/http';
 
 const STORAGE_KEY = 'miniErpAuth';
 const AuthContext = createContext(null);
@@ -25,10 +26,15 @@ function readSession() {
 }
 
 function AuthProvider({ children }) {
-  const [session, setSession] = useState(readSession);
+  const [session, setSession] = useState(() => {
+    const saved = readSession();
+    setAuthToken(saved.token);
+    return saved;
+  });
 
   async function login(username, password) {
     const nextSession = await loginRequest(username, password);
+    setAuthToken(nextSession.token);
     setSession({ user: nextSession.user, token: nextSession.token });
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession));
@@ -39,6 +45,7 @@ function AuthProvider({ children }) {
   }
 
   function logout() {
+    setAuthToken(null);
     setSession({ user: null, token: null });
     try {
       window.localStorage.removeItem(STORAGE_KEY);

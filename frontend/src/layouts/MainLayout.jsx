@@ -7,13 +7,17 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
-  Layout, Menu, Avatar, Dropdown, Button, Typography, Space, Grid, Drawer,
+  Layout, Menu, Avatar, Dropdown, Button, Typography, Space, Grid, Drawer, Tooltip,
 } from 'antd';
 import {
-  MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined, RightOutlined,
+  MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined, RightOutlined, MoonOutlined, SunOutlined,
 } from '@ant-design/icons';
 import { useAuth, useRole } from '../context/AuthContext';
 import { filterMenuByRole, fullMenuItems, findOpenKeys } from '../config/menu';
+import { useTheme } from '../hooks/useTheme';
+import { useMyWork } from '../hooks/useMyWork';
+import NotificationInbox from '../components/NotificationInbox';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -21,6 +25,9 @@ const { Text } = Typography;
 function MainLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const { mode, toggleTheme } = useTheme();
+  const { profile } = useMyWork();
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
   const { role } = useRole();
@@ -58,7 +65,7 @@ function MainLayout() {
   // Menu thả xuống của avatar
   const avatarMenu = {
     items: [
-      { key: 'password', label: 'Đổi mật khẩu', onClick: () => { /* TODO */ } },
+      { key: 'password', label: 'Đổi mật khẩu', onClick: () => setPasswordOpen(true) },
       {
         key: 'logout',
         label: 'Đăng xuất',
@@ -95,8 +102,8 @@ function MainLayout() {
       <Header
         className="app-header"
         style={{
-          background: '#ffffff',
-          borderBottom: '1px solid #e8e8e8',
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -119,7 +126,7 @@ function MainLayout() {
           />
           <Text
             strong
-            style={{ fontSize: 16, cursor: 'pointer', color: '#1f1f1f' }}
+            style={{ fontSize: 16, cursor: 'pointer' }}
             onClick={() => navigate('/')}
           >
             Hệ thống miniERP
@@ -128,18 +135,23 @@ function MainLayout() {
 
         {/* Bên phải: thông tin người dùng */}
         <Space size="middle" className="app-header-actions">
+          <Tooltip title={mode === 'dark' ? 'Chuyển sang nền sáng' : 'Chuyển sang nền tối'}>
+            <Button type="text" icon={mode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
+              aria-label={mode === 'dark' ? 'Chuyển sang nền sáng' : 'Chuyển sang nền tối'} onClick={toggleTheme} />
+          </Tooltip>
+          <NotificationInbox />
           <Dropdown menu={avatarMenu} trigger={['click']}>
-            <Space style={{ cursor: 'pointer' }}>
+            <button type="button" className="account-trigger" aria-label="Tài khoản của tôi">
               <Avatar
                 shape="square"
                 icon={<UserOutlined />}
                 style={{ backgroundColor: '#d9d9d9', color: '#595959', borderRadius: 4 }}
               />
-              <Text className="header-user-name" style={{ color: '#262626' }}>
-                {user?.fullName || 'Người dùng'}
+              <Text className="header-user-name">
+                {profile?.fullname || user?.fullName || 'Người dùng'}
               </Text>
               <RightOutlined style={{ fontSize: 10, color: '#8c8c8c' }} />
-            </Space>
+            </button>
           </Dropdown>
         </Space>
       </Header>
@@ -152,7 +164,7 @@ function MainLayout() {
           collapsed={collapsed}
           trigger={null}
           width={240}
-          style={{ background: '#fff' }}
+          style={{ background: 'var(--surface)' }}
         >
           {renderMenu()}
         </Sider>
@@ -161,7 +173,7 @@ function MainLayout() {
           className="mobile-navigation-drawer"
           title="Điều hướng"
           placement="left"
-          width={260}
+          size={260}
           open={mobileMenuOpen}
           onClose={() => setMobileMenuOpen(false)}
           styles={{ body: { padding: 0 } }}
@@ -170,11 +182,12 @@ function MainLayout() {
         </Drawer>
 
         {/* ===== VÙNG NỘI DUNG ===== */}
-        <Content className="app-content" style={{ padding: 16, background: '#f5f5f5', overflow: 'auto', minWidth: 0 }}>
+        <Content className="app-content" style={{ padding: 16, background: 'var(--page-bg)', overflow: 'auto', minWidth: 0 }}>
           {/* Outlet render trang con theo Route */}
           <Outlet />
         </Content>
       </Layout>
+      {passwordOpen && <ChangePasswordModal onClose={() => setPasswordOpen(false)} />}
     </Layout>
   );
 }

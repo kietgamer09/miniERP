@@ -7,7 +7,7 @@ function TimesheetCard() {
       <Alert
         type="info"
         showIcon
-        message="Backend chưa cung cấp API bảng công."
+        title="Backend chưa cung cấp API bảng công."
         description="Chưa có dữ liệu chấm công để hiển thị."
       />
     </Card>
