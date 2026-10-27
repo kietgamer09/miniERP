@@ -1,6 +1,7 @@
 import express from 'express';
 import { checkIn, checkOut, getToday, getMyAttendances, createExplanation, listExplanations, reviewExplanation } from '../controllers/attendanceController.js';
 import { verifyToken, authorizeRoles } from '../middlewares/authMiddleware.js';
+import { getCompanyAttendanceSummary, getEmployeeAttendanceByAdmin } from '../controllers/attendanceController.js';
 
 const router = express.Router();
 router.use(verifyToken);
@@ -13,4 +14,8 @@ router.put('/explanations/:id/review', authorizeRoles('admin'), reviewExplanatio
 router.post('/check-in', checkIn);
 router.post('/check-out', checkOut);
 
+// Route cho phép HR/Admin lấy bảng công toàn công ty theo tháng
+router.get('/company-summary', authorizeRoles('admin'), getCompanyAttendanceSummary);
+
+router.get('/employee-attendance/:id', authorizeRoles('admin'), getEmployeeAttendanceByAdmin);
 export default router;

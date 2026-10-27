@@ -1,5 +1,6 @@
 import { request } from './http';
 
+// --- Các hàm cũ của bạn ---
 export function checkIn() {
   return request('/api/attendances/check-in', { method: 'POST' });
 }
@@ -29,4 +30,13 @@ export function listAttendanceExplanations(status) {
 
 export function reviewAttendanceExplanation(id, body) {
   return request(`/api/attendances/explanations/${id}/review`, { method: 'PUT', body });
+}
+
+// --- BỔ SUNG MỚI CHO BẢNG CÔNG CÔNG TY & XEM CHI TIẾT NHÂN VIÊN ---
+export function getCompanyAttendanceSummary(month) {
+  return request('/api/attendances/company-summary', { params: { month } });
+}
+
+export function getEmployeeAttendanceByAdmin(employeeId, month) {
+  return request(`/api/attendances/employee-attendance/${employeeId}`, { params: { month } });
 }

@@ -15,6 +15,7 @@ import MyProfile from './pages/MyProfile';
 import Placeholder from './pages/Placeholder';
 import Attendance from './pages/Attendance';
 import AttendanceApprovals from './pages/AttendanceApprovals';
+import CompanyAttendance from './components/CompanyAttendance';
 import { getAllPaths, fullMenuItems } from './config/menu';
 
 // Lấy toàn bộ đường dẫn từ cây menu
@@ -30,6 +31,7 @@ const pages = {
   '/viec-cua-toi': MyTasksPage,
   '/viec-cua-toi/duoc-giao': MyTasksPage,
   '/quan-ly-phong-ban': Departments,
+  '/cham-cong/bang-cong-cong-ty': CompanyAttendance,
 };
 
 function App() {
