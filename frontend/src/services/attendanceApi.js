@@ -1,21 +1,36 @@
 import { request } from './http';
 
-export async function checkInApi() {
-  return await request('/api/attendances/check-in', {
+export function checkIn() {
+  return request('/api/attendances/check-in', { method: 'POST' });
+}
+
+export function checkOut(confirmedEarly = false) {
+  return request('/api/attendances/check-out', {
     method: 'POST',
+    body: { confirmedEarly },
   });
 }
 
-export async function checkOutApi(confirmedEarly = false) {
-  return await request('/api/attendances/check-out', {
-    method: 'POST',
-    body: { confirmedEarly }, // Truyền object trực tiếp, không dùng JSON.stringify ở đây nữa vì hàm request tự lo việc đó
-    data: { confirmedEarly }  // Dự phòng nếu hàm request của dự án dùng axios
-  });
+export function getTodayAttendance() {
+  return request('/api/attendances/today');
 }
 
-export async function getTodayAttendanceApi() {
-  return await request('/api/attendances/today', {
-    method: 'GET',
-  });
+export function getMyAttendances(month) {
+  return request('/api/attendances/me', { params: { month } });
 }
+
+export function createAttendanceExplanation(body) {
+  return request('/api/attendances/explanations', { method: 'POST', body });
+}
+
+export function listAttendanceExplanations(status) {
+  return request('/api/attendances/explanations', { params: { status } });
+}
+
+export function reviewAttendanceExplanation(id, body) {
+  return request(`/api/attendances/explanations/${id}/review`, { method: 'PUT', body });
+}
+
+export const checkInApi = checkIn;
+export const checkOutApi = checkOut;
+export const getTodayAttendanceApi = getTodayAttendance;
