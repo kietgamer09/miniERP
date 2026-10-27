@@ -1,57 +1,78 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { AttendanceContext } from './appContexts';
-import { checkIn, checkOut } from '../services/attendanceApi';
-import { attendanceDay, isAttendanceWeekend, normalizeAttendance, readAttendance } from '../utils/attendance';
+import { checkIn, checkOut, getTodayAttendance } from '../services/attendanceApi';
+import { attendanceDay, isAttendanceWeekend, normalizeAttendance } from '../utils/attendance';
 
-function AttendanceSession({ children, storageKey }) {
-  const [day, setDay] = useState(attendanceDay);
-  const [snapshot, setSnapshot] = useState(() => readAttendance(storageKey, attendanceDay()));
+function AttendanceSession({ children, identity }) {
+  const [state, setState] = useState({ day: attendanceDay(), record: null, dayInfo: null, loading: true, error: '', revision: 0 });
   const [busy, setBusy] = useState('');
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
   const pending = useRef(false);
-  const record = snapshot?.date === day ? snapshot : null;
-  useEffect(() => {
-    const refreshDay = () => setDay(attendanceDay());
-    const timer = setInterval(refreshDay, 15000);
-    document.addEventListener('visibilitychange', refreshDay);
-    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', refreshDay); };
+  const alive = useRef(false);
+  const sequence = useRef(0);
+  const signature = useRef('');
+  const channel = useRef(null);
+
+  const refresh = useCallback(async () => {
+    const request = ++sequence.current;
+    try {
+      const result = await getTodayAttendance();
+      const record = result?.record == null ? null : normalizeAttendance(result.record);
+      if (!result?.day?.date || (result.record != null && !record)) throw new Error('Dữ liệu chấm công từ máy chủ không hợp lệ.');
+      if (!alive.current || request !== sequence.current) return;
+      const nextSignature = JSON.stringify({ day: result.day, record });
+      const changed = signature.current !== nextSignature;
+      signature.current = nextSignature;
+      setState(previous => ({ day: result.day.date, record, dayInfo: result.day, loading: false, error: '',
+        revision: previous.revision + Number(changed) }));
+    } catch (error) {
+      if (alive.current && request === sequence.current) setState(previous => ({ ...previous, loading: false,
+        error: `${error.message || 'Không tải được chấm công'} Dữ liệu cũ (nếu có) chưa được xác minh lại.` }));
+    }
   }, []);
+
+  useEffect(() => {
+    alive.current = true;
+    refresh();
+    const visibleRefresh = () => { if (!document.hidden && !pending.current) refresh(); };
+    const timer = setInterval(visibleRefresh, 15000);
+    document.addEventListener('visibilitychange', visibleRefresh);
+    window.addEventListener('focus', visibleRefresh);
+    try {
+      channel.current = new BroadcastChannel('miniErpAttendance');
+      channel.current.onmessage = event => { if (event.data?.identity === identity) refresh(); };
+    } catch { /* Trình duyệt không hỗ trợ: vẫn đồng bộ qua API khi mở tab và mỗi 15 giây. */ }
+    const activeChannel = channel.current;
+    return () => {
+      alive.current = false;
+      clearInterval(timer); document.removeEventListener('visibilitychange', visibleRefresh);
+      window.removeEventListener('focus', visibleRefresh); activeChannel?.close();
+    };
+  }, [refresh, identity]);
 
   async function submitAttendance(action) {
     if (pending.current || !['in', 'out'].includes(action)) return null;
     pending.current = true;
+    sequence.current++;
     setBusy(action);
-    setError('');
-    setNotice('');
+    setState(previous => ({ ...previous, error: '' }));
     try {
       const result = await (action === 'in' ? checkIn() : checkOut());
-      const next = normalizeAttendance(result?.data);
-      if (!next || (action === 'in' && !next.check_in) || (action === 'out' && !next.check_out)) {
-        throw new Error('Máy chủ đã phản hồi nhưng dữ liệu chấm công không hợp lệ. Không gửi lại liên tục; hãy kiểm tra với quản trị viên.');
-      }
-      setSnapshot(next);
-      const today = attendanceDay();
-      setDay(today);
-      if (next.date !== today) setNotice(`Máy chủ ghi công cho ngày ${next.date}, khác ngày hiện tại ở Việt Nam. Cần kiểm tra múi giờ backend.`);
-      try { sessionStorage.setItem(storageKey, JSON.stringify(next)); }
-      catch { setNotice('Chấm công đã được ghi trên máy chủ; trình duyệt không lưu được kết quả để hiển thị sau F5.'); }
+      await refresh();
+      channel.current?.postMessage({ identity });
       return result;
-    } catch (err) {
-      setError(err.message || 'Không gửi được yêu cầu chấm công');
-      throw err;
-    } finally { pending.current = false; setBusy(''); }
+    } catch (error) {
+      await refresh();
+      if (alive.current) setState(previous => ({ ...previous, error: error.message || 'Không gửi được chấm công' }));
+      throw error;
+    } finally { pending.current = false; if (alive.current) setBusy(''); }
   }
-
-  return <AttendanceContext.Provider value={{ day, record, busy, error, notice,
-    weekend: isAttendanceWeekend(day), submitAttendance }}>{children}</AttendanceContext.Provider>;
+  return <AttendanceContext.Provider value={{ ...state, busy, notice: '', weekend: isAttendanceWeekend(state.day),
+    refresh, submitAttendance }}>{children}</AttendanceContext.Provider>;
 }
 
 export function AttendanceProvider({ children }) {
   const { user } = useAuth();
   const identity = user?.id ?? user?.username;
-  return user ? <AttendanceSession key={identity} storageKey={`miniErpAttendance:v1:${identity}`}>
-    {children}
-  </AttendanceSession> : children;
+  return user ? <AttendanceSession key={identity} identity={identity}>{children}</AttendanceSession> : children;
 }

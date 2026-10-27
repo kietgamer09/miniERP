@@ -55,8 +55,8 @@ function Inbox({ storageKey }) {
         <Typography.Text>Nhắc chấm công lúc 08:00 và 17:00</Typography.Text>
       </Space>
       <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-        Công việc tự cập nhật mỗi phút. Nhắc chấm công theo lịch; ẩn lời nhắc tương ứng sau khi chấm công thành công trên tab này.
-        {' '}Chưa có API đọc trạng thái từ thiết bị khác.
+        Công việc tự cập nhật mỗi phút. Trạng thái chấm công được đọc từ máy chủ, đồng bộ giữa các tab/trình duyệt;
+        {' '}ẩn lời nhắc sau khi đã vào/ra ca.
       </Typography.Paragraph>
       {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />}
       {warning && <Alert type="warning" title={warning} showIcon style={{ marginBottom: 12 }} />}

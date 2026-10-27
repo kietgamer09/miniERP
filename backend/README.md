@@ -90,3 +90,25 @@ Khởi động server ở chế độ phát triển (Development):
 npm run dev
 
 Server sẽ chạy tại địa chỉ mặc định: http://localhost:5000
+
+## Lịch sử công và giải trình chấm bù
+
+Sau khi nhận phiên bản này, tại thư mục `backend` chạy:
+
+```bash
+npm run setup:attendance
+npx prisma generate
+npm run dev
+```
+
+`setup:attendance` chạy SQL bổ sung ở `prisma/sql/attendance-explanations.sql` trong một transaction. Lệnh tạo bảng giải trình nếu chưa có, chạy lại được và không xóa/sửa bản ghi công. Dự án chưa có baseline Prisma Migrate nên phần bổ sung này không dùng `migrate reset` hoặc tự chạy `db push` trên dữ liệu hiện có.
+
+- `GET /api/attendances/today`: công hôm nay của tài khoản đăng nhập, màu/trạng thái và yêu cầu đã gửi.
+- `GET /api/attendances/me?month=YYYY-MM`: bảng công tháng của chính người gọi.
+- `POST /api/attendances/explanations`: `{ date, reason, makeup_date? }`, chỉ gửi cho ngày cần giải trình, một yêu cầu/ngày; lý do 1–2000 ký tự. `makeup_date` không bắt buộc, phải là ngày làm việc từ hôm nay trở đi.
+- `GET /api/attendances/explanations?status=pending|approved|rejected`: chỉ Admin, tối đa 500 yêu cầu gần nhất.
+- `PUT /api/attendances/explanations/:id/review`: chỉ Admin, `{ decision: "approved" | "rejected", review_note? }`; từ chối bắt buộc lý do, không tự duyệt, không duyệt lại. Giờ chấm công gốc không thay đổi.
+
+Mọi API yêu cầu Bearer token. Ca tính theo Asia/Ho_Chi_Minh, mốc vào 08:00:00, ra 17:00:00; SQL TIME không được cộng thêm 7 giờ khi hiển thị. Khóa transaction theo nhân viên/ngày ngăn hai trình duyệt tạo bản ghi vào ca trùng nhau. Dữ liệu công trùng đã có từ trước được đánh dấu cần kiểm tra, không tự xóa/gộp.
+
+Màu: vàng nếu chỉ muộn hoặc sớm; đỏ nếu vừa muộn vừa sớm, vắng không phép sau khi hết ca hoặc thiếu/trùng công; xanh lá nếu đúng đủ ca. Ngày tương lai/cuối tuần/trước ngày bắt đầu làm việc không tính vắng; nghỉ phép đã duyệt đọc từ `Day_off_requests`. Duyệt giải trình giữ nguyên màu, gắn nhãn “Đã duyệt chấm bù”, chưa tự cộng giờ bù hay tính lương. Chưa có lịch nghỉ lễ/ca đặc thù; hồ sơ thiếu ngày bắt đầu được chú thích ở giao diện.

@@ -10,6 +10,8 @@ import { App, Card, Button, Typography, Space, Divider, Alert, Popconfirm, Tag }
 import { ClockCircleOutlined, CalendarOutlined } from '@ant-design/icons';
 import { formatDateOnlyVN, formatFullDateVN, parseDateOnly } from '../utils/dates';
 import { useAttendance } from '../hooks/useAttendance';
+import { useNavigate } from 'react-router-dom';
+import { explanationLabels } from '../utils/attendance';
 
 const { Text, Title } = Typography;
 
@@ -24,7 +26,8 @@ function HandIcon() {
 
 function AttendanceCard() {
   const [now, setNow] = useState(() => new Date());
-  const { day, record, busy, error, notice, weekend, submitAttendance } = useAttendance();
+  const { day, record, dayInfo, loading, busy, error, notice, weekend, refresh, submitAttendance } = useAttendance();
+  const navigate = useNavigate();
   const { message } = App.useApp();
 
   // Cập nhật đồng hồ mỗi giây
@@ -72,13 +75,13 @@ function AttendanceCard() {
 
         <Space wrap className="attendance-action">
           <Button type="primary" icon={<HandIcon />} loading={busy === 'in'}
-            disabled={weekend || Boolean(busy) || Boolean(record?.check_in)} onClick={() => punch('in')}>
+            disabled={loading || !dayInfo || weekend || Boolean(busy) || Boolean(record?.check_in) || dayInfo?.status === 'conflict'} onClick={() => punch('in')}>
             Vào ca
           </Button>
           <Popconfirm title="Xác nhận ra ca?" description="Máy chủ sẽ ghi nhận giờ ra ca ngay lúc xác nhận."
             okText="Ra ca" cancelText="Hủy" onConfirm={() => punch('out')}
-            disabled={weekend || Boolean(busy) || Boolean(record?.check_out)}>
-            <Button loading={busy === 'out'} disabled={weekend || Boolean(busy) || Boolean(record?.check_out)}>Ra ca</Button>
+            disabled={loading || !dayInfo || weekend || Boolean(busy) || !record?.check_in || Boolean(record?.check_out)}>
+            <Button loading={busy === 'out'} disabled={loading || !dayInfo || weekend || Boolean(busy) || !record?.check_in || Boolean(record?.check_out)}>Ra ca</Button>
           </Popconfirm>
         </Space>
       </div>
@@ -86,6 +89,7 @@ function AttendanceCard() {
       {/* Dòng dưới: khung thông tin ca */}
       <div style={{ padding: 16 }}>
         <div
+          className={`attendance-status--${dayInfo?.color || 'default'}`}
           style={{
             background: 'var(--subtle-bg)',
             border: '1px solid var(--border)',
@@ -104,16 +108,19 @@ function AttendanceCard() {
 
           <Divider style={{ margin: '12px 0' }} />
 
-          {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />}
+          {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} action={<Button onClick={refresh}>Tải lại</Button>} />}
           {notice && <Alert type="warning" title={notice} showIcon style={{ marginBottom: 12 }} />}
           {weekend && <Alert type="info" title="Thứ 7 và Chủ nhật không cần chấm công." style={{ marginBottom: 12 }} />}
-          <Tag style={{ whiteSpace: 'normal' }} color={record?.check_out ? 'green' : record?.check_in ? 'blue' : undefined}>
-            {record?.check_out ? 'Đã ra ca' : record?.check_in ? 'Đã vào ca' : 'Chưa có kết quả chấm công trên trình duyệt này'}
+          <Tag style={{ whiteSpace: 'normal' }} color={dayInfo?.color}>
+            {loading ? 'Đang tải công từ máy chủ' : dayInfo?.label || 'Chưa tải được chấm công'}
           </Tag>
           <Typography.Paragraph type="secondary" style={{ marginTop: 8, fontSize: 12 }}>
-            Giờ hiển thị theo Việt Nam. Kết quả từ lần chấm công thành công được giữ sau F5 trong tab này.
-            {' '}Chưa có API đọc lại trạng thái; nếu đã vào ca ở nơi khác, bạn vẫn có thể chọn Ra ca để máy chủ kiểm tra.
+            Dữ liệu lưu trên máy chủ, đọc lại giữa các tab và trình duyệt. Giờ Việt Nam; tự đồng bộ mỗi 15 giây và khi quay lại tab.
           </Typography.Paragraph>
+          {dayInfo?.can_explain && !dayInfo.explanation && <Alert type={dayInfo.color === 'red' ? 'error' : 'warning'}
+            title="Có thể gửi giải trình và đề nghị chấm bù." showIcon style={{ marginBottom: 12 }}
+            action={<Button onClick={() => navigate(`/cham-cong/bang-cong?date=${day}`)}>Giải trình</Button>} />}
+          {dayInfo?.explanation && <Tag>{explanationLabels[dayInfo.explanation.status]}</Tag>}
 
           <div className="attendance-punch-times" style={{ display: 'flex', gap: 40 }}>
             <div>
