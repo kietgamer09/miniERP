@@ -25,28 +25,12 @@ const recordData = row => row ? {
   check_out: formatTimeVN(row.check_out)
 } : null;
 
-const explanationData = (row, req) => row ? {
-  id: row.id,
-  employee_id: row.employee_id,
-  date: dateOnly(row.date),
-  reason: row.reason,
-  makeup_date: dateOnly(row.makeup_date),
-  status: row.status,
-  review_note: row.review_note,
-  created_at: row.created_at,
-  reviewed_at: row.reviewed_at,
-  reviewed_by: row.reviewed_by,
-  employee_name: row.employees?.fullname,
-  reviewer_name: row.reviewer?.username,
-  can_review: req.user.role === 'admin' && row.status === 'pending' && row.employees?.user_id !== Number(req.user.user_id),
-} : null;
-
 function handler(action) {
   return async (req, res) => {
     try { await action(req, res); }
     catch (error) {
       if (error instanceof AttendanceError) return res.status(error.status).json({ error: error.message });
-      if (error.code === 'P2002') return res.status(409).json({ error: 'Bạn đã gửi giải trình cho ngày này.' });
+      if (error.code === 'P2002') return res.status(409).json({ error: 'Dữ liệu bị trùng lặp.' });
       if (error.code === 'P2034') return res.status(409).json({ error: 'Dữ liệu vừa thay đổi, vui lòng tải lại và thử lại.' });
       console.error('Lỗi API chấm công:', error);
       res.status(500).json({ error: 'Lỗi máy chủ khi xử lý chấm công.' });
@@ -74,7 +58,7 @@ async function requireCurrentAdmin(req) {
     select: { role: true, employees: { select: { status: true } } }
   });
   if (user?.role !== 'admin' || user.employees?.status !== 'dang_lam_viec') {
-    fail(403, 'Chỉ Admin đang làm việc được duyệt giải trình.');
+    fail(403, 'Chỉ Admin đang làm việc được phép thực hiện.');
   }
 }
 
@@ -85,12 +69,10 @@ async function lockDay(tx, employeeId, date) {
 async function rangeData(employee, start, end, db = prisma) {
   const where = { employee_id: employee.employee_id, date: { gte: asDate(start), lte: asDate(end) } };
 
-  // Hỗ trợ quét nhiều cách đặt tên model khác nhau trong schema Prisma
   const attendanceModel = db.attendances || db.attendance || db.Attendance;
-  const leaveModel = db.day_off_requests || db.dayOffRequest || db.DayOffRequest || db.day_off_request;
-  const explanationModel = db.attendance_explanations || db.attendanceExplanation || db.AttendanceExplanation;
+  const leaveModel = db.Day_off_requests || db.day_off_requests || db.dayOffRequest || db.DayOffRequest;
 
-  const [records, leaves, explanations] = await Promise.all([
+  const [records, leaves] = await Promise.all([
     attendanceModel?.findMany ? attendanceModel.findMany({ where, orderBy: { attendances_id: 'asc' } }).catch(() => []) : Promise.resolve([]),
     leaveModel?.findMany ? leaveModel.findMany({
       where: {
@@ -99,22 +81,17 @@ async function rangeData(employee, start, end, db = prisma) {
         start_date: { lte: asDate(end) }
       }
     }).catch(() => []) : Promise.resolve([]),
-    explanationModel?.findMany ? explanationModel.findMany({
-      where,
-      include: { employees: { select: { fullname: true, user_id: true } }, reviewer: { select: { username: true } } }
-    }).catch(() => []) : Promise.resolve([]),
   ]);
 
-  return { records, leaves, explanations };
+  return { records, leaves, explanations: [] };
 }
 
 function dayData(date, employee, data, clock, req) {
   const records = data.records.filter(row => dateOnly(row.date) === date);
   const onLeave = data.leaves.some(leave => dateOnly(leave.start_date) <= date && dateOnly(leave.end_date || leave.start_date) >= date);
-  const explanation = data.explanations.find(row => dateOnly(row.date) === date);
   return {
     ...classifyDay({ date, records, onLeave, startDate: dateOnly(employee.start_date), clock }),
-    explanation: explanationData(explanation, req)
+    explanation: null
   };
 }
 
@@ -210,81 +187,25 @@ function punch(action) {
 export const checkIn = punch('in');
 export const checkOut = punch('out');
 
+// Vô hiệu hóa các hàm giải trình để không gọi bảng không tồn tại
 export const createExplanation = handler(async (req, res) => {
-  const employee = await employeeFor(req);
-  const { date, reason, makeup_date: makeupDate } = req.body ?? {};
-  if (!isValidDate(date) || typeof reason !== 'string' || !reason.trim() || reason.trim().length > 2000) {
-    fail(400, 'Cần ngày hợp lệ và lý do giải trình từ 1–2000 ký tự.');
-  }
-  const clock = vietnamClock();
-  if (makeupDate != null && (!isValidDate(makeupDate) || makeupDate < clock.date || weekend(makeupDate))) {
-    fail(400, 'Ngày đề nghị chấm bù phải từ hôm nay trở đi, vào Thứ 2–Thứ 6.');
-  }
-  const result = await prisma.$transaction(async tx => {
-    await lockDay(tx, employee.employee_id, date);
-    const data = await rangeData(employee, date, date, tx);
-    const day = dayData(date, employee, data, clock, req);
-    if (!day.can_explain) fail(400, 'Ngày này không cần giải trình chấm công.');
-    if (day.explanation) fail(409, 'Bạn đã gửi giải trình cho ngày này.');
-
-    const explanationModel = tx.attendance_explanations || tx.attendanceExplanation || tx.AttendanceExplanation;
-    return explanationModel.create({
-      data: {
-        employee_id: employee.employee_id,
-        date: asDate(date),
-        reason: reason.trim(),
-        makeup_date: makeupDate ? asDate(makeupDate) : null
-      },
-      include: { employees: { select: { fullname: true, user_id: true } } }
-    });
-  });
-  res.status(201).json(explanationData(result, req));
+  fail(400, 'Tính năng giải trình chấm công đã bị vô hiệu hóa.');
 });
 
 export const listExplanations = handler(async (req, res) => {
   await requireCurrentAdmin(req);
-  const status = req.query.status;
-  if (status && !['pending', 'approved', 'rejected'].includes(status)) fail(400, 'Trạng thái yêu cầu không hợp lệ.');
-
-  const explanationModel = prisma.attendance_explanations || prisma.attendanceExplanation || prisma.AttendanceExplanation;
-  const rows = await explanationModel.findMany({
-    where: status ? { status } : {},
-    include: { employees: { select: { fullname: true, user_id: true } }, reviewer: { select: { username: true } } },
-    orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
-    take: 500
-  });
-  res.json(rows.map(row => explanationData(row, req)));
+  res.json([]); // Trả về mảng rỗng để không bị lỗi trên giao diện duyệt
 });
 
 export const reviewExplanation = handler(async (req, res) => {
   await requireCurrentAdmin(req);
-  const id = parseId(req.params.id);
-  if (!id) fail(400, 'ID yêu cầu không hợp lệ.');
-  const { decision, review_note: note } = req.body ?? {};
-  if (!['approved', 'rejected'].includes(decision) || (note != null && typeof note !== 'string')
-    || (typeof note === 'string' && note.trim().length > 2000) || (decision === 'rejected' && !note?.trim())) {
-    fail(400, 'Cần quyết định hợp lệ; khi từ chối phải nhập lý do (tối đa 2000 ký tự).');
-  }
-
-  const explanationModel = prisma.attendance_explanations || prisma.attendanceExplanation || prisma.AttendanceExplanation;
-  const row = await explanationModel.findUnique({ where: { id }, include: { employees: { select: { user_id: true } } } });
-  if (!row) fail(404, 'Không tìm thấy yêu cầu giải trình.');
-  if (row.employees.user_id === Number(req.user.user_id)) fail(403, 'Không thể tự duyệt giải trình của chính mình.');
-
-  const result = await explanationModel.updateMany({
-    where: { id, status: 'pending' },
-    data: { status: decision, review_note: note?.trim() || null, reviewed_by: Number(req.user.user_id), reviewed_at: new Date() }
-  });
-  if (!result.count) fail(409, 'Yêu cầu đã được xử lý, vui lòng tải lại.');
-  res.json({ message: decision === 'approved' ? 'Đã duyệt đề nghị chấm bù.' : 'Đã từ chối yêu cầu.' });
+  fail(400, 'Tính năng giải trình chấm công đã bị vô hiệu hóa.');
 });
 
 // --- THỐNG KÊ BẢNG CÔNG TOÀN CÔNG TY CHO HR / ADMIN ---
 export const getCompanyAttendanceSummary = handler(async (req, res) => {
-  // 1. Kiểm tra quyền Admin / HR
   await requireCurrentAdmin(req);
 
-  // 2. Lấy tháng từ query (Mặc định là tháng hiện tại theo giờ VN, dạng YYYY-MM)
   const month = req.query.month ?? vietnamClock().date.slice(0, 7);
   if (typeof month !== 'string' || !/^(19|20|21)\d{2}-(0[1-9]|1[0-2])$/.test(month)) {
     fail(400, 'Tháng cần có dạng YYYY-MM (ví dụ: 2026-10).');
@@ -295,7 +216,6 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
   const start = `${month}-01`;
   const end = `${month}-${lastDay}`;
 
-  // 3. Lấy toàn bộ danh sách nhân viên đang làm việc (Hỗ trợ đa dạng tên model)
   const employeeModel = prisma.employees || prisma.employee || prisma.Employee;
   if (!employeeModel) fail(500, 'Không tìm thấy model nhân viên trong Prisma.');
 
@@ -304,26 +224,20 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
     select: { employee_id: true, fullname: true, email: true, start_date: true }
   });
 
-  // 4. Lấy toàn bộ dữ liệu chấm công và nghỉ phép trong tháng (Hỗ trợ đa dạng tên model)
   const attendanceModel = prisma.attendances || prisma.attendance || prisma.Attendance;
-  const leaveModel = prisma.day_off_requests || prisma.dayOffRequest || prisma.DayOffRequest || prisma.day_off_request;
+  const leaveModel = prisma.Day_off_requests || prisma.day_off_requests || prisma.dayOffRequest || prisma.DayOffRequest;
 
   if (!attendanceModel) fail(500, 'Không tìm thấy model chấm công trong Prisma.');
 
-  const [allRecords, allLeaves] = await Promise.all([
+  const [allRecords] = await Promise.all([
     attendanceModel.findMany({
       where: { date: { gte: asDate(start), lte: asDate(end) } }
-    }).catch(() => []),
-    leaveModel?.findMany ? leaveModel.findMany({
-      where: { status: 'da_duoc_duyet', start_date: { lte: asDate(end) } }
-    }).catch(() => []) : Promise.resolve([])
+    }).catch(() => [])
   ]);
 
-  // 5. Tổng hợp dữ liệu cho từng nhân viên
   let totalFullAttendance = 0;
   let totalMissingAttendance = 0;
   let totalLateOrEarly = 0;
-  let totalOnLeave = 0;
 
   const employeeDetails = employees.map(emp => {
     const empRecords = allRecords.filter(r => r.employee_id === emp.employee_id);
@@ -361,7 +275,6 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
     };
   });
 
-  // 6. Trả về kết quả
   res.json({
     month,
     overview: {
@@ -369,7 +282,7 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
       full_attendance_count: totalFullAttendance,
       missing_attendance_count: totalMissingAttendance,
       late_or_early_count: totalLateOrEarly,
-      on_leave_count: totalOnLeave
+      on_leave_count: 0
     },
     employees: employeeDetails
   });
