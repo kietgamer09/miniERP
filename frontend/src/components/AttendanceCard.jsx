@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Card, Button, Typography, Space, Divider, message, Modal } from 'antd';
+import { Card, Button, Typography, Space, Divider, message, Alert } from 'antd';
 import { ClockCircleOutlined, CalendarOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { formatDateVN, formatFullDateVN } from '../utils/dates';
-import { checkInApi, checkOutApi, getTodayAttendanceApi } from '../services/attendanceApi';
+import { formatDateVN, formatFullDateVN, parseDateOnly } from '../utils/dates';
+import { useAttendance } from '../hooks/useAttendance';
 
 const { Text, Title } = Typography;
 
@@ -16,128 +16,62 @@ function HandIcon() {
 
 function AttendanceCard() {
   const [now, setNow] = useState(() => new Date());
-  const [loading, setLoading] = useState(false);
-  
-  const [checkInTime, setCheckInTime] = useState('--:--:--');
-  const [checkOutTime, setCheckOutTime] = useState('--:--:--');
-  
-  const [isCheckOutMode, setIsCheckOutMode] = useState(false); 
-  const [isCompleted, setIsCompleted] = useState(false);       
-
   const [messageApi, contextHolder] = message.useMessage();
+  const attendance = useAttendance();
+  const record = attendance?.record;
+  const day = attendance?.day;
+  const dayInfo = attendance?.dayInfo;
+  const weekend = attendance?.weekend;
+  const busy = attendance?.busy;
+  const loading = attendance?.loading;
+  const error = attendance?.error;
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const fetchTodayAttendance = async () => {
-      try {
-        const res = await getTodayAttendanceApi();
-        if (res && res.data) {
-          const { check_in, check_out } = res.data;
-
-          if (check_in) {
-            setCheckInTime(check_in);
-            setIsCheckOutMode(true);
-          }
-
-          if (check_out) {
-            setCheckOutTime(check_out);
-            setIsCompleted(true);
-          }
-        }
-      } catch (error) {
-        console.error('Không thể tải trạng thái chấm công hôm nay:', error);
-      }
-    };
-
-    fetchTodayAttendance();
-  }, []);
-
   const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
   const dateStr = formatDateVN(now);
-
-  const executeCheckOut = async (confirmedEarly = false) => {
-    try {
-      const res = await checkOutApi(confirmedEarly);
-
-      if (res && res.requireConfirmation) {
-        Modal.confirm({
-          title: 'Xác nhận ra ca sớm',
-          content: res.message,
-          okText: 'Đồng ý ra sớm',
-          cancelText: 'Hủy',
-          onOk: async () => {
-            try {
-              const confirmedRes = await checkOutApi(true);
-              messageApi.success('Ra ca thành công (Về sớm)!');
-              
-              const updatedRes = await getTodayAttendanceApi();
-              if (updatedRes && updatedRes.data && updatedRes.data.check_out) {
-                setCheckOutTime(updatedRes.data.check_out);
-              }
-              setIsCompleted(true);
-            } catch (err) {
-              messageApi.error(err.message || 'Có lỗi khi xác nhận ra ca sớm');
-            }
-          },
-        });
-      } else {
-        messageApi.success('Ra ca thành công đúng giờ!');
-        
-        const updatedRes = await getTodayAttendanceApi();
-        if (updatedRes && updatedRes.data && updatedRes.data.check_out) {
-          setCheckOutTime(updatedRes.data.check_out);
-        }
-        setIsCompleted(true);
-      }
-    } catch (error) {
-      messageApi.error(error.message || 'Có lỗi xảy ra khi ra ca');
-    }
-  };
+  const checkInTime = record?.check_in || '--:--:--';
+  const checkOutTime = record?.check_out || '--:--:--';
+  const isCheckOutMode = Boolean(record?.check_in && !record?.check_out);
+  const isCompleted = Boolean(record?.check_in && record?.check_out);
+  const dayDate = parseDateOnly(day);
+  const punching = busy === 'in' || busy === 'out';
 
   const handleAttendanceClick = async () => {
-    setLoading(true);
+    if (!attendance?.submitAttendance) return;
     try {
-      if (!isCheckOutMode) {
-        const res = await checkInApi();
-        messageApi.success(res.message || 'Vào ca thành công!');
-        
-        const updatedRes = await getTodayAttendanceApi();
-        if (updatedRes && updatedRes.data && updatedRes.data.check_in) {
-          setCheckInTime(updatedRes.data.check_in);
-        }
-        setIsCheckOutMode(true);
-      } else {
-        await executeCheckOut(false);
-      }
-    } catch (error) {
-      messageApi.error(error.message || 'Có lỗi xảy ra khi chấm công');
-    } finally {
-      setLoading(false);
+      const action = record?.check_in ? 'out' : 'in';
+      const res = await attendance.submitAttendance(action);
+      messageApi.success(res?.message || (action === 'in' ? 'Vào ca thành công!' : 'Ra ca thành công!'));
+    } catch (err) {
+      messageApi.error(err.message || 'Có lỗi xảy ra khi chấm công');
     }
   };
 
-  // --- LOGIC MÀU SẮC VÀ TEXT CỦA NÚT BẤM ---
-  const isCurrentLate = timeStr > '08:00:00'; // Kiểm tra xem hiện tại đã qua 8h sáng chưa
+  const isCurrentLate = timeStr > '08:00:00';
   let btnText = 'Chấm công';
   let btnBg = '#1890ff';
   let btnIcon = <HandIcon />;
-  let isDisabled = false;
+  let isDisabled = weekend || loading || !attendance?.submitAttendance;
 
-  if (!isCheckOutMode && !isCompleted) {
+  if (weekend) {
+    btnText = 'Cuối tuần không chấm công';
+    btnBg = '#d9d9d9';
+    isDisabled = true;
+  } else if (!isCheckOutMode && !isCompleted) {
     if (isCurrentLate) {
       btnText = 'Vào ca muộn';
-      btnBg = '#faad14'; // Màu cam khi quá 8h sáng
+      btnBg = '#faad14';
     } else {
       btnText = 'Chấm công';
-      btnBg = '#1890ff'; // Màu xanh dương chuẩn trước 8h sáng
+      btnBg = '#1890ff';
     }
   } else if (isCheckOutMode && !isCompleted) {
     btnText = 'Ra ca';
-    btnBg = '#faad14'; // Màu cam cho nút Ra ca
+    btnBg = '#faad14';
   } else if (isCompleted) {
     btnText = 'Đã hoàn thành chấm công';
     btnBg = '#d9d9d9';
@@ -145,15 +79,11 @@ function AttendanceCard() {
     btnIcon = <CheckCircleOutlined />;
   }
 
-  // --- LOGIC MÀU SẮC HIỂN THỊ THỜI GIAN ---
-  // Giờ vào: > 08:00:00 là đi muộn (màu cam), ngược lại đúng giờ (màu xanh lá)
-  const checkInColor = checkInTime !== '--:--:--' 
-    ? (checkInTime > '08:00:00' ? '#faad14' : '#52c41a') 
+  const checkInColor = checkInTime !== '--:--:--'
+    ? (checkInTime > '08:00:00' ? '#faad14' : '#52c41a')
     : 'inherit';
-
-  // Giờ ra: < 17:00:00 là về sớm (màu cam), ngược lại đúng giờ/muộn (màu xanh lá)
-  const checkOutColor = checkOutTime !== '--:--:--' 
-    ? (checkOutTime < '17:00:00' ? '#faad14' : '#52c41a') 
+  const checkOutColor = checkOutTime !== '--:--:--'
+    ? (checkOutTime < '17:00:00' ? '#faad14' : '#52c41a')
     : 'inherit';
 
   return (
@@ -182,19 +112,19 @@ function AttendanceCard() {
         </Space>
 
         <Button
-          type={isCompleted ? 'default' : 'primary'}
+          type={isCompleted || weekend ? 'default' : 'primary'}
           className="attendance-action"
           icon={btnIcon}
-          loading={loading}
+          loading={punching || loading}
           disabled={isDisabled}
           onClick={handleAttendanceClick}
-          style={{ 
-            minWidth: 140, 
+          style={{
+            minWidth: 140,
             backgroundColor: btnBg,
             borderColor: btnBg,
-            color: isCompleted ? 'rgba(0, 0, 0, 0.45)' : '#fff',
+            color: isCompleted || weekend ? 'rgba(0, 0, 0, 0.45)' : '#fff',
             borderRadius: 6,
-            fontWeight: 500
+            fontWeight: 500,
           }}
         >
           {btnText}
@@ -202,6 +132,7 @@ function AttendanceCard() {
       </div>
 
       <div style={{ padding: 16 }}>
+        {error && <Alert type="warning" showIcon title={error} style={{ marginBottom: 12 }} />}
         <div
           className={`attendance-status--${dayInfo?.color || 'default'}`}
           style={{
@@ -215,9 +146,10 @@ function AttendanceCard() {
             <Text type="secondary" style={{ background: 'var(--border)', padding: '2px 8px', borderRadius: 4 }}>
               Hôm nay
             </Text>
+            {dayInfo?.label && <Text type="secondary">{dayInfo.label}</Text>}
           </div>
           <div style={{ marginTop: 8 }}>
-            <Text strong>{formatFullDateVN(parseDateOnly(day))}</Text>
+            <Text strong>{dayDate ? formatFullDateVN(dayDate) : formatFullDateVN(now)}</Text>
           </div>
 
           <Divider style={{ margin: '12px 0' }} />
