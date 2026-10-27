@@ -1,3 +1,6 @@
+.my-tasks-board > .ant-space-item:last-child { align-self: stretch; width: 100%; min-width: 0; }
+.my-tasks-board > .ant-space-item:last-child .ant-spin,
+.my-tasks-board > .ant-space-item:last-child .ant-spin-container { width: 100%; min-width: 0; }
 .kanban-board { min-width: 0; }
 .kanban-board > .ant-col { min-width: 0; }
 .kanban-column { height: 100%; }
@@ -38,5 +41,5 @@
   .kanban-column > .ant-card-body { flex: 1; min-height: 180px; max-height: 560px; }
 }
 @media (max-width: 767px) {
-  .kanban-column > .ant-card-body { max-height: 420px; }
+  .kanban-column > .ant-card-body { min-height: 0; max-height: 360px; overflow-y: auto; }
 }

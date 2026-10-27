@@ -223,6 +223,13 @@ body {
 }
 
 @media (max-width: 767px) {
+  .project-overview .project-overview-panel .ant-card-body,
+  .project-overview .project-progress-panel > .ant-card-body {
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+  }
+
   .app-header {
     padding: 0 10px !important;
   }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Avatar, Button, Input, Modal, Select, Space, Table, Typography, message } from 'antd';
+import { Alert, Avatar, Button, Empty, Input, Modal, Select, Space, Spin, Table, Typography, message } from 'antd';
 import { ArrowUpOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { listEmployees } from '../services/employeeApi';
 import { listDepartments } from '../services/departmentApi';
@@ -151,8 +151,37 @@ function Employees() {
         </div>
         <Text type="secondary" className="list-result-count">{totalItems} kết quả</Text>
       </div>
-      <Table rowKey="employee_id" columns={columns} dataSource={paginatedData} loading={loading}
-        locale={{ emptyText: 'Chưa có nhân viên nào' }} pagination={false} scroll={{ x: 850 }} />
+      <div className="employees-desktop-table">
+        <Table rowKey="employee_id" columns={columns} dataSource={paginatedData} loading={loading}
+          locale={{ emptyText: 'Chưa có nhân viên nào' }} pagination={false} scroll={{ x: 850 }} />
+      </div>
+      <div className="employees-mobile-list">
+        <Spin spinning={loading}>
+          {paginatedData.length ? paginatedData.map(employee => (
+            <article className="employee-mobile-card" key={employee.employee_id}>
+              <div className="employee-mobile-heading">
+                <Avatar className="employee-avatar" size={40}>
+                  {employee.fullname?.trim().split(/\s+/).slice(-2).map(part => part[0]).join('') || 'NV'}
+                </Avatar>
+                <div className="employee-mobile-identity">
+                  <strong>{employee.fullname || 'Chưa cập nhật'}</strong>
+                  <span className="list-person-code">{employee.users?.username || employee.phone_number || '—'}</span>
+                </div>
+                <span className={employee.status === 'da_nghi_viec' ? 'employee-status employee-status--inactive' : 'employee-status'}>
+                  {employee.status === 'da_nghi_viec' ? 'Đã nghỉ việc' : 'Đang làm việc'}
+                </span>
+              </div>
+              <div className="employee-mobile-meta">
+                <div><span>Chức vụ</span><strong>{employee.position || 'Chưa cập nhật'}</strong></div>
+                <div><span>Phòng ban</span><strong>{employee.departments?.department_name || 'Chưa phân ban'}</strong></div>
+              </div>
+              <Button className="list-detail-button" onClick={() => openEditForm(employee)}>
+                Xem chi tiết <ArrowUpOutlined rotate={45} />
+              </Button>
+            </article>
+          )) : !loading && <Empty description="Chưa có nhân viên nào" />}
+        </Spin>
+      </div>
       <ListPagination total={totalItems} pageSize={pageSize} page={visiblePage} onChange={setCurrentPage} unit="nhân viên" />
     </section>
     {formOpen && <EmployeeFormModal open employee={selectedEmployee} departments={departments} readOnly={!isAdmin}
