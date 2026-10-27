@@ -1,0 +1,121 @@
+.home-page {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Desktop giữ khung trang trong viewport; dữ liệu dài cuộn trong từng vùng. */
+@media (min-width: 992px) {
+  .app-shell {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-shell > .app-header {
+    height: 60px !important;
+    line-height: 60px !important;
+    padding-inline: 24px !important;
+    flex-shrink: 0;
+  }
+
+  .app-brand { font-size: 26px; }
+  .app-body { flex: 1; min-height: 0; overflow: hidden; }
+  .app-content { min-height: 0; padding: 16px 20px; overflow: auto; }
+  .desktop-sider { min-height: 0; }
+  .desktop-sider .ant-menu-item-group-title { padding-block: 12px 4px; }
+  .desktop-sider .ant-menu-item, .desktop-sider .ant-menu-submenu-title { margin-block: 4px; }
+
+  .app-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+    padding: 8px 24px;
+    font-size: 11px;
+  }
+
+  .app-footer > div { gap: 12px; margin: 0; }
+  .app-footer small { font-size: 11px; }
+  .footer-brand { font-size: 14px; }
+
+  .employees-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .list-page-header { flex-shrink: 0; margin-bottom: 16px; }
+  .list-page-header h3.ant-typography { font-size: 24px; }
+  .list-page-subtitle { margin-top: 4px; font-size: 13px; }
+  .list-panel { display: flex; flex-direction: column; min-height: 0; }
+  .employees-page > .list-panel { flex: 1; }
+  .list-filters { flex-shrink: 0; min-height: 60px; padding: 10px 20px; }
+  .list-panel > .ant-table-wrapper { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; }
+  .list-panel .ant-table-thead > tr > th { padding: 10px 20px; }
+  .list-panel .ant-table-tbody > tr > td { height: 48px; padding: 6px 20px; }
+  .list-person-name { line-height: 18px; }
+  .list-person-code { line-height: 15px; }
+  .list-panel .ant-avatar { width: 32px; height: 32px; }
+  .list-pagination { flex-shrink: 0; padding: 10px 20px; gap: 8px; }
+  .list-pagination .ant-btn { height: 32px; }
+
+  .home-page {
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: minmax(280px, 1fr) minmax(160px, 1fr);
+    gap: 12px;
+  }
+
+  .home-top, .home-top > .ant-col, .home-tasks { min-height: 0; }
+  .home-top > .ant-col { height: 100%; }
+  .home-top > .ant-col > .ant-card { display: flex; flex-direction: column; }
+  .home-top .ant-card-head { min-height: 40px; padding-inline: 14px; flex-shrink: 0; }
+  .home-top .ant-card-head-title { font-size: 14px; }
+  .home-top .ant-card-body { min-height: 0; flex: 1; overflow: auto; }
+  .home-top .attendance-summary { padding: 8px 12px !important; gap: 6px; flex-wrap: wrap; }
+  .home-top .attendance-time-info { font-size: 12px; }
+  .home-top .attendance-action { min-width: 0 !important; height: 32px; font-size: 12px; }
+  .home-top .attendance-card > .ant-card-body > div:last-child { padding: 12px !important; }
+  .home-top .attendance-punch-times h4 { font-size: 20px; }
+  .home-top .timesheet-card .ant-card-body { padding: 10px 12px; }
+  .home-top .timesheet-summary { grid-template-columns: minmax(120px, .8fr) minmax(0, 1.2fr); gap: 10px; }
+  .home-top .timesheet-donut { width: min(100%, 132px); }
+  .home-top .timesheet-donut-center { font-size: 10px; gap: 0; }
+  .home-top .timesheet-donut-center strong { font-size: 20px; }
+  .home-top .timesheet-donut-center small { font-size: 8px; }
+  .home-top .timesheet-donut-legend { gap: 0; }
+  .home-top .timesheet-legend-item { padding: 3px 4px; font-size: 11px; }
+  .home-top .timesheet-strip-heading { margin-top: 4px; margin-bottom: 4px; }
+  .home-top .timesheet-strip-heading .ant-typography { font-size: 12px; }
+  .home-top .attendance-day.timesheet-day-chip { min-height: 42px; min-width: 58px; padding: 3px 6px; gap: 0; }
+  .home-top .timesheet-days-strip { padding-bottom: 3px; }
+  .home-top .timesheet-summary-footer { padding-top: 0; }
+
+  .home-tasks > .ant-card-body { height: 100%; padding: 12px !important; overflow: hidden; }
+  .home-tasks .task-board { height: 100%; gap: 10px !important; }
+  .home-tasks .task-board > .ant-space-item:last-child { flex: 1; min-height: 0; }
+  .home-tasks .task-board > .ant-space-item:last-child > .ant-row { height: 100%; }
+  .home-tasks .task-board .ant-col { height: 100%; min-height: 0; }
+  .home-tasks .task-column { display: flex; flex-direction: column; }
+  .home-tasks .task-column > .ant-card-head { flex-shrink: 0; min-height: 34px; }
+  .home-tasks .task-column > .ant-card-body { flex: 1; min-height: 0; max-height: none; overflow: auto; }
+
+  .project-overview {
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: auto minmax(160px, .9fr) minmax(160px, 1.1fr);
+    gap: 12px;
+  }
+
+  .project-overview-top, .project-overview-top > .ant-col { min-height: 0; height: 100%; }
+  .project-overview-panel, .project-progress-panel { display: flex; flex-direction: column; min-height: 0; }
+  .project-overview-panel .ant-card-head, .project-progress-panel .ant-card-head { min-height: 42px; flex-shrink: 0; }
+  .project-overview-panel .ant-card-body, .project-progress-panel > .ant-card-body {
+    flex: 1; min-height: 0; max-height: none; overflow: auto; padding: 12px 16px;
+  }
+
+  .project-progress-panel .ant-collapse-header { padding-block: 8px !important; }
+  .project-progress-panel .project-progress-bar { min-height: 26px; margin-block: 4px 2px; }
+}

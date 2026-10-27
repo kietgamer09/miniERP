@@ -22,7 +22,7 @@ function employeeValues(employee) {
   };
 }
 
-export default function EmployeeFormModal({ open, employee, departments, onCancel, onSaved }) {
+export default function EmployeeFormModal({ open, employee, departments, onCancel, onSaved, readOnly = false }) {
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -43,7 +43,7 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
   }, [open, employee, form]);
 
   async function handleSubmit(values) {
-    if (submitting.current) return;
+    if (readOnly || submitting.current) return;
     submitting.current = true;
     setConfirmLoading(true);
     try {
@@ -127,14 +127,14 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
               <Button onClick={onCancel} style={cancelButtonStyle} {...cancelBtnHoverProps}>
                 Đóng
               </Button>
-              <Button
+              {!readOnly && <Button
                 type="primary"
                 icon={<EditOutlined />}
                 onClick={() => setIsEditingMode(true)}
                 style={{ borderRadius: 6 }}
               >
                 Sửa
-              </Button>
+              </Button>}
             </>
           ) : (
             <>

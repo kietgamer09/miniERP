@@ -67,7 +67,7 @@ function ProjectDetailContent({ id }) {
   }
 
   const completed = project?.status === 'hoan_thanh';
-  return <div className="project-overview">
+  return <div className="project-detail-page">
     {contextHolder}
     <Space wrap className="project-page-header">
       <Link to="/du-an/cua-toi"><Button icon={<ArrowLeftOutlined />}>Quay lại</Button></Link>

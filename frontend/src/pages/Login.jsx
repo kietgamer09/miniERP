@@ -45,7 +45,7 @@ function Login() {
         </Text>
 
         {loginError && (
-          <Alert className="login-error" type="error" showIcon message={loginError} />
+          <Alert className="login-error" type="error" showIcon title={loginError} />
         )}
 
         <Form layout="vertical" onFinish={handleSubmit} requiredMark={false}>
@@ -71,7 +71,7 @@ function Login() {
       </Card>
 
       <footer className="login-footer">
-        <strong><span>mini</span>ERP</strong>
+        <span>miniERP</span>
         <span> · Hệ thống quản trị doanh nghiệp</span>
       </footer>
     </main>

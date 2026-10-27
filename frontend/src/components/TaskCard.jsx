@@ -8,7 +8,7 @@ function TaskCard({ task }) {
   const dueState = getDueState(task);
   const { border } = getDueColor(dueState);
   const bg = dueState === 'overdue' ? 'var(--red-bg)' : dueState === 'near-due' ? 'var(--gold-bg)'
-    : dueState === 'done' ? 'var(--surface)' : 'var(--blue-bg)';
+    : dueState === 'done' ? 'var(--surface)' : 'var(--task-normal-bg)';
   const label = dueState === 'done' && !task.completedAt
     ? `Đã xong · Hạn ${formatDateVN(task.dueDate)}` : getDueLabel(task, dueState);
 
@@ -17,7 +17,7 @@ function TaskCard({ task }) {
     dueState === 'overdue' ? 'var(--red-text)' :
     dueState === 'near-due' ? 'var(--gold-text)' :
     dueState === 'done' ? 'var(--muted)' :
-    'var(--blue-text)';
+    'var(--task-normal-text)';
 
   return (
     <Card
@@ -29,7 +29,7 @@ function TaskCard({ task }) {
         borderStyle: 'solid',
         marginBottom: 8,
         borderRadius: 6,
-        cursor: 'default',
+        cursor: 'pointer',
       }}
       styles={{ body: { padding: '8px 12px' } }}
     >

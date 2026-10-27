@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Alert, Button, Card, Col, Collapse, Empty, Popconfirm, Progress, Row, Space, Spin,
+  Alert, Button, Card, Col, Collapse, Empty, Popconfirm, Row, Space, Spin,
   Tag, Typography, message,
 } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -9,6 +9,7 @@ import { deleteProject as deleteProjectRequest, listProjects } from '../services
 import { useAuth } from '../hooks/useAuth';
 import ProjectFormModal from '../components/ProjectFormModal';
 import DepartmentPreview from '../components/DepartmentPreview';
+import ProgressBar from '../components/ProgressBar';
 
 const { Title, Text } = Typography;
 
@@ -118,11 +119,11 @@ function ProjectOverview() {
       <div className="project-progress-heading">
         <Text strong>{project.name}</Text>
         <Text type="secondary">Thời hạn: {formatDate(project.start_date)} – {formatDate(project.end_date)}</Text>
+        <ProgressBar {...project} />
       </div>
     ),
     children: (
       <>
-        <Progress percent={project.progress_percent ?? 0} />
         <Text type="secondary">
           {project.tasks_done ?? 0}/{project.tasks_total ?? 0} công việc hoàn thành
         </Text>
@@ -145,13 +146,13 @@ function ProjectOverview() {
       </Space>
 
       <Row gutter={[16, 16]} className="project-overview-top">
-        <Col xs={24} xl={12}>
+        <Col xs={24} lg={12}>
           <Card title="Danh sách các ban nhóm công ty" className="project-overview-panel">
             <DepartmentPreview />
           </Card>
         </Col>
 
-        <Col xs={24} xl={12}>
+        <Col xs={24} lg={12}>
           <Card title="Danh sách dự án của bạn" className="project-overview-panel">
             {loadError ? (
               <Alert type="error" showIcon title={loadError} action={<Button onClick={reload}>Thử lại</Button>} />
@@ -176,7 +177,7 @@ function ProjectOverview() {
         ) : loading ? (
           <div className="project-panel-loading"><Spin /></div>
         ) : progressItems.length ? (
-          <Collapse items={progressItems} />
+          <Collapse items={progressItems} expandIconPlacement="end" />
         ) : (
           <Empty description="Chưa có dự án để hiển thị tiến độ" />
         )}
