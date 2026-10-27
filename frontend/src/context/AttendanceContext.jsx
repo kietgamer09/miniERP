@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { AttendanceContext } from './appContexts';
-import { checkIn, checkOut, getTodayAttendance } from '../services/attendanceApi';
+import { checkInApi, checkOutApi, getTodayAttendanceApi } from '../services/attendanceApi';
 import { attendanceDay, isAttendanceWeekend, normalizeAttendance } from '../utils/attendance';
 
 function AttendanceSession({ children, identity }) {
@@ -57,7 +57,7 @@ function AttendanceSession({ children, identity }) {
     setBusy(action);
     setState(previous => ({ ...previous, error: '' }));
     try {
-      const result = await (action === 'in' ? checkIn() : checkOut());
+      const result = await (action === 'in' ? checkInApi() : checkOutApi());
       await refresh();
       channel.current?.postMessage({ identity });
       return result;
