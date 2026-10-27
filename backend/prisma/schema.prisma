@@ -31,6 +31,24 @@ model attendances {
   employees      employees @relation(fields: [employee_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
 }
 
+model attendance_explanations {
+  id           Int       @id @default(autoincrement())
+  employee_id  Int
+  date         DateTime  @db.Date
+  reason       String    @db.VarChar(2000)
+  makeup_date  DateTime? @db.Date
+  status       String    @default("pending") @db.VarChar(20)
+  review_note  String?   @db.VarChar(2000)
+  reviewed_by  Int?
+  reviewed_at  DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  employees    employees @relation(fields: [employee_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+  reviewer     users?    @relation(fields: [reviewed_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([employee_id, date])
+  @@index([status, date])
+}
+
 model departments {
   department_id   Int         @id
   department_name String?     @db.VarChar
@@ -42,6 +60,7 @@ model departments {
 
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
 model employees {
+  attendance_explanations                                         attendance_explanations[]
   employee_id                                                      Int                @id @default(autoincrement())
   user_id                                                          Int                @unique
   department_id                                                    Int
@@ -132,6 +151,7 @@ model tasks {
 }
 
 model users {
+  reviewed_attendance_explanations attendance_explanations[]
   user_id    Int        @id @default(autoincrement())
   username   String?    @db.VarChar
   password   String?    @db.VarChar

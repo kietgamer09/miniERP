@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth, useRole } from '../context/AuthContext';
 import { filterMenuByRole, fullMenuItems, findOpenKeys } from '../config/menu';
+import HistoryNavigation from '../components/HistoryNavigation';
 import { useTheme } from '../hooks/useTheme';
 import { useMyWork } from '../hooks/useMyWork';
 import NotificationInbox from '../components/NotificationInbox';
@@ -124,6 +125,7 @@ function MainLayout() {
             onClick={() => (isMobile ? setMobileMenuOpen(true) : setCollapsed(!collapsed))}
             style={{ fontSize: 18 }}
           />
+          <HistoryNavigation />
           <Text
             strong
             style={{ fontSize: 16, cursor: 'pointer' }}

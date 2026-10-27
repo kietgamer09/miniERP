@@ -203,6 +203,7 @@ function AttendanceCard() {
 
       <div style={{ padding: 16 }}>
         <div
+          className={`attendance-status--${dayInfo?.color || 'default'}`}
           style={{
             background: 'var(--subtle-bg)',
             border: '1px solid var(--border)',
@@ -216,7 +217,7 @@ function AttendanceCard() {
             </Text>
           </div>
           <div style={{ marginTop: 8 }}>
-            <Text strong>{formatFullDateVN(now)}</Text>
+            <Text strong>{formatFullDateVN(parseDateOnly(day))}</Text>
           </div>
 
           <Divider style={{ margin: '12px 0' }} />
@@ -230,7 +231,7 @@ function AttendanceCard() {
                 </Title>
               </div>
             </div>
-            <Divider type="vertical" style={{ height: 'auto' }} />
+            <Divider orientation="vertical" style={{ height: 'auto' }} />
             <div>
               <Text type="secondary">Giờ ra</Text>
               <div>
