@@ -21,11 +21,13 @@ import MyTasksPage from './pages/MyTasksPage';
 import MyProfile from './pages/MyProfile';
 import Placeholder from './pages/Placeholder';
 import Attendance from './pages/Attendance';
+import AttendanceApprovals from './pages/AttendanceApprovals';
 import { getAllPaths, fullMenuItems } from './config/menu';
 
 // Lấy toàn bộ đường dẫn từ cây menu
 const allPaths = getAllPaths(fullMenuItems);
 const pages = {
+  '/phe-duyet': AttendanceApprovals,
   '/cham-cong/bang-cong': Attendance,
   '/thong-tin': MyProfile,
   '/du-an': ProjectOverview,

@@ -43,6 +43,11 @@ const attendance = (await load('attendanceApi')).namespace;
 const projectBody = { code: 'DA-01', name: 'Dự án', start_date: '2026-10-01', end_date: '2026-10-01' };
 const employeeBody = { fullname: 'Nhân viên', phone_number: '0900000000', department_id: 1, role: 'employee' };
 const cases = [
+  [() => attendance.getTodayAttendance(), '/api/attendances/today', 'GET', undefined, { record: null, day: { date: '2026-10-27', status: 'waiting' } }],
+  [() => attendance.getMyAttendances('2026-10'), '/api/attendances/me?month=2026-10', 'GET', undefined, { month: '2026-10', days: [] }],
+  [() => attendance.createAttendanceExplanation({ date: '2026-10-26', reason: 'Giải trình' }), '/api/attendances/explanations', 'POST', { date: '2026-10-26', reason: 'Giải trình' }, { id: 1, status: 'pending' }],
+  [() => attendance.listAttendanceExplanations('pending'), '/api/attendances/explanations?status=pending', 'GET', undefined, []],
+  [() => attendance.reviewAttendanceExplanation(1, { decision: 'approved' }), '/api/attendances/explanations/1/review', 'PUT', { decision: 'approved' }, { message: 'Đã duyệt' }],
   [() => attendance.checkIn(), '/api/attendances/check-in', 'POST', undefined,
     { message: 'Vào ca thành công', data: { attendances_id: 1, check_in: '1970-01-01T08:00:00.000Z' } }],
   [() => attendance.checkOut(), '/api/attendances/check-out', 'POST', undefined,
@@ -80,4 +85,4 @@ const session = await auth.login('test', 'test-only');
 assert.equal(session.user.id, 99);
 assert.equal(session.user.employee_id, 7);
 assert.equal(lastRequest.url, 'http://api.test/api/auth/login');
-console.log('PASS: 8 API calls including attendance, Bearer token, request bodies, response shapes, error handling, employee_id mapping.');
+console.log('PASS: 13 API calls including attendance/history/explanations, Bearer token, request bodies, response shapes, error handling, employee_id mapping.');

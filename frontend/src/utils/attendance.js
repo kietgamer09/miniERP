@@ -30,9 +30,4 @@ export function normalizeAttendance(record) {
     check_in: checkIn, check_out: checkOut };
 }
 
-export function readAttendance(key, day) {
-  try {
-    const record = normalizeAttendance(JSON.parse(sessionStorage.getItem(key) || 'null'));
-    return record?.date === day ? record : null;
-  } catch { return null; }
-}
+export const explanationLabels = { pending: 'Chờ Admin duyệt', approved: 'Đã duyệt chấm bù', rejected: 'Đã từ chối' };
