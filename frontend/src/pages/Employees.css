@@ -1,32 +1,11 @@
-.employees-page {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 12px;
-}
-
-.employees-header,
-.employees-filters {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
-.employees-filter-inputs {
-  display: flex;
-  flex-wrap: wrap;
-  flex: 1 1 440px;
-  gap: 12px;
-  min-width: 0;
-}
-
-.employee-form-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 20px;
+.employees-page { min-width: 0; }
+.employees-header, .employees-filters { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.employees-filter-inputs { display: flex; flex: 1 1 440px; gap: 12px; min-width: 0; }
+.employees-filter-inputs > .ant-input-affix-wrapper { width: min(100%, 400px); }
+.employees-filter-inputs > .ant-select { width: 232px; min-width: 160px; }
+.employee-form-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+@media (max-width: 767px) {
+  .employees-header { align-items: flex-start; }
+  .employees-filter-inputs { flex-basis: 100%; flex-wrap: wrap; }
+  .employees-filter-inputs > .ant-input-affix-wrapper, .employees-filter-inputs > .ant-select { width: 100%; }
 }

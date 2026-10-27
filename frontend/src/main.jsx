@@ -7,6 +7,7 @@ import { WorkProvider } from './context/WorkContext';
 import { AttendanceProvider } from './context/AttendanceContext';
 import App from './App';
 import './index.css';
+import './layout.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

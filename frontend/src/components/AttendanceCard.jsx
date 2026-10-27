@@ -63,7 +63,7 @@ function AttendanceCard() {
 
   const isCurrentLate = timeStr > '08:00:00';
   let btnText = 'Chấm công';
-  let btnBg = '#1890ff';
+  let btnBg = 'var(--brand)';
   let btnIcon = <HandIcon />;
   let isDisabled = weekend || loading || Boolean(error) || punching || !attendance?.submitAttendance;
 
@@ -77,7 +77,7 @@ function AttendanceCard() {
       btnBg = '#faad14';
     } else {
       btnText = 'Chấm công';
-      btnBg = '#1890ff';
+      btnBg = 'var(--brand)';
     }
   } else if (isCheckOutMode && !isCompleted) {
     btnText = 'Ra ca';
@@ -97,7 +97,7 @@ function AttendanceCard() {
     : 'inherit';
 
   return (
-    <Card style={{ height: '100%' }} styles={{ body: { padding: 0 } }}>
+    <Card title="Chấm công" className="attendance-card" style={{ height: '100%' }} styles={{ body: { padding: 0 } }}>
       {contextHolder}
       {modalContextHolder}
 

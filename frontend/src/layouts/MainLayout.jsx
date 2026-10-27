@@ -18,6 +18,7 @@ const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
 function MainLayout() {
+  const [copyrightYear] = useState(() => new Date().getFullYear());
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -92,7 +93,7 @@ function MainLayout() {
   }
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout className="app-shell" style={{ minHeight: '100vh' }}>
       <Header
         className="app-header"
         style={{
@@ -101,15 +102,18 @@ function MainLayout() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 16px',
+          padding: '0 64px',
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          height: 52,
-          lineHeight: '52px',
+          height: 80,
+          lineHeight: '80px',
         }}
       >
-        <Space>
+        <Space className="app-header-start" size={16}>
+          <button type="button" className="app-brand" onClick={() => navigate('/')} aria-label="miniERP — Trang chủ">
+            <span>mini</span><strong>ERP</strong>
+          </button>
           <Button
             type="text"
             aria-label={isMobile ? 'Mở menu điều hướng' : 'Thu gọn menu điều hướng'}
@@ -118,13 +122,7 @@ function MainLayout() {
             style={{ fontSize: 18 }}
           />
           <HistoryNavigation />
-          <Text
-            strong
-            style={{ fontSize: 16, cursor: 'pointer' }}
-            onClick={() => navigate('/')}
-          >
-            Hệ thống miniERP
-          </Text>
+
         </Space>
         <Space size="middle" className="app-header-actions">
           <Tooltip title={mode === 'dark' ? 'Chuyển sang nền sáng' : 'Chuyển sang nền tối'}>
@@ -134,28 +132,30 @@ function MainLayout() {
           <NotificationInbox />
           <Dropdown menu={avatarMenu} trigger={['click']}>
             <button type="button" className="account-trigger" aria-label="Tài khoản của tôi">
+              <span className="header-user-info">
+                <Text strong className="header-user-name">{profile?.fullname || user?.fullName || 'Người dùng'}</Text>
+                <span className="header-user-role">{{ admin: 'Quản trị hệ thống', manager: 'Quản lý dự án', employee: 'Nhân viên' }[role]}</span>
+              </span>
               <Avatar
-                shape="square"
+                shape="circle"
                 icon={<UserOutlined />}
-                style={{ backgroundColor: '#d9d9d9', color: '#595959', borderRadius: 4 }}
+                size={40}
+                style={{ backgroundColor: 'var(--brand-soft)', color: 'var(--brand)' }}
               />
-              <Text className="header-user-name">
-                {profile?.fullname || user?.fullName || 'Người dùng'}
-              </Text>
               <RightOutlined style={{ fontSize: 10, color: '#8c8c8c' }} />
             </button>
           </Dropdown>
         </Space>
       </Header>
 
-      <Layout>
+      <Layout className="app-body">
         <Sider
           className="desktop-sider"
           collapsible
           collapsed={collapsed}
           trigger={null}
           width={240}
-          style={{ background: 'var(--surface)' }}
+          style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)' }}
         >
           {renderMenu()}
         </Sider>
@@ -171,10 +171,14 @@ function MainLayout() {
         >
           {renderMenu()}
         </Drawer>
-        <Content className="app-content" style={{ padding: 16, background: 'var(--page-bg)', overflow: 'auto', minWidth: 0 }}>
+        <Content className="app-content" style={{ background: 'var(--page-bg)', minWidth: 0 }}>
           <Outlet />
         </Content>
       </Layout>
+      <footer className="app-footer">
+        <div><span className="footer-brand">miniERP</span><span>Hệ thống quản trị doanh nghiệp</span></div>
+        <small>© {copyrightYear} miniERP. Bảo lưu mọi quyền.</small>
+      </footer>
       {passwordOpen && <ChangePasswordModal onClose={() => setPasswordOpen(false)} />}
     </Layout>
   );
