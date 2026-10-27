@@ -282,9 +282,9 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
                 rules={[{ required: true, message: 'Vui lòng chọn trạng thái!' }]}
               >
                 {!isEditingMode ? (
-                  <div style={{ fontWeight: 500, fontSize: 15, paddingBottom: 6, borderBottom: '1px solid var(--border)' }}>
-                    {form.getFieldValue('status') === 'da_nghi_viec' ? (
-                      <span style={{ color: 'var(--red-text)' }}>Đã nghỉ việc</span>
+                  <div style={{ fontWeight: 500, fontSize: 15, paddingBottom: 6, borderBottom: '1px solid #f5f5f5' }}>
+                    {employee?.status === 'da_nghi_viec' ? (
+                      <span style={{ color: '#ff4d4f' }}>Đã nghỉ việc</span>
                     ) : (
                       <span style={{ color: 'var(--green-text)' }}>Đang làm việc</span>
                     )}
