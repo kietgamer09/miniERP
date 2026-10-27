@@ -1,9 +1,21 @@
 import { request } from './http';
 
-export const checkIn = () => request('/api/attendances/check-in', { method: 'POST' });
-export const checkOut = () => request('/api/attendances/check-out', { method: 'POST' });
-export const getTodayAttendance = () => request('/api/attendances/today');
-export const getMyAttendances = month => request('/api/attendances/me', { params: { month } });
-export const createAttendanceExplanation = data => request('/api/attendances/explanations', { method: 'POST', body: data });
-export const listAttendanceExplanations = status => request('/api/attendances/explanations', { params: { status } });
-export const reviewAttendanceExplanation = (id, data) => request(`/api/attendances/explanations/${id}/review`, { method: 'PUT', body: data });
+export async function checkInApi() {
+  return await request('/api/attendances/check-in', {
+    method: 'POST',
+  });
+}
+
+export async function checkOutApi(confirmedEarly = false) {
+  return await request('/api/attendances/check-out', {
+    method: 'POST',
+    body: { confirmedEarly }, // Truyền object trực tiếp, không dùng JSON.stringify ở đây nữa vì hàm request tự lo việc đó
+    data: { confirmedEarly }  // Dự phòng nếu hàm request của dự án dùng axios
+  });
+}
+
+export async function getTodayAttendanceApi() {
+  return await request('/api/attendances/today', {
+    method: 'GET',
+  });
+}
