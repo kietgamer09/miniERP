@@ -23,8 +23,8 @@
 .kanban-task-content { text-align: center; }
 .kanban-task-actions { display: flex; justify-content: flex-end; align-items: center; gap: 4px; min-height: 20px; margin-top: 2px; color: var(--muted); }
 .kanban-task-actions .ant-btn { width: 22px; height: 20px; padding: 0; }
-.kanban-drag-overlay { width: min(360px, 80vw); pointer-events: none; }
-.kanban-drag-overlay .ant-card { box-shadow: 0 10px 28px rgb(0 0 0 / 18%); }
+.kanban-drag-overlay { width: min(360px, 80vw); pointer-events: none; cursor: grabbing; }
+.kanban-drag-overlay .ant-card { box-shadow: 0 10px 28px rgb(0 0 0 / 18%); cursor: grabbing !important; }
 .kanban-drop-target { min-height: 100%; border-radius: 8px; }
 .kanban-drop-target.kanban-column--drop-valid > .ant-card { outline: 2px dashed #52c41a; outline-offset: 2px; }
 .kanban-drop-target.kanban-column--drop-invalid > .ant-card { outline: 2px dashed #ff7875; outline-offset: 2px; }

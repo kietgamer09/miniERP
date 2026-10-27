@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Alert, Col, message, Row, Spin } from 'antd';
 import {
   DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors,
@@ -112,9 +113,12 @@ export default function KanbanBoard({ tasks = [], loading = false, locked = fals
               );
             })}
           </Row>
-          <DragOverlay dropAnimation={null}>
-            {activeItem && <div className="kanban-drag-overlay"><TaskCard task={activeItem} clickable={false} /></div>}
-          </DragOverlay>
+          {createPortal(
+            <DragOverlay dropAnimation={null} zIndex={2000}>
+              {activeItem && <div className="kanban-drag-overlay"><TaskCard task={activeItem} clickable={false} /></div>}
+            </DragOverlay>,
+            document.body,
+          )}
         </DndContext>
       </Spin>
     </>
