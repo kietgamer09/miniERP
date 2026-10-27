@@ -4,6 +4,7 @@ import { MailOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useMyWork } from '../hooks/useMyWork';
+import { useAttendance } from '../hooks/useAttendance';
 import { attendanceReminders, taskNotifications } from '../utils/notifications';
 
 function readSettings(key) {
@@ -23,12 +24,13 @@ function Inbox({ storageKey }) {
   const [settings, setSettings] = useState(() => readSettings(storageKey));
   const [now, setNow] = useState(() => new Date());
   const { tasks, loading, error, warning, reload } = useMyWork();
+  const { record } = useAttendance();
   const navigate = useNavigate();
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
-  const items = [...taskNotifications(tasks), ...(settings.reminders ? attendanceReminders(now) : [])]
+  const items = [...taskNotifications(tasks), ...(settings.reminders ? attendanceReminders(now, record) : [])]
     .sort((a, b) => (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0));
   const unread = items.filter(item => !settings.read.includes(item.id)).length;
   function save(next) {
@@ -53,7 +55,8 @@ function Inbox({ storageKey }) {
         <Typography.Text>Nhắc chấm công lúc 08:00 và 17:00</Typography.Text>
       </Space>
       <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-        Công việc tự cập nhật mỗi phút khi mở website. Nhắc chấm công theo lịch, chưa kiểm tra được trạng thái chấm công.
+        Công việc tự cập nhật mỗi phút. Nhắc chấm công theo lịch; ẩn lời nhắc tương ứng sau khi chấm công thành công trên tab này.
+        {' '}Chưa có API đọc trạng thái từ thiết bị khác.
       </Typography.Paragraph>
       {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />}
       {warning && <Alert type="warning" title={warning} showIcon style={{ marginBottom: 12 }} />}

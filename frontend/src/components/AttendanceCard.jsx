@@ -1,14 +1,15 @@
 /**
  * AttendanceCard – Khu chấm công trên Trang chủ.
  *
- * Hiển thị đồng hồ và trạng thái tích hợp API chấm công.
+ * Đồng hồ Việt Nam và thao tác vào/ra ca qua API thật.
  *
  * Tách riêng vì logic đồng hồ + state chấm công không liên quan các khu khác.
  */
 import { useState, useEffect } from 'react';
-import { Card, Button, Typography, Space, Divider, Alert } from 'antd';
+import { App, Card, Button, Typography, Space, Divider, Alert, Popconfirm, Tag } from 'antd';
 import { ClockCircleOutlined, CalendarOutlined } from '@ant-design/icons';
-import { formatDateVN, formatFullDateVN } from '../utils/dates';
+import { formatDateOnlyVN, formatFullDateVN, parseDateOnly } from '../utils/dates';
+import { useAttendance } from '../hooks/useAttendance';
 
 const { Text, Title } = Typography;
 
@@ -23,6 +24,8 @@ function HandIcon() {
 
 function AttendanceCard() {
   const [now, setNow] = useState(() => new Date());
+  const { day, record, busy, error, notice, weekend, submitAttendance } = useAttendance();
+  const { message } = App.useApp();
 
   // Cập nhật đồng hồ mỗi giây
   useEffect(() => {
@@ -30,8 +33,15 @@ function AttendanceCard() {
     return () => clearInterval(timer);
   }, []);
 
-  const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
-  const dateStr = formatDateVN(now);
+  const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
+  const dateStr = formatDateOnlyVN(day);
+
+  async function punch(action) {
+    try {
+      const result = await submitAttendance(action);
+      if (result) message.success(result.message || 'Chấm công thành công');
+    } catch { /* Hiện nguyên văn lỗi backend trong thẻ bên dưới. */ }
+  }
 
   return (
     <Card
@@ -60,14 +70,17 @@ function AttendanceCard() {
           </Space>
         </Space>
 
-        <Button
-          className="attendance-action"
-          icon={<HandIcon />}
-          disabled
-          style={{ minWidth: 120 }}
-        >
-          Chưa kết nối API
-        </Button>
+        <Space wrap className="attendance-action">
+          <Button type="primary" icon={<HandIcon />} loading={busy === 'in'}
+            disabled={weekend || Boolean(busy) || Boolean(record?.check_in)} onClick={() => punch('in')}>
+            Vào ca
+          </Button>
+          <Popconfirm title="Xác nhận ra ca?" description="Máy chủ sẽ ghi nhận giờ ra ca ngay lúc xác nhận."
+            okText="Ra ca" cancelText="Hủy" onConfirm={() => punch('out')}
+            disabled={weekend || Boolean(busy) || Boolean(record?.check_out)}>
+            <Button loading={busy === 'out'} disabled={weekend || Boolean(busy) || Boolean(record?.check_out)}>Ra ca</Button>
+          </Popconfirm>
+        </Space>
       </div>
 
       {/* Dòng dưới: khung thông tin ca */}
@@ -86,33 +99,37 @@ function AttendanceCard() {
             </Text>
           </div>
           <div style={{ marginTop: 8 }}>
-            <Text strong>{formatFullDateVN(now)}</Text>
+            <Text strong>{formatFullDateVN(parseDateOnly(day))}</Text>
           </div>
 
           <Divider style={{ margin: '12px 0' }} />
 
-          <Alert
-            type="info"
-            showIcon
-            title="Backend chưa cung cấp API chấm công."
-            style={{ marginBottom: 12 }}
-          />
+          {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />}
+          {notice && <Alert type="warning" title={notice} showIcon style={{ marginBottom: 12 }} />}
+          {weekend && <Alert type="info" title="Thứ 7 và Chủ nhật không cần chấm công." style={{ marginBottom: 12 }} />}
+          <Tag style={{ whiteSpace: 'normal' }} color={record?.check_out ? 'green' : record?.check_in ? 'blue' : undefined}>
+            {record?.check_out ? 'Đã ra ca' : record?.check_in ? 'Đã vào ca' : 'Chưa có kết quả chấm công trên trình duyệt này'}
+          </Tag>
+          <Typography.Paragraph type="secondary" style={{ marginTop: 8, fontSize: 12 }}>
+            Giờ hiển thị theo Việt Nam. Kết quả từ lần chấm công thành công được giữ sau F5 trong tab này.
+            {' '}Chưa có API đọc lại trạng thái; nếu đã vào ca ở nơi khác, bạn vẫn có thể chọn Ra ca để máy chủ kiểm tra.
+          </Typography.Paragraph>
 
           <div className="attendance-punch-times" style={{ display: 'flex', gap: 40 }}>
             <div>
               <Text type="secondary">Giờ vào</Text>
               <div>
                 <Title level={4} style={{ margin: 0 }}>
-                  --:--:--
+                  {record?.check_in || '--:--:--'}
                 </Title>
               </div>
             </div>
-            <Divider type="vertical" style={{ height: 'auto' }} />
+            <Divider orientation="vertical" style={{ height: 'auto' }} />
             <div>
               <Text type="secondary">Giờ ra</Text>
               <div>
                 <Title level={4} style={{ margin: 0 }}>
-                  --:--:--
+                  {record?.check_out || '--:--:--'}
                 </Title>
               </div>
             </div>
