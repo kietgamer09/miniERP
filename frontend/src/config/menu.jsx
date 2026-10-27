@@ -22,6 +22,7 @@ const fullMenuItems = [
         key: 'sub-chamcong', label: 'Chấm công', icon: <CalendarOutlined />, roles: ALL,
         children: [
           { key: '/cham-cong/bang-cong', label: 'Bảng công', roles: ALL },
+          { key: '/cham-cong/bang-cong-cong-ty', label: 'Bảng công công ty', roles: MGR_ADMIN },
           { key: '/cham-cong/nghi-phep', label: 'Nghỉ phép', roles: ALL },
         ],
       },
