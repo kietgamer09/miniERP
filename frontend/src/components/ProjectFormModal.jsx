@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, DatePicker, Form, Input, Modal } from 'antd';
-import viVN from 'antd/locale/vi_VN';
+import viVN from 'antd/es/locale/vi_VN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import { createProject, updateProject } from '../services/projectApi';

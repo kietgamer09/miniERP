@@ -1,11 +1,12 @@
 /** Trang quản lý danh sách nhân viên, chuẩn hóa theo mẫu Departments.jsx */
 import { useEffect, useState } from 'react';
-import { Alert, Avatar, Button, Input, Select, Space, Table, Typography, message } from 'antd';
+import { Alert, Avatar, Button, Input, Modal, Select, Space, Table, Typography, message } from 'antd';
 import { EditOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { listEmployees } from '../services/employeeApi';
 import { listDepartments } from '../services/departmentApi';
 import EmployeeFormModal from '../components/EmployeeFormModal';
 import { useRole } from '../context/AuthContext';
+import './Employees.css';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -23,6 +24,7 @@ function Employees() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [loginInfo, setLoginInfo] = useState(null);
 
   const [messageApi, contextHolder] = message.useMessage();
   const { role } = useRole();
@@ -118,12 +120,12 @@ function Employees() {
 
         return (
           <Space size={12}>
-            <Avatar style={{ backgroundColor: '#f0f0f0', color: '#595959', fontWeight: 600 }}>
+            <Avatar style={{ backgroundColor: 'var(--subtle-bg)', color: 'var(--muted)', fontWeight: 600 }}>
               {initials}
             </Avatar>
             <div>
-              <div style={{ fontWeight: 500, color: '#1f1f1f' }}>{text}</div>
-              <div style={{ fontSize: 12, color: '#8c8c8c' }}>SĐT: {record.phone_number}</div>
+              <div style={{ fontWeight: 500, color: 'var(--text)' }}>{text}</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)' }}>SĐT: {record.phone_number}</div>
             </div>
           </Space>
         );
@@ -134,7 +136,7 @@ function Employees() {
       key: 'username',
       width: '13%',
       render: (_, record) => (
-        <span style={{ color: '#1890ff', fontWeight: 500 }}>
+        <span style={{ color: 'var(--blue-text)', fontWeight: 500 }}>
           {record.users?.username || record.phone_number || '---'}
         </span>
       ),
@@ -144,7 +146,7 @@ function Employees() {
       key: 'password',
       width: '11%',
       render: () => (
-        <span style={{ color: '#595959', fontFamily: 'monospace' }}>
+        <span style={{ color: 'var(--muted)', fontFamily: 'monospace' }}>
           ••••••••
         </span>
       ),
@@ -154,7 +156,7 @@ function Employees() {
       dataIndex: 'position',
       key: 'position',
       width: '15%',
-      render: (pos) => <span style={{ color: '#595959' }}>{pos || 'Chưa cập nhật'}</span>,
+      render: (pos) => <span style={{ color: 'var(--muted)' }}>{pos || 'Chưa cập nhật'}</span>,
     },
     {
       title: 'Phòng ban',
@@ -163,11 +165,11 @@ function Employees() {
       render: (_, record) => (
         <span
           style={{
-            background: '#f5f5f5',
+            background: 'var(--subtle-bg)',
             padding: '4px 10px',
             borderRadius: 6,
             fontSize: 13,
-            color: '#595959',
+            color: 'var(--muted)',
             whiteSpace: 'nowrap',
             display: 'inline-block',
           }}
@@ -190,8 +192,8 @@ function Employees() {
               borderRadius: 12,
               fontSize: 12,
               fontWeight: 500,
-              background: isWorking ? '#f6ffed' : '#fff1f0',
-              color: isWorking ? '#52c41a' : '#ff4d4f',
+              background: isWorking ? 'var(--green-bg)' : 'var(--red-bg)',
+              color: isWorking ? 'var(--green-text)' : 'var(--red-text)',
               border: `1px solid ${isWorking ? '#b7eb8f' : '#ffa39e'}`,
               whiteSpace: 'nowrap',
             }}
@@ -223,23 +225,24 @@ function Employees() {
   const pageSize = 5;
   const totalItems = filteredData.length;
   const totalPages = Math.ceil(totalItems / pageSize) || 1;
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalItems);
-  const paginatedData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const visiblePage = Math.min(currentPage, totalPages);
+  const startItem = totalItems === 0 ? 0 : (visiblePage - 1) * pageSize + 1;
+  const endItem = Math.min(visiblePage * pageSize, totalItems);
+  const paginatedData = filteredData.slice((visiblePage - 1) * pageSize, visiblePage * pageSize);
 
   return (
-    <div style={{ height: 'calc(100vh - 84px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="employees-page">
       {contextHolder}
       
       {/* Header tiêu đề */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexShrink: 0 }}>
+      <div className="employees-header">
         <div>
-          <Space align="center" size={12}>
+          <Space wrap align="center" size={12}>
             <Title level={3} style={{ margin: 0 }}>Quản lý nhân sự</Title>
             <span
               style={{
-                backgroundColor: '#e6f7ff',
-                color: '#1890ff',
+                backgroundColor: 'var(--blue-bg)',
+                color: 'var(--blue-text)',
                 padding: '2px 10px',
                 borderRadius: 12,
                 fontSize: 12,
@@ -277,8 +280,8 @@ function Employees() {
       )}
 
       {/* Thanh tìm kiếm và bộ lọc phòng ban */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 16, flexShrink: 0 }}>
-        <Space size={12}>
+      <div className="employees-filters">
+        <div className="employees-filter-inputs">
           <Input
             placeholder="Tìm theo tên, SĐT hoặc email..."
             prefix={<SearchOutlined style={{ color: '#bfbfbf', marginRight: 8 }} />}
@@ -287,18 +290,18 @@ function Employees() {
               setSearchText(e.target.value);
               setCurrentPage(1);
             }}
-            style={{ width: 300, height: 38, borderRadius: 8 }}
+            style={{ flex: '1 1 240px', minWidth: 0, height: 38, borderRadius: 8 }}
             allowClear
           />
 
           <Select
             value={selectedDept}
-            style={{ width: 200, height: 38 }}
+            style={{ flex: '1 1 200px', minWidth: 0, height: 38 }}
             onChange={(value) => {
               setSelectedDept(value);
               setCurrentPage(1);
             }}
-            dropdownStyle={{ borderRadius: 8 }}
+            styles={{ popup: { root: { borderRadius: 8 } } }}
           >
             <Option value="all">Tất cả phòng ban</Option>
             {departments.map((dept) => (
@@ -307,7 +310,7 @@ function Employees() {
               </Option>
             ))}
           </Select>
-        </Space>
+        </div>
 
         <Text type="secondary" style={{ fontSize: 13 }}>
           {totalItems} kết quả
@@ -315,7 +318,7 @@ function Employees() {
       </div>
 
       {/* Bảng hiển thị dữ liệu */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--surface)', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
         <div style={{ flex: 1, overflowY: 'auto' }}>
           <Table
             rowKey="employee_id"
@@ -324,6 +327,7 @@ function Employees() {
             loading={loading}
             locale={{ emptyText: 'Chưa có nhân viên nào' }}
             pagination={false}
+            scroll={{ x: 1100 }}
           />
         </div>
 
@@ -334,31 +338,33 @@ function Employees() {
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '12px 16px',
-            borderTop: '1px solid #f0f0f0',
-            background: '#fff',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--surface)',
             flexShrink: 0,
+            flexWrap: 'wrap',
+            gap: 12,
           }}
         >
-          <Text style={{ color: '#595959', fontSize: 13 }}>
-            Hiển thị <strong style={{ color: '#1f1f1f' }}>{startItem}–{endItem}</strong> trong tổng số <strong style={{ color: '#1f1f1f' }}>{totalItems}</strong> nhân viên
+          <Text style={{ color: 'var(--muted)', fontSize: 13 }}>
+            Hiển thị <strong style={{ color: 'var(--text)' }}>{startItem}–{endItem}</strong> trong tổng số <strong style={{ color: 'var(--text)' }}>{totalItems}</strong> nhân viên
           </Text>
 
           <Space size={12}>
             <Button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={visiblePage === 1}
+              onClick={() => setCurrentPage(Math.max(visiblePage - 1, 1))}
               style={{ borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <span>Trang trước</span>
             </Button>
 
-            <span style={{ color: '#595959', fontSize: 13, fontWeight: 500 }}>
-              Trang <strong style={{ color: '#1f1f1f' }}>{currentPage}</strong> / {totalPages}
+            <span style={{ color: 'var(--muted)', fontSize: 13, fontWeight: 500 }}>
+              Trang <strong style={{ color: 'var(--text)' }}>{visiblePage}</strong> / {totalPages}
             </span>
 
             <Button
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={visiblePage >= totalPages}
+              onClick={() => setCurrentPage(Math.min(visiblePage + 1, totalPages))}
               style={{ borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <span>Trang sau</span>
@@ -374,12 +380,20 @@ function Employees() {
           employee={selectedEmployee}
           departments={departments}
           onCancel={closeForm}
-          onSaved={() => {
+          onSaved={(result) => {
             closeForm();
             reloadEmployees();
+            if (result?.login_info?.username && result.login_info.default_password) setLoginInfo(result.login_info);
           }}
         />
       )}
+      {isAdmin && loginInfo && <Modal open title="Tài khoản nhân viên vừa tạo" okText="Đã lưu thông tin"
+        cancelButtonProps={{ style: { display: 'none' } }} onOk={() => setLoginInfo(null)} onCancel={() => setLoginInfo(null)}>
+        <Typography.Paragraph>Thông tin đăng nhập do máy chủ trả về. Hộp thoại này chỉ hiển thị trong phiên hiện tại.</Typography.Paragraph>
+        <Typography.Paragraph>Tài khoản: <Typography.Text copyable>{loginInfo.username}</Typography.Text></Typography.Paragraph>
+        <Typography.Paragraph>Mật khẩu ban đầu:</Typography.Paragraph>
+        <Input.Password readOnly value={loginInfo.default_password} aria-label="Mật khẩu ban đầu" autoComplete="off" />
+      </Modal>}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import useProjects from '../hooks/useProjects';
 import ProjectFormModal from '../components/ProjectFormModal';
 import ProgressBar from '../components/ProgressBar';
 import { formatDateOnlyVN } from '../utils/dates';
+import DepartmentPreview from '../components/DepartmentPreview';
 
 const { Title, Text } = Typography;
 
@@ -73,8 +74,7 @@ function Projects() {
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card title="Danh sách các ban nhóm công ty" className="project-overview-panel">
-            {/* TODO: Nối API phòng ban trong lượt được giao sau. */}
-            <Empty description="Sẽ nối API phòng ban sau" />
+            <DepartmentPreview />
           </Card>
         </Col>
         <Col xs={24} lg={12}>

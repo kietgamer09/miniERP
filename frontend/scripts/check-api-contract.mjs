@@ -10,6 +10,7 @@ let lastRequest;
 const events = [];
 const context = createContext({
   Event,
+  URLSearchParams,
   window: {
     localStorage: { getItem: () => JSON.stringify({ token: 'test-token' }) },
     dispatchEvent: (event) => events.push(event.type),
@@ -36,6 +37,8 @@ async function load(name) {
 const projects = (await load('projectApi')).namespace;
 const employees = (await load('employeeApi')).namespace;
 const auth = (await load('authApi')).namespace;
+// Token hiện được AuthProvider đồng bộ trong bộ nhớ, không đọc lại localStorage mỗi request.
+(await load('http')).namespace.setAuthToken('test-token');
 const projectBody = { code: 'DA-01', name: 'Dự án', start_date: '2026-10-01', end_date: '2026-10-01' };
 const employeeBody = { fullname: 'Nhân viên', phone_number: '0900000000', department_id: 1, role: 'employee' };
 const cases = [

@@ -8,6 +8,8 @@ const statusLabels = { dang_lam_viec: 'Đang làm việc', da_nghi_viec: 'Đã n
 
 function formatDate(value) {
   if (!value) return '—';
+  // Ngày sinh từ API là DD/MM/YYYY, không đưa vào bộ đọc ngày kiểu Mỹ.
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat('vi-VN').format(date);
 }

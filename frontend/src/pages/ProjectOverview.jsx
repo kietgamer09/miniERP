@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Alert, Button, Card, Col, Collapse, Empty, List, Popconfirm, Progress, Row, Space, Spin,
+  Alert, Button, Card, Col, Collapse, Empty, Popconfirm, Progress, Row, Space, Spin,
   Tag, Typography, message,
 } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { deleteProject as deleteProjectRequest, listProjects } from '../services/projectApi';
 import { useAuth } from '../context/AuthContext';
 import ProjectFormModal from '../components/ProjectFormModal';
+import DepartmentPreview from '../components/DepartmentPreview';
 
 const { Title, Text } = Typography;
 
@@ -146,7 +147,7 @@ function ProjectOverview() {
       <Row gutter={[16, 16]} className="project-overview-top">
         <Col xs={24} xl={12}>
           <Card title="Danh sách các ban nhóm công ty" className="project-overview-panel">
-            <Empty description="Danh sách phòng ban chưa có API trong backend hiện tại." />
+            <DepartmentPreview />
           </Card>
         </Col>
 
@@ -157,12 +158,11 @@ function ProjectOverview() {
             ) : loading ? (
               <div className="project-panel-loading"><Spin /></div>
             ) : projects.length ? (
-              <List
-                className="project-panel-list"
-                dataSource={projects}
-                rowKey="id"
-                renderItem={renderProjectSummary}
-              />
+              <div className="project-panel-list" role="list" aria-label="Danh sách dự án">
+                {projects.map((project) => <div key={project.id} role="listitem">
+                  {renderProjectSummary(project)}
+                </div>)}
+              </div>
             ) : (
               <Empty description="Bạn chưa tham gia dự án nào" />
             )}

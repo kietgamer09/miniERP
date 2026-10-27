@@ -32,6 +32,7 @@ const pages = {
   '/du-an/tien-do': ProjectProgress,
   '/quan-ly-nhan-vien': Employees,
   '/viec-cua-toi': MyTasksPage,
+  '/viec-cua-toi/duoc-giao': MyTasksPage,
   '/quan-ly-phong-ban': Departments,
 };
 
