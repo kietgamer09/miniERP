@@ -1,10 +1,11 @@
 import { useCallback, useState, useEffect } from 'react';
-import { Card, Table, Typography, Space, Statistic, DatePicker, message, Row, Col, Tag, Button, Modal, Tooltip, Spin } from 'antd';
-import { TeamOutlined, CheckCircleOutlined, WarningOutlined, ClockCircleOutlined, EyeOutlined } from '@ant-design/icons';
+import { Card, Table, Typography, Space, Statistic, DatePicker, message, Row, Col, Tag, Modal, Tooltip, Spin } from 'antd';
+import { TeamOutlined, CheckCircleOutlined, WarningOutlined, ClockCircleOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getCompanyAttendanceSummary, getEmployeeAttendanceByAdmin } from '../services/attendanceApi';
 import { explanationLabels } from '../utils/attendance';
 import { formatDateOnlyVN } from '../utils/dates';
+import { detailInteraction } from '../utils/detailInteraction';
 import './TimesheetCard.css'; // Dùng chung file CSS với bảng công cá nhân để đồng bộ màu sắc và style lưới
 
 const { Title, Text } = Typography;
@@ -131,20 +132,11 @@ function CompanyAttendance() {
       },
     },
     {
-      title: 'Thao tác',
+      title: '',
       key: 'action',
       align: 'center',
-      render: (_, record) => (
-        <Button 
-          type="primary" 
-          ghost 
-          size="small" 
-          icon={<EyeOutlined />} 
-          onClick={() => handleViewDetail(record)}
-        >
-          Xem chi tiết
-        </Button>
-      ),
+      width: 36,
+      render: () => <RightOutlined aria-hidden />,
     },
   ];
 
@@ -222,6 +214,7 @@ function CompanyAttendance() {
           columns={columns} 
           rowKey="employee_id" 
           loading={loading}
+          onRow={employee => ({ className: 'detail-clickable-row', ...detailInteraction(() => handleViewDetail(employee), `Bảng công của ${employee.fullname || 'nhân viên'}`) })}
           pagination={{ pageSize: 8, position: ['bottomRight'] }}
           scroll={{ x: 1200, y: 360 }}
         />

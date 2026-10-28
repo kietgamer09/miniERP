@@ -30,11 +30,6 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
   useEffect(() => {
     if (!open) return;
     form.resetFields();
-    if (project) form.setFieldsValue({
-      ...project,
-      start_date: dayjs(project.start_date).locale('vi'),
-      end_date: dayjs(project.end_date).locale('vi'),
-    });
   }, [open, project, form]);
 
   useEffect(() => {
@@ -98,7 +93,11 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
       okText="Lưu" cancelText="Hủy"
     >
       {saveError && <Alert type="error" showIcon title={saveError} style={{ marginBottom: 16 }} />}
-      <Form form={form} layout="vertical" disabled={saving} preserve={false}>
+      <Form form={form} layout="vertical" disabled={saving} preserve={false}
+        initialValues={project ? { ...project,
+          start_date: project.start_date ? dayjs(project.start_date).locale('vi') : null,
+          end_date: project.end_date ? dayjs(project.end_date).locale('vi') : null,
+        } : {}}>
         <Form.Item label="Mã dự án" name="code" rules={[
           { required: true, whitespace: true, message: 'Vui lòng nhập mã dự án' },
           { max: 20, message: 'Mã dự án không được quá 20 ký tự' },

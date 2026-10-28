@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Alert, Button, Card, Empty, Space, Spin, Tag, Typography, message } from 'antd';
 import { EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useRole } from '../hooks/useAuth';
@@ -7,10 +7,12 @@ import useProjects from '../hooks/useProjects';
 import ProjectFormModal from '../components/ProjectFormModal';
 import ProgressBar from '../components/ProgressBar';
 import { formatDateOnlyVN } from '../utils/dates';
+import { detailInteraction } from '../utils/detailInteraction';
 
 const { Title, Text } = Typography;
 
 function Projects() {
+  const navigate = useNavigate();
   const { role } = useRole();
   const { projects, loading, error, reload } = useProjects();
   const [formOpen, setFormOpen] = useState(false);
@@ -34,7 +36,8 @@ function Projects() {
     if (loading) return <div className="project-panel-loading"><Spin /></div>;
     if (!projects.length) return <Empty description={isAdmin ? 'Công ty chưa có dự án nào' : 'Bạn chưa tham gia dự án nào'} />;
     return <Space orientation="vertical" size={12} style={{ width: '100%' }}>
-      {projects.map((project) => <Card key={project.id} size="small" className="project-summary-card">
+      {projects.map((project) => <Card key={project.id} size="small" className="project-summary-card detail-clickable-card" role="link"
+        {...detailInteraction(() => navigate(`/du-an/${project.id}`), `Mở dự án ${project.name}`)}>
         <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
           <Link to={`/du-an/${project.id}`} style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{project.name}</Link>
           <Tag color={project.status === 'hoan_thanh' ? 'green' : 'blue'}>
@@ -47,9 +50,8 @@ function Projects() {
           <Text>Thành viên: {project.members_count ?? 0}</Text>
           <Text>Quản lý dự án: {project.manager_name || 'Chưa phân công'}</Text>
         </div>
-        <ProgressBar {...project} />
+        <ProgressBar {...project} showBar />
         <Space wrap>
-          <Link to={`/du-an/${project.id}`}>Xem chi tiết</Link>
           {project.can_manage && <Button size="small" icon={<EditOutlined />} onClick={() => openForm(project)}>Sửa dự án</Button>}
         </Space>
       </Card>)}

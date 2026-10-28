@@ -11,6 +11,7 @@ import AttendanceExplanationModal from './AttendanceExplanationModal';
 import AttendanceDonut from './AttendanceDonut';
 import { attendanceGroup, summarizeAttendance } from '../utils/attendanceSummary';
 import { getDayName, parseDateOnly } from '../utils/dates';
+import { detailInteraction } from '../utils/detailInteraction';
 import './TimesheetCard.css';
 
 export default function TimesheetCard({ compact = false }) {
@@ -57,7 +58,9 @@ export default function TimesheetCard({ compact = false }) {
     setExplaining(false); setReload(value => value + 1); refresh();
     message.success('Đã gửi giải trình, chờ Admin duyệt');
   }
-  return <Card title="Bảng công" className={`timesheet-card${compact ? ' timesheet-card--compact' : ''}`} style={{ height: '100%' }} extra={<Space size={6}>
+  return <Card title="Bảng công" className={`timesheet-card${compact ? ' timesheet-card--compact' : ''}${data ? ' detail-clickable-card' : ''}`}
+    {...(data ? detailInteraction(() => setShowCalendar(true), 'Mở bảng công chi tiết tháng') : {})}
+    style={{ height: '100%' }} extra={<Space size={6}>
     <DatePicker picker="month" allowClear={false} format="MM/YYYY" value={dayjs(`${month}-01`)} size="small"
       aria-label="Tháng xem bảng công" onChange={value => { if (value) {
         setMonth(value.format('YYYY-MM')); setSelected(null); changeGroup('attention');
@@ -90,7 +93,7 @@ export default function TimesheetCard({ compact = false }) {
       </ul> : <Typography.Paragraph type="secondary" className="timesheet-strip-empty">Không có ngày trong nhóm này.</Typography.Paragraph>}
       <div className="timesheet-summary-footer">
         {activeGroup !== 'attention' && <Button type="link" size="small" onClick={() => changeGroup('attention')}>Ngày cần chú ý</Button>}
-        <Button type="link" size="small" onClick={() => setShowCalendar(true)}>Xem chi tiết tháng</Button>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>Bấm vào khung để xem bảng công tháng</Typography.Text>
       </div>
     </>}
     {data && showCalendar && <Modal open title={`Chi tiết bảng công tháng ${dayjs(`${month}-01`).format('MM/YYYY')}`}

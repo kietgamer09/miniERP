@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Alert, Button, Card, Col, Empty, Popconfirm, Row, Space, Spin,
   Tag, Typography, message,
@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import ProjectFormModal from '../components/ProjectFormModal';
 import DepartmentPreview from '../components/DepartmentPreview';
 import ProjectPerformanceChart from '../components/ProjectPerformanceChart';
+import { detailInteraction } from '../utils/detailInteraction';
 
 const { Title, Text } = Typography;
 
@@ -20,6 +21,7 @@ function formatDate(date) {
 }
 
 function ProjectOverview() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +81,8 @@ function ProjectOverview() {
 
   function renderProjectSummary(project) {
     return (
-      <Card size="small" className="project-summary-card">
+      <Card size="small" className="project-summary-card detail-clickable-card" role="link"
+        {...detailInteraction(() => navigate(`/du-an/${project.id}`), `Mở dự án ${project.name}`)}>
         <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
           <div>
             <Link to={`/du-an/${project.id}`} style={{ fontWeight: 600 }}>{project.name}</Link>

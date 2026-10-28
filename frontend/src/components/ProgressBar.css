@@ -7,3 +7,11 @@
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
+
+.project-progress-visual { display: grid; gap: 7px; margin-block: 12px; min-width: 0; }
+.project-progress-caption { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.project-progress-caption > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.project-progress-caption > :last-child { flex-shrink: 0; }
+.project-progress-track { height: 8px; overflow: hidden; border-radius: 8px; background: var(--border); }
+.project-progress-fill { height: 100%; border-radius: inherit; background: var(--brand); }
+.project-progress-track.is-complete .project-progress-fill { background: var(--green-text); }
