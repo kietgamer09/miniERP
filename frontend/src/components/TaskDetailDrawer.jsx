@@ -7,7 +7,7 @@ import { adaptTask } from '../utils/taskAdapter';
 import { formatDateVN } from '../utils/dates';
 import { getDueState } from '../utils/taskStatus';
 
-export default function TaskDetailDrawer({ taskId, open, onClose, onEdit }) {
+export default function TaskDetailDrawer({ taskId, open, onClose, onEdit, readOnly = false }) {
   const [loadState, setLoadState] = useState({ key: '', task: null, error: '' });
   const [reloadKey, setReloadKey] = useState(0);
   const requestKey = `${taskId ?? ''}:${reloadKey}`;
@@ -39,7 +39,7 @@ export default function TaskDetailDrawer({ taskId, open, onClose, onEdit }) {
   return (
     <Drawer title={task?.title || 'Chi tiết task'} open={open} onClose={onClose}
       width={560} styles={{ wrapper: { maxWidth: '100vw' } }}
-      extra={canEdit && <Tooltip title={completedProject ? 'Mở lại dự án để sửa task' : undefined}>
+      extra={canEdit && !readOnly && <Tooltip title={completedProject ? 'Mở lại dự án để sửa task' : undefined}>
         <span><Button icon={<EditOutlined />} disabled={completedProject || loading}
           onClick={() => onEdit?.(task)}>Sửa task</Button></span>
       </Tooltip>}>

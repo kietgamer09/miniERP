@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Card, Table, Typography, Space, Statistic, DatePicker, message, Row, Col, Tag, Button, Modal, Tooltip, Spin } from 'antd';
 import { TeamOutlined, CheckCircleOutlined, WarningOutlined, ClockCircleOutlined, EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -10,8 +10,8 @@ import './TimesheetCard.css'; // Dùng chung file CSS với bảng công cá nh�
 const { Title, Text } = Typography;
 
 function CompanyAttendance() {
-  const [loading, setLoading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(dayjs());
+  const [loadedMonth, setLoadedMonth] = useState('');
   const [overview, setOverview] = useState({
     total_employees: 0,
     full_attendance_count: 0,
@@ -28,9 +28,10 @@ function CompanyAttendance() {
   const [attendanceDays, setAttendanceDays] = useState([]);
 
   const [messageApi, contextHolder] = message.useMessage();
+  const monthKey = selectedMonth.format('YYYY-MM');
+  const loading = loadedMonth !== monthKey;
 
-  const fetchSummary = async (monthStr) => {
-    setLoading(true);
+  const fetchSummary = useCallback(async (monthStr) => {
     try {
       const res = await getCompanyAttendanceSummary(monthStr);
       if (res) {
@@ -40,14 +41,16 @@ function CompanyAttendance() {
     } catch (err) {
       messageApi.error(err.message || 'Không thể tải dữ liệu bảng công công ty.');
     } finally {
-      setLoading(false);
+      setLoadedMonth(monthStr);
     }
-  };
+  }, [messageApi]);
 
   useEffect(() => {
     const monthStr = selectedMonth.format('YYYY-MM');
+    // Async API loading updates state after the request resolves.
+    // oxlint-disable-next-line react/set-state-in-effect
     fetchSummary(monthStr);
-  }, [selectedMonth]);
+  }, [selectedMonth, fetchSummary]);
 
   const handleMonthChange = (date) => {
     if (date) {

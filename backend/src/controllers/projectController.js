@@ -8,7 +8,7 @@ const serializeProject = (project) => ({
 });
 
 const canManageProject = (req, project) => req.user.role === 'admin'
-  || project.manager_id === req.employee.employee_id;
+  || (req.user.role === 'manager' && project.manager_id === req.employee.employee_id);
 
 function getTodayDate() {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -57,16 +57,31 @@ export const createProject = async (req, res) => {
   try {
     const { data, error } = validateProject(req.body ?? {}, true);
     if (error) return res.status(400).json({ error });
+    const requestedMemberIds = req.body?.member_ids ?? [];
+    if (!Array.isArray(requestedMemberIds)
+      || requestedMemberIds.some((id) => typeof id !== 'number' || !parseId(id))) {
+      return res.status(400).json({ error: 'member_ids phải là mảng gồm các ID nhân viên hợp lệ' });
+    }
+    const memberIds = [...new Set(requestedMemberIds)];
     const existing = await prisma.projects.findUnique({ where: { code: data.code }, select: { id: true } });
     if (existing) return res.status(409).json({ error: 'Mã dự án đã tồn tại' });
     const project = await prisma.$transaction(async (tx) => {
+      const members = memberIds.length ? await tx.employees.findMany({
+        where: { employee_id: { in: memberIds }, status: 'dang_lam_viec' },
+        select: { employee_id: true },
+      }) : [];
+      if (members.length !== memberIds.length) {
+        return { error: 'Có nhân viên không tồn tại hoặc đã nghỉ việc' };
+      }
       const created = await tx.projects.create({ data: { ...data, manager_id: req.employee.employee_id } });
-      await tx.project_members.create({
-        data: { project_id: created.id, employee_id: req.employee.employee_id },
+      const allMemberIds = [...new Set([req.employee.employee_id, ...memberIds])];
+      await tx.project_members.createMany({
+        data: allMemberIds.map((employeeId) => ({ project_id: created.id, employee_id: employeeId })),
       });
-      return created;
+      return { created };
     });
-    res.status(201).json(serializeProject(project));
+    if (project.error) return res.status(400).json({ error: project.error });
+    res.status(201).json(serializeProject(project.created));
   } catch (error) {
     // Kiểm tra trước không chặn được hai yêu cầu cùng mã chạy đồng thời.
     if (error.code === 'P2002') return res.status(409).json({ error: 'Mã dự án đã tồn tại' });
@@ -79,7 +94,10 @@ export const listProjects = async (req, res) => {
   try {
     const projects = await prisma.projects.findMany({
       where: req.user.role === 'admin' ? {} : {
-        project_members: { some: { employee_id: req.employee.employee_id } },
+        OR: [
+          { project_members: { some: { employee_id: req.employee.employee_id } } },
+          ...(req.user.role === 'manager' ? [{ manager_id: req.employee.employee_id }] : []),
+        ],
       },
       include: {
         employees: { select: { fullname: true } },
@@ -148,7 +166,9 @@ export const getProject = async (req, res) => {
     const isMember = project.project_members.some(
       (member) => member.employee_id === req.employee.employee_id,
     );
-    if (req.user.role !== 'admin' && !isMember) {
+    const isProjectManager = req.user.role === 'manager'
+      && project.manager_id === req.employee.employee_id;
+    if (req.user.role !== 'admin' && !isMember && !isProjectManager) {
       return res.status(403).json({ error: 'Bạn không thuộc dự án này' });
     }
 

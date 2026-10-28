@@ -16,7 +16,8 @@ export function formatTask(task, caller) {
   const assignee = task.employees_tasks_assignee_idToemployees;
   const creator = task.employees_tasks_created_byToemployees;
   const isMine = task.assignee_id === caller.employeeId;
-  const canEdit = caller.role === 'admin' || task.projects.manager_id === caller.employeeId;
+  const canEdit = caller.role === 'admin'
+    || (caller.role === 'manager' && task.projects.manager_id === caller.employeeId);
   return {
     id: task.id,
     project_id: task.project_id,
@@ -125,6 +126,7 @@ export const listProjectTasks = async (req, res) => {
       where: { id },
       select: {
         id: true,
+        manager_id: true,
         project_members: {
           where: { employee_id: req.employee.employee_id },
           select: { employee_id: true },
@@ -132,7 +134,8 @@ export const listProjectTasks = async (req, res) => {
       },
     });
     if (!project) return res.status(404).json({ error: 'Không tìm thấy dự án' });
-    if (req.user.role !== 'admin' && !project.project_members.length) {
+    if (req.user.role !== 'admin' && !project.project_members.length
+      && !(req.user.role === 'manager' && project.manager_id === req.employee.employee_id)) {
       return res.status(403).json({ error: 'Bạn không thuộc dự án này' });
     }
     const tasks = await prisma.tasks.findMany({

@@ -43,7 +43,7 @@ const fullMenuItems = [
         ],
       },
       {
-        key: '/viec-cua-toi', label: 'Việc của tôi', icon: <CheckSquareOutlined />, roles: ALL,
+        key: '/viec-cua-toi', label: 'Công việc', icon: <CheckSquareOutlined />, roles: ALL,
         children: [
           { key: '/viec-cua-toi/duoc-giao', label: 'Việc được giao', roles: ALL },
           { key: '/viec-cua-toi/giao-viec', label: 'Giao việc', roles: MGR_ADMIN },

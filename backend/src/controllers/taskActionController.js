@@ -24,7 +24,9 @@ export const changeTaskStatus = async (req, res) => {
         where: { project_id_employee_id: { project_id: task.project_id, employee_id: employeeId } },
         select: { id: true },
       }));
-      if (!isMember) return { status: 403, error: 'Bạn không thuộc dự án này' };
+      if (!isMember && !(req.user.role === 'manager' && task.projects.manager_id === employeeId)) {
+        return { status: 403, error: 'Bạn không thuộc dự án này' };
+      }
 
       const targetStatus = req.body?.status;
       if (!statuses.includes(targetStatus)) return { status: 400, error: 'Trạng thái không hợp lệ' };
@@ -36,7 +38,8 @@ export const changeTaskStatus = async (req, res) => {
       const distance = Math.abs(statuses.indexOf(targetStatus) - statuses.indexOf(task.status));
       if (distance !== 1) return { status: 409, error: 'Chỉ được chuyển task sang cột kề nhau' };
 
-      const canManage = isAdmin || task.projects.manager_id === employeeId;
+      const canManage = isAdmin
+        || (req.user.role === 'manager' && task.projects.manager_id === employeeId);
       const isAssignee = task.assignee_id === employeeId;
       const allowedMoves = getAllowedMoves({
         status: task.status,

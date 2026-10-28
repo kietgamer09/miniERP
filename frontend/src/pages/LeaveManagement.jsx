@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Typography, Space, DatePicker, message, Button, Modal, Form, Input, Alert, Spin, Tag, Statistic } from 'antd';
 import { PlusOutlined, SendOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -8,9 +8,8 @@ import '../components/TimesheetCard.css';
 const { Title, Text } = Typography;
 
 function LeaveManagement() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(dayjs());
-  const [monthData, setMonthData] = useState([]);
   const [leaveSummary, setLeaveSummary] = useState({ max_days: 12, used_days: 0, remaining_days: 12 });
   const [myLeaveRequests, setMyLeaveRequests] = useState([]);
   
@@ -44,8 +43,7 @@ function LeaveManagement() {
     return () => observer.disconnect();
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
     try {
       const [summaryRes, requestsRes] = await Promise.all([
         getLeaveSummary(),
@@ -62,13 +60,15 @@ function LeaveManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [messageApi]);
 
   useEffect(() => {
+    // Async API loading updates state after the request resolves.
+    // oxlint-disable-next-line react/set-state-in-effect
     fetchData();
-  }, [selectedMonth]);
+  }, [fetchData]);
 
-  useEffect(() => {
+  const monthData = useMemo(() => {
     const monthStr = selectedMonth.format('YYYY-MM');
     const [year, month] = monthStr.split('-').map(Number);
     const totalDays = new Date(year, month, 0).getDate();
@@ -111,7 +111,7 @@ function LeaveManagement() {
       };
     });
 
-    setMonthData(days);
+    return days;
   }, [selectedMonth, myLeaveRequests]);
 
   const handleDayClick = (item) => {
@@ -127,6 +127,7 @@ function LeaveManagement() {
           try {
             const res = await cancelLeaveRequest(item.bookingInfo.id);
             messageApi.success(res.message || 'Đã hủy đơn thành công.');
+            setLoading(true);
             fetchData();
             setSelectedDates([]);
           } catch (err) {
@@ -185,6 +186,7 @@ function LeaveManagement() {
       setIsModalVisible(false);
       setSelectedDates([]);
       form.resetFields();
+      setLoading(true);
       fetchData();
     } catch (err) {
       messageApi.error(err.message || 'Gửi đơn thất bại.');

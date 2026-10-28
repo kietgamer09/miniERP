@@ -19,7 +19,9 @@ export const getTaskDetails = async (req, res) => {
         where: { project_id_employee_id: { project_id: task.project_id, employee_id: req.employee.employee_id } },
         select: { id: true },
       });
-      if (!membership) return res.status(403).json({ error: 'Bạn không thuộc dự án này' });
+      if (!membership && !(req.user.role === 'manager' && task.projects.manager_id === req.employee.employee_id)) {
+        return res.status(403).json({ error: 'Bạn không thuộc dự án này' });
+      }
     }
 
     return res.json(formatTask(task, {
@@ -40,7 +42,8 @@ export const updateTaskDetails = async (req, res) => {
       const task = await tx.tasks.findUnique({ where: { id }, select: taskFields });
       if (!task) return errorResult(404, 'Không tìm thấy task');
 
-      const canManage = req.user.role === 'admin' || task.projects.manager_id === req.employee.employee_id;
+      const canManage = req.user.role === 'admin'
+        || (req.user.role === 'manager' && task.projects.manager_id === req.employee.employee_id);
       if (!canManage) return errorResult(403, 'Chỉ Quản lý dự án hoặc Admin được sửa task');
       if (task.projects.status === 'hoan_thanh') {
         return errorResult(409, 'Dự án đã hoàn thành, hãy mở lại dự án để sửa task');

@@ -111,18 +111,17 @@ function MainLayout() {
         }}
       >
         <Space className="app-header-start" size={16}>
-          <button type="button" className="app-brand" onClick={() => navigate('/')} aria-label="miniERP — Trang chủ">
-            <span>mini</span><strong>ERP</strong>
-          </button>
           <Button
+            className="header-menu-toggle"
             type="text"
             aria-label={isMobile ? 'Mở menu điều hướng' : 'Thu gọn menu điều hướng'}
             icon={isMobile || collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             onClick={() => (isMobile ? setMobileMenuOpen(true) : setCollapsed(!collapsed))}
-            style={{ fontSize: 18 }}
           />
+          <button type="button" className="app-brand" onClick={() => navigate('/')} aria-label="miniERP — Trang chủ">
+            <span>mini</span><strong>ERP</strong>
+          </button>
           <HistoryNavigation />
-
         </Space>
         <Space size="middle" className="app-header-actions">
           <Tooltip title={mode === 'dark' ? 'Chuyển sang nền sáng' : 'Chuyển sang nền tối'}>
