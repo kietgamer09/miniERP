@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Alert, Button, Input, Spin, Typography } from 'antd';
 import { ReloadOutlined, SendOutlined } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth';
@@ -9,6 +9,7 @@ const { Text } = Typography;
 const EMPTY_COMMENTS = [];
 
 export default function TaskComments({ taskId }) {
+  const countId = useId();
   const { user } = useAuth();
   const [loadState, setLoadState] = useState({ key: '', comments: [], error: '' });
   const [reloadKey, setReloadKey] = useState(0);
@@ -86,7 +87,7 @@ export default function TaskComments({ taskId }) {
             </div>}
       <Text type="secondary" style={{ display: 'block', margin: '8px 0' }}>Bình luận không thể sửa hoặc xóa.</Text>
       {sendError && <Alert type="error" showIcon title={sendError} style={{ marginBottom: 8 }} />}
-      <Input.TextArea aria-label="Nội dung bình luận" value={content}
+      <Input.TextArea aria-label="Nội dung bình luận" aria-describedby={countId} value={content}
         onChange={(event) => { setContent(event.target.value); setSendError(''); }}
         onKeyDown={(event) => {
           if (event.ctrlKey && event.key === 'Enter') {
@@ -94,9 +95,10 @@ export default function TaskComments({ taskId }) {
             submitComment();
           }
         }}
-        autoSize={{ minRows: 2, maxRows: 5 }} maxLength={2000} showCount
+        autoSize={{ minRows: 2, maxRows: 5 }} maxLength={2000}
         placeholder="Viết bình luận…" />
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: 8 }}>
+        <Text id={countId} type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{content.length}/2000</Text>
         <Button type="primary" icon={<SendOutlined />} loading={sending}
           disabled={!content.trim() || content.length > 2000 || sending}
           onClick={submitComment}>Gửi</Button>

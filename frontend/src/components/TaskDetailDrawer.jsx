@@ -7,6 +7,7 @@ import { adaptTask } from '../utils/taskAdapter';
 import { formatDateVN } from '../utils/dates';
 import { getDueState } from '../utils/taskStatus';
 import TaskComments from './TaskComments';
+import Attachments from './Attachments';
 
 export default function TaskDetailDrawer({ taskId, open, onClose, onEdit, readOnly = false }) {
   const [loadState, setLoadState] = useState({ key: '', task: null, error: '' });
@@ -61,6 +62,7 @@ export default function TaskDetailDrawer({ taskId, open, onClose, onEdit, readOn
               { key: 'status', label: 'Trạng thái', children: TASK_STATUS_LABELS[task.status] || task.status },
               { key: 'project', label: 'Dự án', children: task.project_name },
             ]} />
+            <Attachments key={`files-${task.id}`} type="tasks" targetId={task.id} readOnly={readOnly} />
             <TaskComments taskId={task.id} />
           </>}
     </Drawer>

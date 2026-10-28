@@ -5,6 +5,12 @@
 }
 
 .home-page > * { min-width: 0; }
+.attachments { display: grid; gap: 8px; min-width: 0; margin-top: 16px; }
+.attachments-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.attachments-hint { font-size: 12px; }
+.attachment-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.attachment-info { display: grid; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.attachment-info > .ant-typography:last-child { font-size: 11px; }
 .home-summary .ant-card { height: 100%; }
 .home-summary .ant-card-body { padding: 10px 16px; }
 .home-summary .ant-statistic { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

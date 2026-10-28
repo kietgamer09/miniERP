@@ -11,6 +11,7 @@ import AddMembersModal from '../components/AddMembersModal';
 import ProjectKanban from '../components/ProjectKanban';
 import TaskFormModal from '../components/TaskFormModal';
 import TaskDetailDrawer from '../components/TaskDetailDrawer';
+import Attachments from '../components/Attachments';
 
 function ProjectDetailContent({ id }) {
   const [project, setProject] = useState(null);
@@ -118,6 +119,7 @@ function ProjectDetailContent({ id }) {
               </Popconfirm>
             </Space>}
           </Card>
+          <Card><Attachments type="projects" targetId={project.id} /></Card>
           <MemberList project={project} onChanged={() => handleSaved('Đã bớt thành viên khỏi dự án')} />
           <ProjectKanban key={reloadKey} projectId={project.id} projectStatus={project.status}
             onOpen={(task) => setSelectedTaskId(task.id)}

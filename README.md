@@ -11,6 +11,9 @@ Frontend xác thực qua `POST /api/auth/login`, lấy hồ sơ qua `GET /api/us
 
 ## Chức năng hiện có
 
+- Tệp đính kèm trong chi tiết task, dự án và đơn nghỉ phép: tải lên/tải xuống/xóa theo quyền; tối đa 10 MB/file và 30 file/mục. Hỗ trợ PDF, PNG/JPEG/WebP, DOCX/XLSX/PPTX, TXT/CSV. Đơn nghỉ phép mở hộp đính kèm sau khi gửi, hoặc mở lại từ danh sách tệp bên dưới lịch; người duyệt xem tệp trong hộp xử lý đơn. Dự án hoàn thành và đơn đã duyệt/từ chối chỉ cho tải xuống.
+- File và metadata lưu tại `backend/uploads/attachments/` trên máy chạy backend, được bỏ qua bởi Git. Khi chuyển máy hoặc sao lưu phải sao chép thư mục này cùng database tương ứng. Không cần cài thêm package hay migrate; khởi động lại backend để nhận route mới. API luôn kiểm tra đăng nhập và quyền đối với đối tượng chứa tệp, không phục vụ uploads công khai. Chỉ người tải lên hoặc Admin được xóa khi đối tượng còn cho phép thay đổi.
+
 - Danh sách, tạo, sửa, xóa dự án rỗng, hoàn thành/mở lại dự án; quản lý thành viên; tạo, giao, sửa và xem task theo quyền backend.
 - Trang chủ và **Việc của tôi / Việc được giao** dùng `GET /api/tasks/mine`; hỗ trợ Kanban kéo thả, task quá hạn lên đầu, xem chi tiết và bình luận task.
 - Chi tiết task có danh sách bình luận cũ đến mới; thành viên dự án và Admin được đọc/gửi. Bình luận là văn bản thuần và không sửa/xóa.

@@ -16,6 +16,7 @@ import AddMembersModal from '../components/AddMembersModal';
 import TaskFormModal from '../components/TaskFormModal';
 import TaskDetailDrawer from '../components/TaskDetailDrawer';
 import ProgressBar from '../components/ProgressBar';
+import Attachments from '../components/Attachments';
 import { formatDateOnlyVN } from '../utils/dates';
 
 const { Title, Text } = Typography;
@@ -95,6 +96,7 @@ function WorkProjectPanel({ summary, role, onRefresh }) {
               <Text type="secondary">Quản lý dự án: {project.manager_name || 'Chưa phân công'} · {project.members.length} thành viên</Text>
             </div>
             {project.description && <Text className="work-project-description">{project.description}</Text>}
+            <Attachments type="projects" targetId={project.id} />
           </div>
 
           {canManage && <Space wrap className="work-project-actions">

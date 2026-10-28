@@ -512,3 +512,13 @@ Frontend gọi endpoint này chỉ cho Quản lý/Admin. Thẻ nằm trên hai k
 Frontend tạm giả định API do phần Nhân sự cung cấp là `GET /api/leave-requests/pending-count`, chỉ dành cho Quản lý và Admin, trả `200 { "count": 3 }`. Thẻ xử lý độc lập; nếu endpoint trả `404`/`403`, lỗi mạng hoặc dữ liệu sai dạng thì hiện `—` cùng tooltip `Chưa lấy được dữ liệu`, không làm hỏng Trang chủ. Nhấn thẻ chuyển tới `/phe-duyet`.
 
 **Cần xác nhận với bạn đồng nghiệp:** đường dẫn thật (các route hiện tại trong `leaveRoutes.js` đang dùng `/api/leaves/...` và chưa có endpoint đếm chờ duyệt), quyền và phạm vi số đếm cho Quản lý/Admin, cùng tên trường phản hồi. Khi hợp đồng được chốt, chỉ cập nhật `getPendingLeaveCount()` trong `frontend/src/services/leaveApi.js`.
+
+## 16. Tệp đính kèm
+
+`GET/POST /api/attachments/:type/:targetId`, `GET/DELETE /api/attachments/:type/:targetId/:fileId` yêu cầu Bearer token và nhân viên đang làm việc. `type` là `tasks`, `projects`, `leaves`.
+
+GET danh sách trả `{ can_upload, files: [{ id, name, size, author_id, created_at, can_delete }] }`. POST gửi body nhị phân với `Content-Type: application/octet-stream` và header `X-File-Name: encodeURIComponent(file.name)`, trả metadata 201. GET file trả download attachment; DELETE trả 204. Giới hạn 10 MB/file, 30 file/mục; định dạng PDF, PNG/JPEG/WebP, DOCX/XLSX/PPTX, TXT/CSV.
+
+Thành viên/quản lý dự án và Admin được đọc/thêm tệp công việc trong dự án đang thực hiện; dự án hoàn thành chỉ được đọc. Người gửi đơn nghỉ phép được thêm tệp khi đơn còn chờ; Quản lý/Admin được đọc minh chứng như phạm vi API duyệt đơn hiện hành. Chỉ tác giả tệp hoặc Admin được xóa, khi đối tượng còn cho phép ghi. Tệp của task/dự án là tài liệu dùng chung, độc lập với bình luận bất biến.
+
+Lỗi: 400 ID/định dạng/tên/tệp rỗng không hợp lệ hoặc vượt 30 file; 401 thiếu/sai token; 403 ngoài quyền hoặc đã khóa; 404 đối tượng/tệp không tồn tại; 413 vượt 10 MB. File lưu trong `backend/uploads/attachments`, không lưu vào Git; sao lưu cùng DB. Luồng giải trình chấm công đang vô hiệu hóa nên chưa có đính kèm ở đó.

@@ -4,6 +4,7 @@ import { PlusOutlined, SendOutlined, ExclamationCircleOutlined } from '@ant-desi
 import dayjs from 'dayjs';
 import { createLeaveRequest, getLeaveSummary, getLeaveRequests, cancelLeaveRequest } from '../services/leaveApi';
 import '../components/TimesheetCard.css';
+import Attachments from '../components/Attachments';
 
 const { Title, Text } = Typography;
 
@@ -12,6 +13,7 @@ function LeaveManagement() {
   const [selectedMonth, setSelectedMonth] = useState(dayjs());
   const [leaveSummary, setLeaveSummary] = useState({ max_days: 12, used_days: 0, remaining_days: 12 });
   const [myLeaveRequests, setMyLeaveRequests] = useState([]);
+  const [attachmentLeaveId, setAttachmentLeaveId] = useState(null);
   
   const [selectedDates, setSelectedDates] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -183,6 +185,7 @@ function LeaveManagement() {
       });
 
       messageApi.success(res.message || 'Gửi đơn xin nghỉ phép thành công!');
+      if (res.data?.Day_off_id) setAttachmentLeaveId(res.data.Day_off_id);
       setIsModalVisible(false);
       setSelectedDates([]);
       form.resetFields();
@@ -253,6 +256,9 @@ function LeaveManagement() {
   return (
     <div className="leave-management-page" style={{ background: themeStyles.pageBg, transition: 'background 0.3s' }}>
       {contextHolder}
+      <Modal open={Boolean(attachmentLeaveId)} title="Tệp đính kèm đơn nghỉ phép" footer={null} onCancel={() => setAttachmentLeaveId(null)}>
+        {attachmentLeaveId && <Attachments key={attachmentLeaveId} type="leaves" targetId={attachmentLeaveId} />}
+      </Modal>
 
       {/* Header & Thống kê số phép */}
       <div className="leave-page-header">
@@ -391,6 +397,11 @@ function LeaveManagement() {
         )}
       </Card>
 
+      {myLeaveRequests.length > 0 && <Card title="Tệp đính kèm đơn nghỉ phép">
+        <Space wrap>{myLeaveRequests.map(item => <Button key={item.Day_off_id} onClick={() => setAttachmentLeaveId(item.Day_off_id)}>
+          Đơn #{item.Day_off_id} · {dayjs(item.start_date).format('DD/MM/YYYY')}
+        </Button>)}</Space>
+      </Card>}
       {/* Modal Gửi Đơn Xin Nghỉ Phép */}
       <Modal
         title="Tạo đơn xin nghỉ phép"
