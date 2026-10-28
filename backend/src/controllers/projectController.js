@@ -255,26 +255,24 @@ export const updateProject = async (req, res) => {
 
 export const deleteProject = async (req, res) => {
   try {
-    const project = await loadManagedProject(req, res);
-    if (!project) return;
-
-    await prisma.$transaction(async (tx) => {
-      const tasks = await tx.tasks.findMany({
-        where: { project_id: project.id },
-        select: { id: true },
-      });
-      const taskIds = tasks.map((task) => task.id);
-      if (taskIds.length) {
-        await tx.task_comments.deleteMany({ where: { task_id: { in: taskIds } } });
-        await tx.tasks.deleteMany({ where: { id: { in: taskIds } } });
-      }
+    const result = await prisma.$transaction(async (tx) => {
+      const project = await loadManagedProject(req, res, tx);
+      if (!project) return null;
+      const taskCount = await tx.tasks.count({ where: { project_id: project.id } });
+      if (taskCount) return { status: 409, error: 'Chỉ có thể xóa dự án chưa có task' };
       await tx.project_members.deleteMany({ where: { project_id: project.id } });
       await tx.projects.delete({ where: { id: project.id } });
-    });
+      return { deleted: true };
+    }, { isolationLevel: 'Serializable' });
 
+    if (!result) return;
+    if (result.error) return res.status(result.status).json({ error: result.error });
     res.status(204).end();
   } catch (error) {
     console.error('Không thể xóa dự án:', error);
+    if (error.code === 'P2034' || error.code === 'P2003') {
+      return res.status(409).json({ error: 'Dữ liệu dự án vừa thay đổi, vui lòng tải lại' });
+    }
     res.status(500).json({ error: 'Lỗi máy chủ khi xóa dự án' });
   }
 };

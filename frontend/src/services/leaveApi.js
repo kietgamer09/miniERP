@@ -23,3 +23,12 @@ export function reviewLeaveRequest(id, body) {
     body
   });
 }
+
+/** Hợp đồng tạm: endpoint tổng hợp do backend Nhân sự xác nhận sau. */
+export async function getPendingLeaveCount() {
+  const data = await request('/api/leave-requests/pending-count');
+  if (!Number.isInteger(data?.count) || data.count < 0) {
+    throw new Error('Dữ liệu số đơn nghỉ phép không hợp lệ');
+  }
+  return data.count;
+}

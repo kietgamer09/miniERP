@@ -200,8 +200,8 @@ function LeaveManagement() {
 
   // Bảng màu: Chế độ tối nền đen y hệt bản gốc, Chế độ sáng tối ưu màu đậm rõ nét, không bị chói
   const themeStyles = isDark ? {
-    pageBg: '#141414',
-    cardBg: '#141414',
+    pageBg: 'var(--page-bg)',
+    cardBg: 'var(--surface)',
     textColor: '#ffffff',
     textSecondary: '#aaa',
     weekdayColor: '#fff',
@@ -211,9 +211,9 @@ function LeaveManagement() {
     weekendBg: '#1a1a1a',
     weekendBorder: '#2a2a2a',
     weekendText: '#777',
-    pastBg: '#3a1c1c',
-    pastBorder: '#5c2222',
-    pastText: '#ff9999',
+    pastBg: 'var(--subtle-bg)',
+    pastBorder: 'var(--border)',
+    pastText: 'var(--muted)',
     pendingBg: 'rgba(250, 173, 20, 0.2)',
     pendingBorder: '#faad14',
     pendingText: '#faad14',
@@ -224,7 +224,7 @@ function LeaveManagement() {
     selectedBorder: '#1890ff',
     selectedText: '#fff',
   } : {
-    pageBg: '#f0f2f5',
+    pageBg: 'var(--page-bg)',
     cardBg: '#ffffff',
     textColor: '#1f2937',
     textSecondary: '#4b5563',
@@ -236,9 +236,9 @@ function LeaveManagement() {
     weekendBorder: '#cbd5e1',
     weekendText: '#475569',
     // Chế độ sáng: Tăng độ đậm và rõ nét cho các trạng thái để dễ nhìn, không bị chói
-    pastBg: '#fecaca',       // Đỏ hồng đậm rõ nét
-    pastBorder: '#f87171',
-    pastText: '#991b1b',
+    pastBg: 'var(--subtle-bg)',
+    pastBorder: 'var(--border)',
+    pastText: 'var(--muted)',
     pendingBg: '#fde68a',    // Vàng cam đậm
     pendingBorder: '#fbbf24',
     pendingText: '#92400e',
@@ -251,16 +251,16 @@ function LeaveManagement() {
   };
 
   return (
-    <div style={{ padding: '24px', height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: themeStyles.pageBg, transition: 'background 0.3s' }}>
+    <div className="leave-management-page" style={{ background: themeStyles.pageBg, transition: 'background 0.3s' }}>
       {contextHolder}
 
       {/* Header & Thống kê số phép */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
+      <div className="leave-page-header">
         <div>
           <Title level={3} style={{ margin: 0, color: themeStyles.textColor }}>Quản lý & Đăng ký nghỉ phép</Title>
           <Text style={{ color: themeStyles.textSecondary }}>Chọn các ngày trong tương lai trên lịch để tiến hành xin nghỉ phép (Tối đa 12 ngày/năm, không cộng dồn).</Text>
         </div>
-        <Space size={16}>
+        <Space wrap size={12}>
           <Card bordered={false} style={{ background: isDark ? '#1f2937' : themeStyles.cardBg, borderRadius: 8, boxShadow: isDark ? 'none' : '0 1px 3px 0 rgba(0, 0, 0, 0.08)' }} bodyStyle={{ padding: '8px 16px' }}>
             <Statistic 
               title={<span style={{ fontSize: '12px', color: themeStyles.textSecondary, fontWeight: 500 }}>Phép còn lại trong năm</span>}

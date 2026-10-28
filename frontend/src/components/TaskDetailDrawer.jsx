@@ -6,6 +6,7 @@ import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '../config/taskConstant
 import { adaptTask } from '../utils/taskAdapter';
 import { formatDateVN } from '../utils/dates';
 import { getDueState } from '../utils/taskStatus';
+import TaskComments from './TaskComments';
 
 export default function TaskDetailDrawer({ taskId, open, onClose, onEdit, readOnly = false }) {
   const [loadState, setLoadState] = useState({ key: '', task: null, error: '' });
@@ -48,7 +49,7 @@ export default function TaskDetailDrawer({ taskId, open, onClose, onEdit, readOn
           action={<Button icon={<ReloadOutlined />} onClick={() => setReloadKey((key) => key + 1)}>Thử lại</Button>} />
           : task && <>
             <Descriptions bordered column={1} size="small" items={[
-              { key: 'description', label: 'Mô tả', children: <span style={{ whiteSpace: 'pre-wrap' }}>{task.description || 'Chưa có mô tả'}</span> },
+              { key: 'description', label: 'Mô tả', children: <span style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{task.description || 'Chưa có mô tả'}</span> },
               { key: 'assignee', label: 'Người làm', children: task.assignee_name || 'Chưa phân công' },
               { key: 'creator', label: 'Người tạo', children: task.created_by_name || '—' },
               { key: 'due', label: 'Hạn chót', children: <>
@@ -60,7 +61,7 @@ export default function TaskDetailDrawer({ taskId, open, onClose, onEdit, readOn
               { key: 'status', label: 'Trạng thái', children: TASK_STATUS_LABELS[task.status] || task.status },
               { key: 'project', label: 'Dự án', children: task.project_name },
             ]} />
-            <Alert type="info" showIcon message="Bình luận sẽ có ở tuần 6" style={{ marginTop: 20 }} />
+            <TaskComments taskId={task.id} />
           </>}
     </Drawer>
   );

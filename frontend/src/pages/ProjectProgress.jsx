@@ -17,7 +17,7 @@ function ProjectProgress() {
 
   return (
     <div className="project-progress-page">
-      <Space className="project-page-header">
+      <Space wrap className="project-page-header">
         <div>
           <Title level={3} style={{ margin: 0 }}>Tiến độ dự án</Title>
           <Text type="secondary">Theo dõi phần việc đã hoàn thành trong từng dự án</Text>

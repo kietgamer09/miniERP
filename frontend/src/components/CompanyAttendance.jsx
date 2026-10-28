@@ -88,12 +88,15 @@ function CompanyAttendance() {
       title: 'Họ và tên',
       dataIndex: 'fullname',
       key: 'fullname',
+      width: 210,
       render: (text) => <Text strong>{text}</Text>,
     },
     {
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
+      width: 240,
+      ellipsis: true,
     },
     {
       title: 'Số ngày làm việc',
@@ -149,11 +152,11 @@ function CompanyAttendance() {
   const offset = (new Date(`${monthStr}-01T00:00:00Z`).getUTCDay() + 6) % 7;
 
   return (
-    <div style={{ padding: '24px', height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="company-attendance-page">
       {contextHolder}
 
       {/* Header & Bộ lọc tháng */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
+      <div className="company-attendance-header">
         <Title level={3} style={{ margin: 0 }}>Bảng công toàn công ty</Title>
         <Space>
           <Text type="secondary">Chọn tháng:</Text>
@@ -168,8 +171,8 @@ function CompanyAttendance() {
       </div>
 
       {/* Các Thẻ Thống Kê Tổng Quan (Cards) */}
-      <Row gutter={16} style={{ marginBottom: 16, flexShrink: 0 }}>
-        <Col span={6}>
+      <Row gutter={[12, 12]}>
+        <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
             <Statistic 
               title="Tổng số nhân viên" 
@@ -178,7 +181,7 @@ function CompanyAttendance() {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
             <Statistic 
               title="Nhân viên đủ công" 
@@ -187,7 +190,7 @@ function CompanyAttendance() {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
             <Statistic 
               title="Nhân viên thiếu công" 
@@ -196,7 +199,7 @@ function CompanyAttendance() {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
             <Statistic 
               title="Đi muộn / Về sớm" 
@@ -220,7 +223,7 @@ function CompanyAttendance() {
           rowKey="employee_id" 
           loading={loading}
           pagination={{ pageSize: 8, position: ['bottomRight'] }}
-          scroll={{ y: 300 }}
+          scroll={{ x: 1200, y: 360 }}
         />
       </Card>
 

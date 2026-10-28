@@ -65,7 +65,7 @@ function ProjectOverview() {
     setDeletingProjectId(project.id);
     try {
       await deleteProjectRequest(project.id);
-      messageApi.success('Đã xóa dự án và toàn bộ công việc, bình luận, thành viên thuộc dự án');
+      messageApi.success('Đã xóa dự án rỗng');
       reload();
     } catch (error) {
       messageApi.error(error.message || 'Không xóa được dự án');
@@ -99,7 +99,7 @@ function ProjectOverview() {
             <Button size="small" icon={<EditOutlined />} onClick={() => openForm(project)}>Sửa dự án</Button>
             <Popconfirm
               title="Xóa dự án này?"
-              description="Công việc, bình luận và thành viên thuộc dự án cũng sẽ bị xóa vĩnh viễn."
+              description="Chỉ xóa được dự án chưa có task. Dự án có task sẽ được giữ nguyên."
               okText="Xóa dự án"
               cancelText="Hủy"
               okButtonProps={{ danger: true, loading: deletingProjectId === project.id }}

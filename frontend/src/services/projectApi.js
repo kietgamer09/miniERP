@@ -1,6 +1,7 @@
 import { request } from './http';
 
 export const listProjects = () => request('/api/projects');
+export const getProjectSummary = () => request('/api/projects/summary');
 export const getProject = (id) => request(`/api/projects/${id}`);
 export const createProject = (data) => request('/api/projects', { method: 'POST', body: data });
 export const updateProject = (id, data) => request(`/api/projects/${id}`, { method: 'PUT', body: data });

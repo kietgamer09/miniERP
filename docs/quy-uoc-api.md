@@ -50,6 +50,7 @@ Tất cả yêu cầu cần Bearer token và hồ sơ nhân viên `dang_lam_viec
 | Danh sách | `GET /api/projects` | admin xem tất cả; người khác xem dự án mình là thành viên | 200, mảng |
 | Chi tiết | `GET /api/projects/:id` | thành viên dự án, admin | 200, dự án kèm thành viên và tiến độ |
 | Sửa | `PUT /api/projects/:id` | người có employee_id bằng manager_id của dự án, hoặc admin | 200, dự án |
+| Xóa dự án rỗng | `DELETE /api/projects/:id` | Quản lý dự án, admin | 204; dự án còn task trả 409 |
 | Hoàn thành | `POST /api/projects/:id/complete` | quản lý dự án, admin | 200, dự án đã hoàn thành |
 | Mở lại | `POST /api/projects/:id/reopen` | quản lý dự án, admin | 200, dự án đang thực hiện |
 
@@ -87,7 +88,7 @@ Ví dụ phản hồi danh sách:
 
 Danh sách sắp theo thời gian tạo giảm dần; khi bằng nhau, ID giảm dần. Không có dự án trả `[]`. Chưa có task thì các số tiến độ bằng 0. start_date/end_date luôn YYYY-MM-DD; created_at là thời điểm ISO.
 
-Lỗi: 400 dữ liệu/ID sai, ngày kết thúc dự án mới quá khứ hoặc đổi mã; 401 thiếu, sai hoặc hết hạn token; 403 thiếu quyền hoặc hồ sơ nhân viên không hợp lệ; 404 không có dự án; 409 trùng mã, hạn task vượt ngày kết thúc mới hoặc vi phạm điều kiện hoàn thành/mở lại; 500 lỗi máy chủ. Lỗi có dạng `{"error":"Mã dự án đã tồn tại"}`.
+Lỗi: 400 dữ liệu/ID sai, ngày kết thúc dự án mới quá khứ hoặc đổi mã; 401 thiếu, sai hoặc hết hạn token; 403 thiếu quyền hoặc hồ sơ nhân viên không hợp lệ; 404 không có dự án; 409 trùng mã, hạn task vượt ngày kết thúc mới, dự án còn task khi xóa hoặc vi phạm điều kiện hoàn thành/mở lại; 500 lỗi máy chủ. Lỗi có dạng `{"error":"Mã dự án đã tồn tại"}`.
 
 Hướng dẫn thực hành: [Kiểm tra API dự án](kiem-tra-api-du-an.md).
 
@@ -109,7 +110,7 @@ Ngày tính theo ngày chạy tại `Asia/Ho_Chi_Minh`. Nhân viên được ch�
 | MAU-02 | Làm website công ty | 6 | hoan_thanh | 0 | 0 | 6 | 6 |
 | MAU-03 | Đào tạo an toàn lao động | 6 | dang_thuc_hien | 5 | 4 | 3 | 12 |
 
-Tổng đúng **30 task**: 10 cần làm, 8 đang làm, 12 xong. Hai dự án đang thực hiện có tổng 4 task quá hạn chưa xong, 4 task sắp hạn chưa xong (hạn hôm nay hoặc sau 3 ngày), có đủ ba mức ưu tiên và task còn hạn xa. Mỗi dự án đang thực hiện còn có một task xong với hạn đã qua để kiểm tra giao diện không tô cảnh báo task xong. Không tạo bình luận.
+Tổng đúng **30 task**: 10 cần làm, 8 đang làm, 12 xong. Hai dự án đang thực hiện có tổng 4 task quá hạn chưa xong, 4 task sắp hạn chưa xong (hạn hôm nay hoặc sau 3 ngày), có đủ ba mức ưu tiên và task còn hạn xa. Mỗi dự án đang thực hiện còn có một task xong với hạn đã qua để kiểm tra giao diện không tô cảnh báo task xong. Seed còn tạo 12 bình luận xác định cho MAU-01 và MAU-03.
 
 Mọi dự án bắt đầu hôm nay trừ 25 ngày. MAU-01/MAU-03 kết thúc hôm nay cộng 45 ngày; MAU-02 kết thúc hôm nay trừ 2 ngày. Người làm luôn là thành viên đang làm việc, created_by luôn là Quản lý dự án, hạn chót không sau ngày kết thúc. Script kiểm tra toàn bộ các điều kiện này bằng code trước khi ghi.
 
@@ -126,7 +127,7 @@ npm run seed:cong-viec
 npm run seed:cong-viec
 ```
 
-Cả hai lần phải có đúng ba mã dự án, 30 task và bảng tổng kết như trên. Nếu chạy trong cùng ngày với dữ liệu nhân viên không đổi, phân công, trạng thái và hạn chót giống nhau; ID tự tăng và thời điểm tạo có thể đổi. Chạy sang ngày khác sẽ dịch các ngày theo ngày chạy mới.
+Cả hai lần phải có đúng ba mã dự án, 30 task, 12 bình luận và bảng tổng kết như trên. Nếu chạy trong cùng ngày với dữ liệu nhân viên không đổi, phân công, trạng thái, hạn chót và bình luận giống nhau; ID tự tăng và thời điểm tạo có thể đổi. Chạy sang ngày khác sẽ dịch các ngày theo ngày chạy mới.
 
 Có thể đối chiếu bằng truy vấn chỉ đọc:
 
@@ -452,3 +453,62 @@ Chuẩn bị một dự án đang thực hiện có các task kiểm tra riêng,
 Kiểm tra thêm body thiếu/sai tiêu đề, người làm, ngày, ưu tiên và mô tả sai kiểu; lần lượt phải nhận 400 với thông điệp tương ứng. Các PUT thành công thay đổi dữ liệu thật; dùng task thử riêng. Không chạy seed chỉ để chuẩn bị một request.
 
 Seed task mẫu đặt `completed_at` xác định theo ngày chạy: khoảng một nửa task xong ở MAU-01/MAU-03 thuộc tuần hiện tại; phần còn lại cách 8–14 ngày. Task xong MAU-02 được hoàn thành 3–10 ngày trước và không sau ngày kết thúc dự án. Task chưa xong giữ `completed_at = null`. Có thể chạy `npm run seed:cong-viec` trong `backend`; script thay thế các dự án có mã `MAU-*` và dữ liệu phụ thuộc, nên chỉ chạy khi chấp nhận đặt lại dữ liệu mẫu đó.
+
+## 13. Bình luận task (tuần 6, lượt 1)
+
+Cả hai endpoint cần Bearer token và hồ sơ nhân viên đang làm việc. Thành viên của dự án chứa task và Admin được xem/gửi bình luận; người khác nhận `403` với `Bạn không thuộc dự án này`. Dự án đã hoàn thành vẫn cho phép xem và bình luận.
+
+| Thao tác | Đường dẫn | Body | Thành công |
+|---|---|---|---|
+| Danh sách | `GET /api/tasks/:id/comments` | — | `200`, mảng bình luận cũ đến mới |
+| Gửi | `POST /api/tasks/:id/comments` | `{ "content": "Cảm biến số 3 báo sai, em đang thay thử." }` | `201`, bình luận vừa tạo |
+
+Mỗi phần tử trả `id`, `task_id`, `author_id`, `author_name`, `content`, `created_at`; `created_at` là chuỗi ISO. Tác giả lấy từ token, bỏ qua `author_id` trong body. Nội dung được trim hai đầu, giữ xuống dòng, giới hạn 2000 ký tự; nội dung rỗng hoặc quá dài trả `400`. Bình luận là văn bản thuần. **Bình luận không sửa/xóa**; không có API `PUT`, `PATCH` hoặc `DELETE` cho bình luận.
+
+Thứ tự kiểm tra: ID task sai → `400`; task không tồn tại → `404`; không có quyền → `403`; riêng POST mới kiểm tra nội dung rồi ghi. Mọi lỗi máy chủ dùng thông điệp tiếng Việt chung, chi tiết chỉ ghi log server.
+
+### 13.1. Postman: bình luận
+
+Chuẩn bị `base_url = http://localhost:5000`, `task_id`, token của thành viên dự án, Admin và người ngoài dự án. Lấy token qua `POST {{base_url}}/api/auth/login`; đặt Authorization → Bearer Token. POST chọn Body → raw → JSON.
+
+| # | Trường hợp | Kỳ vọng |
+|---|---|---|
+| 1 | Thành viên gửi bình luận hợp lệ | `201`, có `author_name`, `created_at`; tác giả là người gọi |
+| 2 | Admin không là thành viên gửi bình luận | `201` |
+| 3 | Người ngoài dự án xem hoặc gửi | `403` `Bạn không thuộc dự án này` |
+| 4 | Thiếu `content`, rỗng hoặc chỉ khoảng trắng | `400` `Vui lòng nhập nội dung bình luận` |
+| 5 | Nội dung dài hơn 2000 ký tự | `400` `Bình luận tối đa 2000 ký tự` |
+| 6 | Body có `author_id` của người khác | Bị bỏ qua; `author_id` vẫn là người gọi |
+| 7 | Thành viên gọi GET danh sách | `200`, sắp theo `created_at` tăng dần rồi `id` |
+| 8 | Task không tồn tại / ID sai định dạng | `404` / `400` |
+| 9 | Gọi PUT, PATCH hoặc DELETE trên đường dẫn bình luận | `404`; bản ghi không thay đổi |
+| 10 | Bình luận task thuộc dự án đã hoàn thành | `201` |
+| 11 | Không gửi token | `401` |
+| 12 | Gửi nội dung `<script>alert(1)</script>` | `201`, lưu nguyên văn; frontend phải hiển thị dạng text, không thực thi |
+
+Để xác nhận mục 9, thử trên task kiểm tra và đối chiếu số bản ghi `task_comments` trước và sau request. Script `npm run seed:cong-viec` tạo 12 bình luận xác định trên các task của MAU-01 và MAU-03; tác giả đều là thành viên dự án và dữ liệu được thay mới cùng lượt seed.
+
+## 14. Số dự án trên Trang chủ (tuần 6, lượt 3)
+
+`GET /api/projects/summary` cần Bearer token và hồ sơ nhân viên đang làm việc; chỉ `manager` và `admin` được gọi. Trả thẳng `{ "active_projects": n }`. Quản lý đếm dự án có `status = dang_thuc_hien` và `manager_id` trùng `employee_id` của mình; Admin đếm tất cả dự án đang thực hiện. API dùng `count`, không tải danh sách dự án. Route phải đứng trước `/:id`.
+
+### 14.1. Postman: số dự án
+
+Chuẩn bị `base_url = http://localhost:5000` và token của Quản lý, Admin, Nhân viên; lấy token qua `POST {{base_url}}/api/auth/login` rồi dùng Authorization → Bearer Token.
+
+| # | Trường hợp | Kỳ vọng |
+|---|---|---|
+| 1 | Quản lý gọi `GET {{base_url}}/api/projects/summary` | `200`; `active_projects` bằng số dự án đang thực hiện do mình quản lý |
+| 2 | Đối chiếu quyền Quản lý bằng dữ liệu DB | `SELECT count(*) FROM projects WHERE status = 'dang_thuc_hien' AND manager_id = <employee_id>;` cho kết quả bằng API |
+| 3 | Admin gọi endpoint | `200`; bằng tổng số dự án `dang_thuc_hien` của công ty |
+| 4 | Nhân viên gọi endpoint | `403` |
+| 5 | Không gửi token | `401` |
+| 6 | Hoàn thành một dự án thuộc phạm vi đếm rồi gọi lại | Số giảm 1 |
+
+Frontend gọi endpoint này chỉ cho Quản lý/Admin. Thẻ nằm trên hai khu chấm công ở Trang chủ và dẫn tới `/du-an/cua-toi` khi được chọn.
+
+## 15. Hợp đồng tạm: số đơn nghỉ phép chờ duyệt
+
+Frontend tạm giả định API do phần Nhân sự cung cấp là `GET /api/leave-requests/pending-count`, chỉ dành cho Quản lý và Admin, trả `200 { "count": 3 }`. Thẻ xử lý độc lập; nếu endpoint trả `404`/`403`, lỗi mạng hoặc dữ liệu sai dạng thì hiện `—` cùng tooltip `Chưa lấy được dữ liệu`, không làm hỏng Trang chủ. Nhấn thẻ chuyển tới `/phe-duyet`.
+
+**Cần xác nhận với bạn đồng nghiệp:** đường dẫn thật (các route hiện tại trong `leaveRoutes.js` đang dùng `/api/leaves/...` và chưa có endpoint đếm chờ duyệt), quyền và phạm vi số đếm cho Quản lý/Admin, cùng tên trường phản hồi. Khi hợp đồng được chốt, chỉ cập nhật `getPendingLeaveCount()` trong `frontend/src/services/leaveApi.js`.

@@ -4,6 +4,47 @@
   min-width: 0;
 }
 
+.home-page > * { min-width: 0; }
+.home-summary .ant-card { height: 100%; }
+.home-summary .ant-card-body { padding: 10px 16px; }
+.home-summary .ant-statistic { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.home-summary .ant-statistic-title { margin: 0; font-size: 13px; }
+.home-summary .ant-statistic-content { flex-shrink: 0; font-size: 22px; line-height: 1.25; }
+.attendance-page,
+.approvals-page,
+.project-progress-page,
+.company-attendance-page,
+.leave-management-page { display: grid; align-content: start; gap: 16px; min-width: 0; }
+.company-attendance-header,
+.leave-page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; min-width: 0; }
+.leave-page-header > div:first-child { flex: 1 1 320px; }
+.project-progress-item-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.project-progress-item-heading > .ant-space-item { min-width: 0; overflow-wrap: anywhere; }
+.project-detail-page .ant-descriptions-item-content,
+.app-content .ant-descriptions-item-content { overflow-wrap: anywhere; }
+.work-projects-header > .ant-space-item { min-width: 0; max-width: 100%; }
+.project-page-header > .ant-space-item,
+.project-summary-details,
+.work-project-meta > * { min-width: 0; overflow-wrap: anywhere; }
+.app-content .ant-typography { overflow-wrap: anywhere; }
+.ant-modal-body .ant-descriptions-item-content,
+.ant-drawer-body .ant-descriptions-item-content,
+.ant-modal-title,
+.ant-drawer-title { overflow-wrap: anywhere; }
+.ant-drawer-header-title { min-width: 0; }
+
+@media (max-width: 767px) {
+  .leave-management-page .attendance-calendar { gap: 4px !important; }
+  .leave-management-page .attendance-calendar > button { min-width: 0; min-height: 72px !important; padding: 5px 3px !important; overflow-wrap: anywhere; }
+  .leave-management-page .attendance-calendar .ant-tag { display: none; }
+  .work-projects-header { flex-direction: column; align-items: stretch; }
+  .work-projects-header > .ant-space-item > .ant-space { width: 100%; }
+  .work-projects-list .ant-collapse-header { padding: 12px !important; }
+  .work-projects-list .ant-collapse-content-box { padding: 12px !important; }
+  .company-attendance-page .ant-statistic-title { min-height: 36px; font-size: 12px; }
+  .company-attendance-page .ant-statistic-content { font-size: 24px; }
+}
+
 /* Desktop giữ khung trang trong viewport; dữ liệu dài cuộn trong từng vùng. */
 @media (min-width: 992px) {
   .app-shell {
@@ -74,9 +115,18 @@
   .home-page {
     height: 100%;
     min-height: 0;
-    grid-template-rows: minmax(220px, .8fr) minmax(0, 1.2fr);
+    grid-template-rows: minmax(0, 304px) minmax(0, 1fr);
     gap: 12px;
   }
+
+  .home-page:has(> .home-summary) {
+    grid-template-rows: auto minmax(0, 304px) minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .app-content:has(> .home-page) { overflow: hidden; }
+
+  .employees-desktop-table { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; }
 
   .home-top, .home-top > .ant-col, .home-tasks { min-height: 0; }
   .home-top > .ant-col { height: 100%; }
@@ -92,6 +142,8 @@
   .home-top .timesheet-card .ant-card-body { padding: 10px 12px; }
   .home-top .timesheet-summary { grid-template-columns: minmax(120px, .8fr) minmax(0, 1.2fr); gap: 10px; }
   .home-top .timesheet-donut { width: min(100%, 132px); }
+  .home-top .timesheet-card--compact .timesheet-donut { width: min(100%, 108px); }
+  .home-top .timesheet-card--compact .timesheet-legend-item { padding-block: 1px; }
   .home-top .timesheet-donut-center { font-size: 10px; gap: 0; }
   .home-top .timesheet-donut-center strong { font-size: 20px; }
   .home-top .timesheet-donut-center small { font-size: 8px; }

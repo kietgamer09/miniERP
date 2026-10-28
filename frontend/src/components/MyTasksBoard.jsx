@@ -11,7 +11,7 @@ import TaskDetailDrawer from './TaskDetailDrawer';
 import TaskFormModal from './TaskFormModal';
 
 export default function MyTasksBoard() {
-  const { tasks, loading, error, warning, reload } = useMyWork();
+  const { tasks, loading, error, warning, reload, updateTask } = useMyWork();
   const [sortMode, setSortMode] = useState('due');
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [editor, setEditor] = useState(null);
@@ -19,9 +19,20 @@ export default function MyTasksBoard() {
   const overdueCount = adaptTasks(tasks)
     .filter((task) => task.status_code !== 'xong' && getDueState(task) === 'overdue').length;
   async function moveTask(task, status) {
-    const updatedTask = await changeTaskStatus(task.id, status);
-    reload();
-    return updatedTask;
+    const optimisticTask = {
+      ...task,
+      status,
+      completed_at: status === 'xong' ? new Date().toISOString() : null,
+    };
+    updateTask(optimisticTask);
+    try {
+      const updatedTask = await changeTaskStatus(task.id, status);
+      updateTask(updatedTask);
+      return updatedTask;
+    } catch (error) {
+      updateTask(task);
+      throw error;
+    }
   }
 
   async function editTask(task) {

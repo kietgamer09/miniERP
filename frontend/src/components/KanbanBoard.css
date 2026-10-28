@@ -20,7 +20,7 @@
 .kanban-task-item { position: relative; margin-bottom: 8px; }
 .kanban-task-item .ant-card { margin-bottom: 0 !important; }
 .kanban-task-item .ant-card[aria-roledescription='draggable'] { touch-action: pan-y; }
-.kanban-task-content { text-align: center; }
+.kanban-task-content { min-width: 0; text-align: center; overflow-wrap: anywhere; }
 .kanban-task-actions { display: flex; justify-content: flex-end; align-items: center; gap: 4px; min-height: 20px; margin-top: 2px; color: var(--muted); }
 .kanban-task-actions .ant-btn { width: 22px; height: 20px; padding: 0; }
 .kanban-drag-overlay { width: min(360px, 80vw); pointer-events: none; cursor: grabbing; }

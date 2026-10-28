@@ -6,10 +6,12 @@ import {
 } from '../controllers/projectController.js';
 import { addMembers, listAvailableEmployees, removeMember } from '../controllers/memberController.js';
 import { createTask, listProjectTasks } from '../controllers/taskController.js';
+import { getProjectSummary } from '../controllers/projectSummaryController.js';
 
 const router = express.Router();
 router.use(verifyToken, attachEmployee);
 router.post('/', authorizeRoles('manager', 'admin'), createProject);
+router.get('/summary', authorizeRoles('manager', 'admin'), getProjectSummary);
 router.get('/', listProjects);
 router.get('/:id', getProject);
 router.put('/:id', updateProject);

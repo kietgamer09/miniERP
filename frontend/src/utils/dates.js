@@ -19,6 +19,18 @@ function formatDateOnlyVN(value) {
   return `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}`;
 }
 
+/** Định dạng thời điểm ISO theo múi giờ địa phương: HH:mm DD/MM/YYYY. */
+function formatDateTimeVN(isoString) {
+  if (typeof isoString !== 'string') return '—';
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return '—';
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${hour}:${minute} ${day}/${month}/${date.getFullYear()}`;
+}
+
 /** "22/10/2026" */
 function formatDateVN(date) {
   const d = new Date(date);
@@ -106,6 +118,7 @@ function getWorkingDaysInMonth(year, month) {
 export {
   parseDateOnly,
   formatDateOnlyVN,
+  formatDateTimeVN,
   DAY_NAMES,
   formatDateVN,
   getDayName,
