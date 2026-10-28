@@ -522,6 +522,11 @@ body {
 }
 
 .department-preview-list { display: grid; gap: 10px; }
+.department-preview-link { color: var(--text); transition: border-color .15s, background .15s; }
+.department-preview-link:hover, .department-preview-link:focus-visible { border-color: var(--brand); background: var(--brand-soft); color: var(--text); }
+.department-preview-link:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.department-preview-link .ant-typography { font-size: 12px; }
+.department-preview-names { overflow-wrap: anywhere; }
 .department-preview-item { display: grid; gap: 4px; background: var(--subtle-bg); padding: 14px 16px; border: 1px solid var(--border); border-radius: 6px; }
 .department-preview-item > a { color: var(--text); font-weight: 500; }
 .department-preview-item > a:hover { color: var(--brand); }
