@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Form, Modal, Select } from 'antd';
 import { addMembers, listAvailableEmployees } from '../services/projectApi';
+import './ProjectFormModal.css';
 
 function AddMembersModal({ projectId, onCancel, onSaved }) {
   const [form] = Form.useForm();
@@ -47,7 +48,7 @@ function AddMembersModal({ projectId, onCancel, onSaved }) {
     }
   }
 
-  return <Modal open title="Thêm thành viên dự án" forceRender onOk={handleSave}
+  return <Modal open title="Thêm thành viên dự án" className="project-editor-modal" centered forceRender onOk={handleSave}
     onCancel={() => { if (!submitting.current) onCancel(); }} okText="Thêm thành viên" cancelText="Hủy"
     confirmLoading={saving} closable={!saving} cancelButtonProps={{ disabled: saving }}
     okButtonProps={{ disabled: loading || Boolean(loadError) || !employees.length }}>
@@ -57,6 +58,8 @@ function AddMembersModal({ projectId, onCancel, onSaved }) {
     <Form form={form} layout="vertical" disabled={saving || loading || Boolean(loadError)}>
       <Form.Item name="employee_ids" label="Nhân viên" rules={[{ required: true, type: 'array', min: 1, message: 'Vui lòng chọn ít nhất một nhân viên' }]}>
         <Select mode="multiple" showSearch optionFilterProp="label" loading={loading}
+          maxTagCount="responsive" maxTagTextLength={24}
+          maxTagPlaceholder={(omitted) => `+${omitted.length} người`}
           placeholder="Tìm và chọn nhân viên" notFoundContent={loading ? 'Đang tải…' : 'Không có nhân viên phù hợp'}
           options={employees.map((employee) => ({ value: employee.employee_id,
             label: `${employee.fullname || `Nhân viên ${employee.employee_id}`}${employee.position ? ` · ${employee.position}` : ''}` }))} />

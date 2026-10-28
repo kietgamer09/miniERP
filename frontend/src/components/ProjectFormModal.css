@@ -1,0 +1,26 @@
+.project-editor-modal {
+  padding-bottom: 0;
+}
+
+.project-editor-modal .ant-modal-container {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px);
+}
+
+.project-editor-modal .ant-modal-header,
+.project-editor-modal .ant-modal-footer {
+  flex-shrink: 0;
+}
+
+.project-editor-modal .ant-modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.project-editor-modal .ant-select {
+  width: 100%;
+  min-width: 0;
+}

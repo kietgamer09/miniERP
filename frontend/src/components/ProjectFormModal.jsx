@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import { createProject, updateProject } from '../services/projectApi';
 import { listEmployees } from '../services/employeeApi';
+import './ProjectFormModal.css';
 
 dayjs.locale('vi');
 
@@ -89,6 +90,7 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
 
   return (
     <Modal
+      className="project-editor-modal" centered
       title={project ? 'Sửa dự án' : 'Thêm dự án'} open={open} forceRender
       onCancel={() => { if (!submitting.current) onCancel(); }} onOk={handleSave}
       confirmLoading={saving} cancelButtonProps={{ disabled: saving }} closable={!saving}
@@ -115,6 +117,8 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
             style={{ marginBottom: 16 }} />}
           <Form.Item label="Thành viên dự án" name="member_ids" extra="Bạn có thể chọn nhiều nhân viên; người tạo dự án được thêm tự động.">
             <Select mode="multiple" showSearch optionFilterProp="label" loading={employeesLoading}
+              maxTagCount="responsive" maxTagTextLength={24}
+              maxTagPlaceholder={(omitted) => `+${omitted.length} người`}
               placeholder={employeesLoading ? 'Đang tải danh sách nhân viên…' : 'Chọn thành viên'}
               notFoundContent={employeesLoading ? <Spin size="small" /> : 'Không có nhân viên phù hợp'}
               options={employees.map((employee) => ({
