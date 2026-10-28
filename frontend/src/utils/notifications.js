@@ -19,3 +19,28 @@ export function taskNotifications(tasks) {
     description: task.project_name, path: `/du-an/${task.project_id}`, time: task.created_at, type: 'task',
   }));
 }
+
+function vietnamDate(now) {
+  const values = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(now).map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+export function taskDueReminders(tasks, now = new Date()) {
+  const today = vietnamDate(now);
+  const todayUtc = Date.parse(`${today}T00:00:00Z`);
+  return tasks.flatMap(task => {
+    if (task.status === 'xong' || !/^\d{4}-\d{2}-\d{2}/.test(task.due_date || '')) return [];
+    const due = task.due_date.slice(0, 10);
+    const daysLeft = Math.round((Date.parse(`${due}T00:00:00Z`) - todayUtc) / 86400000);
+    const base = { path: `/du-an/${task.project_id}`, time: `${today}T09:00:00+07:00`, type: 'task-due' };
+    if (daysLeft < 0) return [{ ...base, id: `task-overdue-${task.id}-${due}-${today}`,
+      title: `Công việc quá hạn: ${task.title}`, description: `${task.project_name} · Quá hạn ${Math.abs(daysLeft)} ngày. Vui lòng cập nhật trạng thái.` }];
+    if (daysLeft <= 3) return [{ ...base, id: `task-due-soon-${task.id}-${due}`,
+      title: `Sắp đến hạn: ${task.title}`, description: daysLeft === 0
+        ? `${task.project_name} · Hạn chót hôm nay.`
+        : `${task.project_name} · Còn ${daysLeft} ngày đến hạn chót.` }];
+    return [];
+  });
+}

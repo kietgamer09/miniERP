@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useMyWork } from '../hooks/useMyWork';
 import { useAttendance } from '../hooks/useAttendance';
-import { attendanceReminders, taskNotifications } from '../utils/notifications';
+import { attendanceReminders, taskDueReminders, taskNotifications } from '../utils/notifications';
 import { request } from '../services/http';
 import WebPushSettings from './WebPushSettings';
 import { DRAFT_CHANGED, listDrafts } from '../utils/draftStorage';
@@ -68,7 +68,7 @@ function Inbox({ storageKey }) {
     const timer = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
-  const items = [...draftItems, ...commentItems, ...taskNotifications(tasks), ...(settings.reminders ? attendanceReminders(now, record) : [])]
+  const items = [...draftItems, ...commentItems, ...taskNotifications(tasks), ...taskDueReminders(tasks, now), ...(settings.reminders ? attendanceReminders(now, record) : [])]
     .sort((a, b) => (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0));
   const isRead = item => item.type === 'comment' ? item.read : settings.read.includes(item.id);
   const unread = items.filter(item => !isRead(item)).length;
@@ -107,7 +107,7 @@ function Inbox({ storageKey }) {
       <WebPushSettings />
       <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
         Công việc tự cập nhật mỗi phút. Trạng thái chấm công được đọc từ máy chủ, đồng bộ giữa các tab/trình duyệt;
-        {' '}ẩn lời nhắc sau khi đã vào/ra ca.
+          {' '}nhắc công việc sắp đến hạn trong 3 ngày và nhắc lại việc quá hạn hằng ngày. Lời nhắc chấm công ẩn sau khi đã vào/ra ca.
         {' '}Bình luận cập nhật mỗi 15 giây khi mở website; hiển thị 100 bình luận gần nhất. Trạng thái đọc bình luận lưu trên máy chủ.
       </Typography.Paragraph>
       {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />}
