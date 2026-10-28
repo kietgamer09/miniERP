@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AuthContext } from './appContexts';
 import { login as loginRequest, normalizeRole } from '../services/authApi';
 import { setAuthToken } from '../services/http';
+import { stopBrowserPush } from '../services/pushApi';
 
 const STORAGE_KEY = 'miniErpAuth';
 
@@ -44,6 +45,7 @@ function AuthProvider({ children }) {
   }
 
   function logout() {
+    stopBrowserPush().catch(() => {});
     setAuthToken(null);
     setSession({ user: null, token: null });
     try {

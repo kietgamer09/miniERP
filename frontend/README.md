@@ -31,6 +31,8 @@ Mở URL mà Vite in ra trong terminal. Thông tin đăng nhập phải là tài
 
 ## Kết nối backend hiện có
 
+- Nhận bình luận khi đóng tab: vào Hòm thông báo → “Bật thông báo desktop”, cấp quyền trình duyệt. Có nút “Gửi thử thông báo” và tắt đăng ký. Dùng service worker `/push-sw.js`, không cache trang/API; triển khai cần HTTPS. Backend cần `npm install` và `npm run setup:web-push` một lần trên mỗi hệ thống, sau đó khởi động lại. Backend phải tiếp tục chạy; tắt máy/thoát hẳn trình duyệt có thể ngừng nhận tùy hệ điều hành.
+
 - `POST /api/auth/login`: đăng nhập bằng `{ "username": "...", "password": "..." }`; frontend lưu JWT và thông tin người dùng nhận được.
 - Dự án (`/du-an`, `/du-an/cua-toi`, `/du-an/tien-do`, `/du-an/:id`): danh sách, tạo, sửa, xóa, hoàn thành/mở lại, thành viên, tạo/xem task. Quyền sửa dùng `can_manage` do backend trả về.
 - Nhân viên (`/quan-ly-nhan-vien`): dùng `GET /api/users/employee-list`, `POST /api/users/employee-create`, `PUT /api/users/employee-update/:id`. Mọi vai trò được xem; chỉ admin thấy nút thêm/sửa. Tạo thành công hiển thị `login_info` do backend trả về, chỉ giữ trong bộ nhớ đến khi đóng hộp thoại.
@@ -38,7 +40,7 @@ Mở URL mà Vite in ra trong terminal. Thông tin đăng nhập phải là tài
 - Đổi mật khẩu trong menu tài khoản dùng `PUT /api/users/change-password`; hồ sơ cá nhân dùng `GET /api/users/me`.
 - Trang chủ, `/viec-cua-toi` và `/viec-cua-toi/duoc-giao` lấy task của tài khoản hiện tại từ `GET /api/tasks/mine`; task trong dự án lấy từ API dự án. Kanban hỗ trợ kéo thả theo quyền và thứ tự trạng thái backend cho phép.
 - Bình luận task dùng `GET/POST /api/tasks/:id/comments`; nội dung là văn bản thuần, không hỗ trợ sửa/xóa. Danh sách bình luận được tải cùng chi tiết task.
-- Hòm thông báo bên trái avatar hiển thị việc chưa xong được giao; tự cập nhật mỗi phút khi website hiển thị, cho tải lại thủ công, đánh dấu đã đọc. Trạng thái đọc lưu riêng theo tài khoản trên trình duyệt.
+- Hòm thông báo hiển thị việc được giao và bình luận mới trong dự án đang tham gia/quản lý. Bình luận cập nhật mỗi 15 giây, lưu trạng thái đọc trên PostgreSQL, bấm để mở đúng task hoặc thảo luận dự án; không tự thông báo cho người gửi. Việc được giao cập nhật mỗi phút, lưu trạng thái đọc trên trình duyệt. Backend cần chạy `npm run setup:notifications` một lần trên mỗi database.
 - Chấm công: `POST /api/attendances/check-in`, `POST /api/attendances/check-out`; đọc lại qua `GET /api/attendances/today` và `GET /api/attendances/me?month=YYYY-MM`. Cùng tài khoản xem được lịch sử giữa trình duyệt/tab; tự đồng bộ mỗi 15 giây, khi focus và sau thao tác. Không gửi giờ hoặc employee_id từ trình duyệt, không dùng cache làm nguồn công. Màu do backend tính theo giờ Việt Nam, giữ nguyên phần TIME khi hiển thị.
 - Bảng công vàng: chỉ muộn hoặc sớm; đỏ: muộn và sớm, vắng không phép sau ca, thiếu/trùng công; xanh lá: đúng và đủ ca. Không tô vắng cho ngày tương lai, cuối tuần, trước ngày bắt đầu làm việc; nghỉ phép đã duyệt có nhãn riêng. Bấm ngày để gửi giải trình qua `POST /api/attendances/explanations`.
 - `/phe-duyet` dành cho Admin xem và xử lý giải trình. Duyệt giữ màu và giờ gốc, thêm nhãn; không tự cộng công. Manager thấy thông báo không có quyền duyệt giải trình này.

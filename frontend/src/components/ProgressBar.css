@@ -1,25 +1,9 @@
-.project-progress-bar {
-  position: relative;
+.project-progress-summary {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  min-height: 32px;
-  padding: 4px 10px;
-  margin: 8px 0 4px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--subtle-bg);
-  color: var(--text);
-}
-
-.project-progress-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--progress-fill, #95deaa);
-}
-
-.project-progress-bar > span {
-  position: relative;
-  z-index: 1;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-block: 8px 4px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }

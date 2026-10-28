@@ -7,12 +7,15 @@ import {
 import { addMembers, listAvailableEmployees, removeMember } from '../controllers/memberController.js';
 import { createTask, listProjectTasks } from '../controllers/taskController.js';
 import { getProjectSummary } from '../controllers/projectSummaryController.js';
+import { projectComments } from '../controllers/projectCommentController.js';
 
 const router = express.Router();
 router.use(verifyToken, attachEmployee);
 router.post('/', authorizeRoles('manager', 'admin'), createProject);
 router.get('/summary', authorizeRoles('manager', 'admin'), getProjectSummary);
 router.get('/', listProjects);
+router.get('/:id/comments', projectComments);
+router.post('/:id/comments', projectComments);
 router.get('/:id', getProject);
 router.put('/:id', updateProject);
 router.delete('/:id', deleteProject);

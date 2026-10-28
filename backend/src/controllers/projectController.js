@@ -1,4 +1,5 @@
 import prisma from '../config/prisma.js';
+import { Prisma } from '@prisma/client';
 import { parseId, isValidDate, toDateOnly } from '../utils/validators.js';
 
 const serializeProject = (project) => ({
@@ -106,6 +107,16 @@ export const listProjects = async (req, res) => {
       orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
     });
     if (!projects.length) return res.json([]);
+    const performanceRows = await prisma.$queryRaw`
+      SELECT project_id,
+        count(*) FILTER (WHERE status = 'xong' AND completed_at IS NOT NULL)::int AS completed_with_date,
+        count(*) FILTER (WHERE status = 'xong' AND completed_at IS NOT NULL
+          AND (completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <= due_date)::int AS completed_on_time,
+        count(*) FILTER (WHERE status = 'xong' AND completed_at IS NOT NULL
+          AND (completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Ho_Chi_Minh')::date > due_date)::int AS completed_late,
+        count(*) FILTER (WHERE status <> 'xong' AND due_date < (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS active_overdue
+      FROM tasks WHERE project_id IN (${Prisma.join(projects.map(project => project.id))}) GROUP BY project_id`;
+    const performance = new Map(performanceRows.map(row => [row.project_id, row]));
     const groups = await prisma.tasks.groupBy({
       by: ['project_id', 'status'],
       where: { project_id: { in: projects.map((project) => project.id) } },
@@ -113,19 +124,30 @@ export const listProjects = async (req, res) => {
     });
     const progress = new Map();
     for (const group of groups) {
-      const counts = progress.get(group.project_id) ?? { tasks_done: 0, tasks_total: 0 };
+      const counts = progress.get(group.project_id) ?? { tasks_done: 0, tasks_doing: 0, tasks_todo: 0, tasks_total: 0 };
       counts.tasks_total += group._count._all;
       if (group.status === 'xong') counts.tasks_done += group._count._all;
+      if (group.status === 'dang_lam') counts.tasks_doing += group._count._all;
+      if (group.status === 'can_lam') counts.tasks_todo += group._count._all;
       progress.set(group.project_id, counts);
     }
     res.json(projects.map(({ employees, _count, ...project }) => {
-      const counts = progress.get(project.id) ?? { tasks_done: 0, tasks_total: 0 };
+      const counts = progress.get(project.id) ?? { tasks_done: 0, tasks_doing: 0, tasks_todo: 0, tasks_total: 0 };
+      const metrics = performance.get(project.id) ?? { completed_with_date: 0, completed_on_time: 0, completed_late: 0, active_overdue: 0 };
       return {
         ...serializeProject(project),
         manager_name: employees.fullname,
         can_manage: canManageProject(req, project),
         members_count: _count.project_members,
         ...counts,
+        performance: {
+          completed_with_date: metrics.completed_with_date,
+          completed_on_time: metrics.completed_on_time,
+          completed_late: metrics.completed_late,
+          active_overdue: metrics.active_overdue,
+          missing_completion_date: Math.max(0, counts.tasks_done - metrics.completed_with_date),
+          on_time_percent: metrics.completed_with_date ? Math.round(metrics.completed_on_time / metrics.completed_with_date * 100) : null,
+        },
         progress_percent: counts.tasks_total ? Math.round(counts.tasks_done / counts.tasks_total * 100) : 0,
       };
     }));
@@ -179,8 +201,10 @@ export const getProject = async (req, res) => {
     });
     const taskCounts = taskGroups.reduce((counts, group) => ({
       tasks_done: counts.tasks_done + (group.status === 'xong' ? group._count._all : 0),
+      tasks_doing: counts.tasks_doing + (group.status === 'dang_lam' ? group._count._all : 0),
+      tasks_todo: counts.tasks_todo + (group.status === 'can_lam' ? group._count._all : 0),
       tasks_total: counts.tasks_total + group._count._all,
-    }), { tasks_done: 0, tasks_total: 0 });
+    }), { tasks_done: 0, tasks_doing: 0, tasks_todo: 0, tasks_total: 0 });
 
     const { employees, project_members: members, ...projectData } = project;
     res.json({

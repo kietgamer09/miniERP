@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Alert, Button, Collapse, Empty, Popconfirm, Space, Spin, Tag, Typography, message,
+  Alert, Button, Empty, Popconfirm, Select, Space, Spin, Tag, Typography, message,
 } from 'antd';
 import {
   DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined,
@@ -17,6 +17,8 @@ import TaskFormModal from '../components/TaskFormModal';
 import TaskDetailDrawer from '../components/TaskDetailDrawer';
 import ProgressBar from '../components/ProgressBar';
 import Attachments from '../components/Attachments';
+import AllProjectTasks from '../components/AllProjectTasks';
+import TaskComments from '../components/TaskComments';
 import { formatDateOnlyVN } from '../utils/dates';
 
 const { Title, Text } = Typography;
@@ -44,8 +46,8 @@ function WorkProjectPanel({ summary, role, onRefresh }) {
   }, [summary.id, reloadKey, requestKey]);
 
   const loaded = loadState.key === requestKey;
-  const project = loaded ? loadState.project : null;
-  const loading = !loaded;
+  const project = loadState.project;
+  const loading = !loaded && !project;
   const error = loaded ? loadState.error : '';
 
   function reload() { setReloadKey((key) => key + 1); }
@@ -96,7 +98,9 @@ function WorkProjectPanel({ summary, role, onRefresh }) {
               <Text type="secondary">Quản lý dự án: {project.manager_name || 'Chưa phân công'} · {project.members.length} thành viên</Text>
             </div>
             {project.description && <Text className="work-project-description">{project.description}</Text>}
+            <ProgressBar {...project} />
             <Attachments type="projects" targetId={project.id} />
+            <TaskComments projectId={project.id} />
           </div>
 
           {canManage && <Space wrap className="work-project-actions">
@@ -122,10 +126,10 @@ function WorkProjectPanel({ summary, role, onRefresh }) {
           </Space>}
 
           <MemberList project={project} onChanged={() => handleSaved('Đã cập nhật thành viên dự án')} />
-          <ProjectKanban key={`${project.id}-${reloadKey}`} projectId={project.id} projectStatus={project.status}
+          <ProjectKanban key={project.id} revision={reloadKey} projectId={project.id} projectStatus={project.status}
             onOpen={(task) => setTaskId(task.id)}
             onEdit={(task) => { setTaskId(null); setEditingTask(task); }}
-            onTaskChanged={() => { reload(); onRefresh(); }} />
+            onTaskChanged={reload} />
           <TaskDetailDrawer key={taskId || 'closed'} taskId={taskId} open={Boolean(taskId)}
             onClose={() => setTaskId(null)} onEdit={(task) => {
               setTaskId(null);
@@ -148,7 +152,9 @@ export default function WorkProjects() {
   const role = user?.role;
   const [loadState, setLoadState] = useState({ key: -1, projects: [], error: '' });
   const [reloadKey, setReloadKey] = useState(0);
-  const [activeKey, setActiveKey] = useState([]);
+  const [selectedId, setSelectedId] = useState(() => {
+    try { return localStorage.getItem('miniErpWorkProject') || 'all'; } catch { return 'all'; }
+  });
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
@@ -170,22 +176,7 @@ export default function WorkProjects() {
   function reload() { setReloadKey((key) => key + 1); }
 
   const canCreate = role === 'admin' || role === 'manager';
-  const items = projects.map((project) => ({
-    key: String(project.id),
-    label: <div className="work-project-heading">
-      <div className="work-project-heading-title">
-        <Space wrap size={8}>
-          <Text strong>{project.name}</Text>
-          <Tag color={project.status === 'hoan_thanh' ? 'green' : 'blue'}>
-            {project.status === 'hoan_thanh' ? 'Hoàn thành' : 'Đang thực hiện'}
-          </Tag>
-        </Space>
-        <Text type="secondary">{project.code} · {formatDateOnlyVN(project.start_date)} – {formatDateOnlyVN(project.end_date)}</Text>
-      </div>
-      <div className="work-project-heading-progress"><ProgressBar {...project} /></div>
-    </div>,
-    children: <WorkProjectPanel summary={project} role={role} onRefresh={reload} />,
-  }));
+  const selectedProject = projects.find(project => String(project.id) === selectedId);
 
   return <main className="work-projects-page">
     <Space wrap className="work-projects-header">
@@ -194,6 +185,10 @@ export default function WorkProjects() {
           : role === 'manager' ? 'Dự án bạn tham gia và quản lý'
             : 'Dự án bạn tham gia'}</Text></div>
       <Space wrap>
+        <Select className="work-project-picker" showSearch optionFilterProp="label" aria-label="Dự án hiển thị công việc"
+          value={selectedProject ? selectedId : 'all'} loading={loading} style={{ width: 340, maxWidth: '100%' }}
+          options={[{ value: 'all', label: 'Tất cả dự án trong phạm vi của bạn' }, ...projects.map(project => ({ value: String(project.id), label: `${project.name} (${project.code})` }))]}
+          onChange={value => { setSelectedId(value); try { localStorage.setItem('miniErpWorkProject', value); } catch { /* Giữ trong phiên. */ } }} />
         <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading}>Tải lại</Button>
         {canCreate && <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>Tạo dự án</Button>}
       </Space>
@@ -201,8 +196,9 @@ export default function WorkProjects() {
     {error ? <Alert type="error" showIcon title={error}
       action={<Button onClick={reload}>Thử lại</Button>} />
       : loading ? <div className="project-panel-loading"><Spin /></div>
-        : projects.length ? <Collapse className="work-projects-list" accordion activeKey={activeKey}
-          onChange={(key) => setActiveKey(key ? [key] : [])} expandIconPlacement="end" items={items} />
+        : projects.length ? selectedProject
+          ? <WorkProjectPanel key={selectedProject.id} summary={selectedProject} role={role} onRefresh={reload} />
+          : <AllProjectTasks projects={projects} onChanged={reload} />
           : <Empty description={role === 'admin' ? 'Chưa có dự án trong công ty' : 'Bạn chưa tham gia dự án nào'} />}
     {createOpen && <ProjectFormModal open onCancel={() => setCreateOpen(false)}
       onSaved={() => { setCreateOpen(false); reload(); }} />}

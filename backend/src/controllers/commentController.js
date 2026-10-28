@@ -25,7 +25,7 @@ function formatComment(comment) {
 async function loadAuthorizedTask(req, res, id) {
   const task = await prisma.tasks.findUnique({
     where: { id },
-    select: { id: true, project_id: true },
+    select: { id: true, project_id: true, projects: { select: { manager_id: true } } },
   });
   if (!task) {
     res.status(404).json({ error: 'Không tìm thấy task' });
@@ -33,7 +33,7 @@ async function loadAuthorizedTask(req, res, id) {
   }
 
   const allowed = await canAccessTaskProject(
-    prisma, task, req.employee.employee_id, req.user.role,
+    prisma, task, req.employee.employee_id, req.user.role, { allowProjectManager: true },
   );
   if (!allowed) {
     res.status(403).json({ error: 'Bạn không thuộc dự án này' });

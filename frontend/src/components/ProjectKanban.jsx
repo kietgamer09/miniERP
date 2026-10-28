@@ -3,14 +3,14 @@ import { Alert, Button, Card, Select, Space, Switch, Typography } from 'antd';
 import { FilterOutlined, ReloadOutlined } from '@ant-design/icons';
 import { listProjectTasks } from '../services/projectApi';
 import { changeTaskStatus } from '../services/taskApi';
-import KanbanBoard from './KanbanBoard';
+import TaskViews from './TaskViews';
 
 const sortOptions = [
   { value: 'due', label: 'Theo hạn' },
   { value: 'priority', label: 'Theo ưu tiên' },
 ];
 
-export default function ProjectKanban({ projectId, projectStatus, onOpen, onEdit, onTaskChanged }) {
+export default function ProjectKanban({ projectId, projectStatus, revision = 0, onOpen, onEdit, onTaskChanged }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -28,7 +28,7 @@ export default function ProjectKanban({ projectId, projectStatus, onOpen, onEdit
       .catch((fetchError) => { if (active) setError(fetchError.message || 'Không tải được công việc'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [projectId, requestKey]);
+  }, [projectId, requestKey, revision]);
 
   function reload() {
     setLoading(true);
@@ -62,7 +62,7 @@ export default function ProjectKanban({ projectId, projectStatus, onOpen, onEdit
         </Space>
       </div>
       {error ? <Alert type="error" showIcon title={error} action={<Button onClick={reload}>Thử lại</Button>} />
-        : <KanbanBoard tasks={visibleTasks} loading={loading} locked={projectStatus === 'hoan_thanh'}
+        : <TaskViews tasks={visibleTasks} loading={loading} locked={projectStatus === 'hoan_thanh'}
           onMove={moveTask} onOpen={onOpen} onEdit={onEdit}
           sortMode={sortMode} emptyText="Dự án chưa có task nào" />}
     </Card>

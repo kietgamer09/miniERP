@@ -41,7 +41,7 @@ export default function TaskDetailDrawer({ taskId, open, onClose, onEdit, readOn
   return (
     <Drawer title={task?.title || 'Chi tiết task'} open={open} onClose={onClose}
       width={560} styles={{ wrapper: { maxWidth: '100vw' } }}
-      extra={canEdit && !readOnly && <Tooltip title={completedProject ? 'Mở lại dự án để sửa task' : undefined}>
+      extra={canEdit && onEdit && !readOnly && <Tooltip title={completedProject ? 'Mở lại dự án để sửa task' : undefined}>
         <span><Button icon={<EditOutlined />} disabled={completedProject || loading}
           onClick={() => onEdit?.(task)}>Sửa task</Button></span>
       </Tooltip>}>

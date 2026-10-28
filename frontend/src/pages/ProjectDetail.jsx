@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { Alert, Button, Card, Descriptions, Popconfirm, Space, Spin, Tag, Tooltip, Typography, message } from 'antd';
 import { ArrowLeftOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { completeProject, getProject, reopenProject } from '../services/projectApi';
@@ -12,8 +12,9 @@ import ProjectKanban from '../components/ProjectKanban';
 import TaskFormModal from '../components/TaskFormModal';
 import TaskDetailDrawer from '../components/TaskDetailDrawer';
 import Attachments from '../components/Attachments';
+import TaskComments from '../components/TaskComments';
 
-function ProjectDetailContent({ id }) {
+function ProjectDetailContent({ id, initialTaskId, discussion }) {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -21,11 +22,14 @@ function ProjectDetailContent({ id }) {
   const [formOpen, setFormOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [selectedTaskId, setSelectedTaskId] = useState(initialTaskId);
   const [editingTask, setEditingTask] = useState(null);
   const [changingStatus, setChangingStatus] = useState(false);
   const submitting = useRef(false);
   const [messageApi, contextHolder] = message.useMessage();
+  useEffect(() => {
+    if (project && discussion) document.getElementById('project-discussion')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [project, discussion]);
 
   useEffect(() => {
     let active = true;
@@ -120,6 +124,7 @@ function ProjectDetailContent({ id }) {
             </Space>}
           </Card>
           <Card><Attachments type="projects" targetId={project.id} /></Card>
+          <Card><TaskComments projectId={project.id} /></Card>
           <MemberList project={project} onChanged={() => handleSaved('Đã bớt thành viên khỏi dự án')} />
           <ProjectKanban key={reloadKey} projectId={project.id} projectStatus={project.status}
             onOpen={(task) => setSelectedTaskId(task.id)}
@@ -144,8 +149,11 @@ function ProjectDetailContent({ id }) {
 
 function ProjectDetail() {
   const { id } = useParams();
+  const location = useLocation();
+  const [params] = useSearchParams();
+  const initialTaskId = /^[1-9]\d*$/.test(params.get('task') || '') ? Number(params.get('task')) : null;
   // Đổi dự án phải xóa cả trạng thái form và dữ liệu của dự án trước.
-  return <ProjectDetailContent key={id} id={id} />;
+  return <ProjectDetailContent key={`${id}:${location.key}`} id={id} initialTaskId={initialTaskId} discussion={params.get('discussion') === '1'} />;
 }
 
 export default ProjectDetail;

@@ -60,6 +60,9 @@ model departments {
 
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
 model employees {
+  work_push_subscriptions work_push_subscriptions[]
+  work_project_comments work_project_comments[]
+  work_comment_reads work_comment_reads[]
   attendance_explanations                                         attendance_explanations[]
   employee_id                                                      Int                @id @default(autoincrement())
   user_id                                                          Int                @unique
@@ -101,6 +104,7 @@ model project_members {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
 model projects {
+  work_project_comments work_project_comments[]
   id              Int               @id @default(autoincrement())
   code            String            @unique @db.VarChar(20)
   name            String            @db.VarChar(200)
@@ -159,6 +163,51 @@ model users {
   role       String?    @db.VarChar
   created_at DateTime?  @db.Timestamp(6)
   employees  employees?
+}
+
+model work_project_comments {
+  id         Int      @id @default(autoincrement())
+  project_id Int
+  author_id  Int
+  content    String   @db.VarChar(2000)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  project    projects @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  author     employees @relation(fields: [author_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([project_id, created_at], map: "work_project_comments_project_idx")
+}
+
+model work_comment_reads {
+  employee_id Int
+  kind        String @db.VarChar(10)
+  comment_id  Int
+  read_at     DateTime @default(now()) @db.Timestamptz(6)
+  employee    employees @relation(fields: [employee_id], references: [employee_id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([employee_id, kind, comment_id])
+}
+
+model work_push_subscriptions {
+  id Int @id @default(autoincrement())
+  employee_id Int
+  endpoint String @unique @db.VarChar(2048)
+  p256dh String @db.VarChar(100)
+  auth String @db.VarChar(40)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  employee employees @relation(fields: [employee_id], references: [employee_id], onDelete: Cascade, onUpdate: NoAction)
+  deliveries work_push_deliveries[]
+  @@index([employee_id], map: "work_push_employee_idx")
+}
+
+model work_push_deliveries {
+  subscription_id Int
+  kind String @db.VarChar(10)
+  comment_id Int
+  attempts Int @default(0)
+  next_attempt_at DateTime @default(now()) @db.Timestamptz(6)
+  delivered_at DateTime? @db.Timestamptz(6)
+  subscription work_push_subscriptions @relation(fields: [subscription_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@id([subscription_id, kind, comment_id])
 }
 
 enum employee_status {

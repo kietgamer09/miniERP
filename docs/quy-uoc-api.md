@@ -70,7 +70,11 @@ Không đổi được code. Không gửi description khi sửa thì giữ mô t
 
 Danh sách và chi tiết dự án trả thêm `can_manage` (boolean), do backend tính: `true` khi người gọi là admin hoặc có `employee_id` trùng `manager_id` của dự án; trường hợp khác là `false`. Frontend dùng trường này để hiện các thao tác quản lý.
 
-Chi tiết dự án trả thêm `manager_name`, `members` (mỗi thành viên gồm `employee_id`, `fullname`, `position`, `is_manager`), `tasks_done`, `tasks_total` và `progress_percent`. Chỉ thành viên dự án hoặc admin xem được; kiểm tra quyền trước khi tính tiến độ.
+Danh sách và chi tiết dự án trả số công việc theo trạng thái: `tasks_done` (Hoàn thành), `tasks_doing` (Đang làm), `tasks_todo` (Cần làm), `tasks_total` và `progress_percent`. Tổng ba trạng thái bằng `tasks_total`; dự án chưa có task trả tất cả bằng 0. Các số liệu dùng để vẽ cột chồng trong biểu đồ tiến độ kết hợp.
+
+`GET /api/projects` trả thêm `performance`: `completed_with_date`, `completed_on_time`, `completed_late`, `missing_completion_date`, `active_overdue`, `on_time_percent`. Đúng hạn khi task đang ở trạng thái Xong và ngày hoàn thành theo giờ Việt Nam không sau hạn chót hiện tại. Timestamp hoàn thành của task do ứng dụng ghi UTC; quy đổi sang `Asia/Ho_Chi_Minh` trước khi so ngày. `on_time_percent = completed_on_time / completed_with_date × 100` làm tròn; trả `null` nếu mẫu số bằng 0. Task Xong thiếu `completed_at` không đưa vào mẫu số. Quá hạn đang mở khi chưa Xong và hạn trước ngày hiện tại giờ Việt Nam. Chỉ tổng hợp các dự án thuộc phạm vi người gọi. Không sửa dữ liệu task hoặc lịch sử.
+
+Chi tiết dự án trả thêm `manager_name`, `members` (mỗi thành viên gồm `employee_id`, `fullname`, `position`, `is_manager`). Chỉ thành viên, quản lý dự án hoặc Admin được xem; kiểm tra quyền trước khi tính tiến độ.
 
 Hai API trạng thái không nhận body. Hoàn thành trả `409` nếu dự án đã hoàn thành, chưa có task hoặc còn task chưa xong. Mở lại trả `409` nếu dự án đã đang thực hiện.
 
@@ -83,7 +87,7 @@ Ví dụ phản hồi thêm (sửa trả cùng cấu trúc với giá trị đã
 Ví dụ phản hồi danh sách:
 
 ```json
-[{"id":1,"code":"DA-TEST-01","name":"Dự án kiểm tra","description":"Thử API","start_date":"2026-10-27","end_date":"2026-11-30","status":"dang_thuc_hien","manager_id":2,"created_at":"2026-10-26T03:00:00.000Z","manager_name":"Nguyễn Văn A","can_manage":true,"members_count":1,"tasks_done":1,"tasks_total":2,"progress_percent":50}]
+[{"id":1,"code":"DA-TEST-01","name":"Dự án kiểm tra","description":"Thử API","start_date":"2026-10-27","end_date":"2026-11-30","status":"dang_thuc_hien","manager_id":2,"created_at":"2026-10-26T03:00:00.000Z","manager_name":"Nguyễn Văn A","can_manage":true,"members_count":1,"tasks_done":1,"tasks_doing":0,"tasks_todo":1,"tasks_total":2,"progress_percent":50}]
 ```
 
 Danh sách sắp theo thời gian tạo giảm dần; khi bằng nhau, ID giảm dần. Không có dự án trả `[]`. Chưa có task thì các số tiến độ bằng 0. start_date/end_date luôn YYYY-MM-DD; created_at là thời điểm ISO.
@@ -522,3 +526,20 @@ GET danh sách trả `{ can_upload, files: [{ id, name, size, author_id, created
 Thành viên/quản lý dự án và Admin được đọc/thêm tệp công việc trong dự án đang thực hiện; dự án hoàn thành chỉ được đọc. Người gửi đơn nghỉ phép được thêm tệp khi đơn còn chờ; Quản lý/Admin được đọc minh chứng như phạm vi API duyệt đơn hiện hành. Chỉ tác giả tệp hoặc Admin được xóa, khi đối tượng còn cho phép ghi. Tệp của task/dự án là tài liệu dùng chung, độc lập với bình luận bất biến.
 
 Lỗi: 400 ID/định dạng/tên/tệp rỗng không hợp lệ hoặc vượt 30 file; 401 thiếu/sai token; 403 ngoài quyền hoặc đã khóa; 404 đối tượng/tệp không tồn tại; 413 vượt 10 MB. File lưu trong `backend/uploads/attachments`, không lưu vào Git; sao lưu cùng DB. Luồng giải trình chấm công đang vô hiệu hóa nên chưa có đính kèm ở đó.
+## Thông báo bình luận và thảo luận dự án
+
+- Chuẩn bị DB: chạy `npm run setup:notifications` một lần trong backend; thêm `work_project_comments` và `work_comment_reads`, không reset dữ liệu.
+- `GET/POST /api/projects/:id/comments`: thành viên, quản lý dự án, Admin được xem/gửi. POST nhận `{ content }` (1–2000 ký tự), trả 201 với bình luận và tên người gửi. GET trả danh sách từ cũ tới mới. Không sửa/xóa bình luận.
+- `GET /api/notifications/comments`: cần token và nhân viên đang làm việc; trả tối đa 100 bình luận mới nhất trong dự án đang tham gia/quản lý, gồm task và thảo luận dự án. Không trả bình luận do chính người nhận gửi. Mỗi mục có `id`, `type`, `title`, `description`, `time`, `read`, `path`.
+- `PATCH /api/notifications/comments/read`: body `{ ids: ["comment:task:123", "comment:project:456"] }`, tối đa 100 ID. Chỉ đánh dấu những thông báo thuộc phạm vi của người gọi; lưu theo employee từ token, không nhận employee_id từ body; trả 204. Gọi lặp không tạo bản ghi trùng.
+- Client tải lại mỗi 15 giây khi trang hiển thị và khi quay lại tab/mở hòm thư. Đọc đồng bộ trên server. Link task `/du-an/:id?task=:taskId`; link thảo luận `/du-an/:id?discussion=1`.
+
+## Web Push khi đóng tab
+
+- Chuẩn bị: `npm install`, `npm run setup:web-push`, khởi động lại backend. Script thêm bảng `work_push_subscriptions`/`work_push_deliveries` và tạo khóa VAPID trong `.env` nếu chưa có; không reset dữ liệu. Giữ nguyên cặp khóa trên cùng hệ thống.
+- Mọi route `/api/push/*` cần Bearer token và nhân viên đang làm việc. `GET /api/push/config` trả `{ enabled, publicKey }`; private key không trả cho client.
+- `POST /api/push/subscriptions`: body là kết quả `PushSubscription.toJSON()` gồm `endpoint`, `keys.p256dh`, `keys.auth`; lưu cho employee từ token và trả 204. Tối đa 10 thiết bị/tài khoản. Chỉ nhận endpoint HTTPS của các dịch vụ FCM, Mozilla, Apple, Windows đã hỗ trợ; không chấp nhận URL nội bộ/tùy ý.
+- `DELETE /api/push/subscriptions`: body `{ endpoint }`, chỉ xóa đăng ký thuộc người gọi; trả 204. Client đồng thời unsubscribe trong trình duyệt. Đăng xuất hủy subscription trình duyệt; endpoint hết hạn được worker loại bỏ khi dịch vụ trả 404/410.
+- `POST /api/push/test`: body `{ endpoint }`, chỉ gửi một thông báo thử tới đăng ký thuộc người gọi; trả 204 khi dịch vụ push nhận. Không bảo đảm hệ điều hành đã hiển thị; người dùng xác nhận trực tiếp.
+- Worker kiểm tra mỗi 15 giây khi backend chạy, chỉ lấy bình luận mới trong 24 giờ và sau thời điểm đăng ký, bỏ qua người gửi/bình luận đã đọc/người không còn trong dự án hoặc đã nghỉ việc. Lưu kết quả gửi và khóa thử gửi trên database để chống trùng giữa các worker; tối đa 5 lần thử, cách nhau ít nhất 60 giây. TTL bình luận 1 giờ.
+- Service worker hiển thị thông báo chung không chứa nội dung bình luận; bấm để mở đường dẫn cùng origin. Không có cache trang/API. Cần HTTPS (localhost dùng được), quyền thông báo và kết nối Internet. Việc nhận khi thoát toàn bộ trình duyệt phụ thuộc chế độ nền và hệ điều hành; chưa gửi nhắc chấm công qua Web Push.

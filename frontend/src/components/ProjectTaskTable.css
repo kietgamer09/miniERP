@@ -9,3 +9,6 @@
 .project-task-table .ant-table-tbody > .task-row-near-due > td.ant-table-cell-row-hover {
   background: var(--gold-bg);
 }
+.project-task-title.ant-btn { height: auto; padding: 0; text-align: left; justify-content: flex-start; white-space: normal; }
+.project-task-title.ant-btn > span { overflow-wrap: anywhere; }
+.project-task-preview { min-width: 0; }

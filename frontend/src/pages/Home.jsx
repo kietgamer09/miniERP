@@ -17,7 +17,7 @@ function Home() {
         </Col>
       </Row>
       <Card className="home-tasks" styles={{ body: { padding: 16 } }}>
-        <MyTasksBoard />
+        <MyTasksBoard compact />
       </Card>
     </div>
   );

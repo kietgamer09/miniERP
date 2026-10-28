@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Collapse, Empty, Space, Spin, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { listProjects, listProjectTasks } from '../services/projectApi';
-import KanbanBoard from '../components/KanbanBoard';
+import TaskViews from '../components/TaskViews';
 import TaskDetailDrawer from '../components/TaskDetailDrawer';
 
 const { Title, Text } = Typography;
@@ -48,7 +48,7 @@ export default function OtherProjectTasks() {
       key: String(project.id),
       label: <Space wrap><Text strong>{project.name}</Text><Text type="secondary">{project.code}</Text>
         <Text type="secondary">{tasks.length} công việc của thành viên khác</Text></Space>,
-      children: <KanbanBoard tasks={tasks} readOnly loading={loading}
+      children: <TaskViews tasks={tasks} readOnly loading={loading}
         onOpen={(task) => setTaskId(task.id)}
         emptyText="Không có công việc của thành viên khác" />,
     };

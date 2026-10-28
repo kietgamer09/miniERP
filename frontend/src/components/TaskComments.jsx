@@ -4,11 +4,12 @@ import { ReloadOutlined, SendOutlined } from '@ant-design/icons';
 import { useAuth } from '../hooks/useAuth';
 import { addComment, listComments } from '../services/taskApi';
 import { formatDateTimeVN } from '../utils/dates';
+import { request } from '../services/http';
 
 const { Text } = Typography;
 const EMPTY_COMMENTS = [];
 
-export default function TaskComments({ taskId }) {
+export default function TaskComments({ taskId, projectId }) {
   const countId = useId();
   const { user } = useAuth();
   const [loadState, setLoadState] = useState({ key: '', comments: [], error: '' });
@@ -18,26 +19,38 @@ export default function TaskComments({ taskId }) {
   const [sendError, setSendError] = useState('');
   const listRef = useRef(null);
   const sendingRef = useRef(false);
-  const requestKey = `${taskId}:${reloadKey}`;
+  const scrollToLatest = useRef(true);
+  const requestKey = `${projectId ? `project-${projectId}` : `task-${taskId}`}:${reloadKey}`;
   const currentLoad = loadState.key === requestKey;
   const comments = currentLoad ? loadState.comments : EMPTY_COMMENTS;
   const loadError = currentLoad ? loadState.error : '';
 
   useEffect(() => {
     let active = true;
-    listComments(taskId)
+    let pending = false;
+    const load = async () => {
+      if (pending || sendingRef.current) return;
+      pending = true;
+      const list = listRef.current;
+      scrollToLatest.current = !list || list.scrollHeight - list.clientHeight - list.scrollTop < 48;
+      return (projectId ? request(`/api/projects/${projectId}/comments`) : listComments(taskId))
       .then((result) => {
         if (!Array.isArray(result)) throw new Error('Dữ liệu bình luận từ máy chủ không hợp lệ');
         if (active) setLoadState({ key: requestKey, comments: result, error: '' });
       })
       .catch((error) => {
         if (active) setLoadState({ key: requestKey, comments: [], error: error.message || 'Không tải được bình luận' });
-      });
-    return () => { active = false; };
-  }, [taskId, requestKey]);
+      }).finally(() => { pending = false; });
+    };
+    load();
+    const refresh = () => { if (!document.hidden) load(); };
+    const timer = setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    return () => { active = false; clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [taskId, projectId, requestKey]);
 
   useEffect(() => {
-    if (currentLoad && comments.length && listRef.current) {
+    if (currentLoad && comments.length && listRef.current && scrollToLatest.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [comments, currentLoad]);
@@ -48,11 +61,14 @@ export default function TaskComments({ taskId }) {
     setSending(true);
     setSendError('');
     try {
-      const comment = await addComment(taskId, content);
+      const comment = projectId ? await request(`/api/projects/${projectId}/comments`, { method: 'POST', body: { content } }) : await addComment(taskId, content);
       setLoadState((state) => state.key === requestKey
         ? { ...state, comments: [...state.comments, comment] }
         : state);
       setContent('');
+      scrollToLatest.current = true;
+      setReloadKey(value => value + 1);
+      window.dispatchEvent(new Event('comments:changed'));
     } catch (error) {
       setSendError(error.message || 'Không gửi được bình luận');
     } finally {
@@ -62,8 +78,8 @@ export default function TaskComments({ taskId }) {
   }
 
   return (
-    <section aria-label="Bình luận task" style={{ marginTop: 20 }}>
-      <Typography.Title level={5}>Bình luận</Typography.Title>
+    <section id={projectId ? 'project-discussion' : undefined} aria-label={projectId ? 'Thảo luận dự án' : 'Bình luận task'} style={{ marginTop: 20 }}>
+      <Typography.Title level={5}>{projectId ? 'Thảo luận dự án' : 'Bình luận'}</Typography.Title>
       {!currentLoad ? <div style={{ display: 'grid', minHeight: 100, placeItems: 'center' }}><Spin tip="Đang tải bình luận…" /></div>
         : loadError ? <Alert type="error" showIcon title={loadError}
           action={<Button icon={<ReloadOutlined />} onClick={() => setReloadKey((key) => key + 1)}>Tải lại</Button>} />

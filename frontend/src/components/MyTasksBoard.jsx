@@ -7,10 +7,11 @@ import { getProject } from '../services/projectApi';
 import { adaptTasks } from '../utils/taskAdapter';
 import { getDueState } from '../utils/taskStatus';
 import KanbanBoard from './KanbanBoard';
+import TaskViews from './TaskViews';
 import TaskDetailDrawer from './TaskDetailDrawer';
 import TaskFormModal from './TaskFormModal';
 
-export default function MyTasksBoard() {
+export default function MyTasksBoard({ compact = false }) {
   const { tasks, loading, error, warning, reload, updateTask } = useMyWork();
   const [sortMode, setSortMode] = useState('due');
   const [selectedTaskId, setSelectedTaskId] = useState(null);
@@ -18,6 +19,7 @@ export default function MyTasksBoard() {
   const [messageApi, contextHolder] = message.useMessage();
   const overdueCount = adaptTasks(tasks)
     .filter((task) => task.status_code !== 'xong' && getDueState(task) === 'overdue').length;
+  const Board = compact ? KanbanBoard : TaskViews;
   async function moveTask(task, status) {
     const optimisticTask = {
       ...task,
@@ -68,8 +70,8 @@ export default function MyTasksBoard() {
       </Space>
       {error && <Alert type="error" title={error} showIcon />}
       {warning && <Alert type="warning" title={warning} showIcon />}
-      <KanbanBoard tasks={tasks} loading={loading} onMove={moveTask} sortMode={sortMode}
-        doneLabel="Hoàn thành (trong tuần này)" emptyText="Bạn chưa có việc nào"
+      <Board tasks={tasks} loading={loading} onMove={moveTask} sortMode={sortMode}
+        doneLabel={compact ? 'Hoàn thành (trong tuần này)' : 'Hoàn thành'} emptyText="Bạn chưa có việc nào"
         onOpen={(task) => setSelectedTaskId(task.id)} onEdit={editTask} />
     </Space>
     <TaskDetailDrawer key={selectedTaskId || 'closed'} taskId={selectedTaskId} open={Boolean(selectedTaskId)} onClose={() => setSelectedTaskId(null)}

@@ -5,6 +5,7 @@ import { listProjectTasks } from '../services/projectApi';
 import { getDueState } from '../utils/taskStatus';
 import { formatDateOnlyVN, parseDateOnly } from '../utils/dates';
 import './ProjectTaskTable.css';
+import TaskDetailDrawer from './TaskDetailDrawer';
 
 const priorityLabels = { thap: 'Thấp', trung_binh: 'Trung bình', cao: 'Cao' };
 const statusLabels = { can_lam: 'Cần làm', dang_lam: 'Đang làm', xong: 'Xong' };
@@ -16,7 +17,8 @@ function getTaskDueState(task, today) {
   return getDueState({ status: task.status === 'xong' ? 'done' : 'todo', dueDate }, today);
 }
 
-function ProjectTaskTable({ projectId }) {
+function ProjectTaskTable({ projectId, embedded = false }) {
+  const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -47,7 +49,7 @@ function ProjectTaskTable({ projectId }) {
   }
 
   const columns = [
-    { title: 'Tiêu đề', dataIndex: 'title', width: 260, render: (value) => <span style={{ overflowWrap: 'anywhere' }}>{value}</span> },
+    { title: 'Công việc', dataIndex: 'title', width: 260, render: (value, task) => <Button type="link" className="project-task-title" onClick={() => setSelectedTaskId(task.id)}>{value}</Button> },
     { title: 'Người làm', dataIndex: 'assignee_name', width: 180, render: (value) => value || '—' },
     { title: 'Hạn chót', dataIndex: 'due_date', width: 180, render: (value, task) => {
       const state = getTaskDueState(task, today);
@@ -60,12 +62,15 @@ function ProjectTaskTable({ projectId }) {
     { title: 'Trạng thái', dataIndex: 'status', width: 130, render: (value) => statusLabels[value] || value },
   ];
 
-  return <Card title="Công việc của dự án" extra={<Button icon={<ReloadOutlined />} disabled={loading} onClick={reload}>Tải lại</Button>}>
+  const content = <>
     {loadError ? <Alert type="error" showIcon title={loadError} action={<Button onClick={reload}>Thử lại</Button>} />
       : <Table className="project-task-table" rowKey="id" loading={loading} columns={columns} dataSource={tasks}
         rowClassName={(task) => `task-row-${getTaskDueState(task, today)}`}
-        pagination={false} scroll={{ x: 870 }} locale={{ emptyText: 'Dự án chưa có task nào' }} />}
-  </Card>;
+        size={embedded ? 'small' : 'middle'} pagination={{ pageSize: 6, hideOnSinglePage: true, showSizeChanger: false }} scroll={{ x: 870 }} locale={{ emptyText: 'Dự án chưa có task nào' }} />}
+    <TaskDetailDrawer key={selectedTaskId || 'closed'} taskId={selectedTaskId} open={Boolean(selectedTaskId)} onClose={() => setSelectedTaskId(null)} />
+  </>;
+  return embedded ? <div className="project-task-preview">{content}</div>
+    : <Card title="Công việc của dự án" extra={<Button icon={<ReloadOutlined />} disabled={loading} onClick={reload}>Tải lại</Button>}>{content}</Card>;
 }
 
 export default ProjectTaskTable;
