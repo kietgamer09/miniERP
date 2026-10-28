@@ -5,16 +5,20 @@ import { useAuth } from '../hooks/useAuth';
 import { addComment, listComments } from '../services/taskApi';
 import { formatDateTimeVN } from '../utils/dates';
 import { request } from '../services/http';
+import useDraft from '../hooks/useDraft';
 
 const { Text } = Typography;
 const EMPTY_COMMENTS = [];
 
-export default function TaskComments({ taskId, projectId }) {
+export default function TaskComments({ taskId, projectId, onSubmitted }) {
   const countId = useId();
   const { user } = useAuth();
   const [loadState, setLoadState] = useState({ key: '', comments: [], error: '' });
   const [reloadKey, setReloadKey] = useState(0);
   const [content, setContent] = useState('');
+  const draft = useDraft(`comment:${projectId ? `project-${projectId}` : `task-${taskId}`}`, {
+    fields: ['content'], onRestore: values => setContent(values.content || ''),
+  });
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
   const listRef = useRef(null);
@@ -66,9 +70,11 @@ export default function TaskComments({ taskId, projectId }) {
         ? { ...state, comments: [...state.comments, comment] }
         : state);
       setContent('');
+      draft.clear();
       scrollToLatest.current = true;
       setReloadKey(value => value + 1);
       window.dispatchEvent(new Event('comments:changed'));
+      onSubmitted?.();
     } catch (error) {
       setSendError(error.message || 'Không gửi được bình luận');
     } finally {
@@ -103,8 +109,9 @@ export default function TaskComments({ taskId, projectId }) {
             </div>}
       <Text type="secondary" style={{ display: 'block', margin: '8px 0' }}>Bình luận không thể sửa hoặc xóa.</Text>
       {sendError && <Alert type="error" showIcon title={sendError} style={{ marginBottom: 8 }} />}
+      {draft.notice}
       <Input.TextArea aria-label="Nội dung bình luận" aria-describedby={countId} value={content}
-        onChange={(event) => { setContent(event.target.value); setSendError(''); }}
+        onChange={(event) => { setContent(event.target.value); draft.save({ content: event.target.value }); setSendError(''); }}
         onKeyDown={(event) => {
           if (event.ctrlKey && event.key === 'Enter') {
             event.preventDefault();

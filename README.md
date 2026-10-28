@@ -2,6 +2,8 @@
 
 Ứng dụng quản lý nhân sự và công việc gồm frontend React/Vite và backend Express/Prisma/PostgreSQL.
 
+Bản nháp tự lưu trên trình duyệt cho form dự án, công việc, nhân viên, phòng ban, thêm thành viên, giải trình chấm công, đơn nghỉ phép và bình luận/thảo luận. Hòm thư hiện **Bạn có việc đang dở**; bấm thông báo để mở đúng trang, mở form và khôi phục nội dung ngay. Khi mở form thủ công, vẫn có **Khôi phục** hoặc **Bỏ bản nháp**. Nháp tách theo tài khoản và từng mục, hết hạn sau 7 ngày, xóa khỏi hòm thư sau khi gửi/lưu thành công; tối đa 50 nháp trên trình duyệt. Nháp không đồng bộ sang máy khác, không lưu mật khẩu hay file đang chọn; tệp đã tải lên vẫn lưu trên backend. Nút Hủy/Đóng giữ nháp để tiếp tục sau, nút Xóa nháp xóa bản lưu trên máy. Nếu quyền truy cập hoặc trạng thái dữ liệu đã thay đổi, thông báo lỗi và giữ nguyên nháp.
+
 ## Chạy dự án
 
 1. Cấu hình PostgreSQL và khởi động backend theo hướng dẫn trong [`backend/README.md`](backend/README.md).

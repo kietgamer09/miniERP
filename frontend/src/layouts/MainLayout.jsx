@@ -13,6 +13,7 @@ import { useTheme } from '../hooks/useTheme';
 import { useMyWork } from '../hooks/useMyWork';
 import NotificationInbox from '../components/NotificationInbox';
 import ChangePasswordModal from '../components/ChangePasswordModal';
+import DraftRecovery from '../components/DraftRecovery';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -171,7 +172,7 @@ function MainLayout() {
           {renderMenu()}
         </Drawer>
         <Content className="app-content" style={{ background: 'var(--page-bg)', minWidth: 0 }}>
-          <Outlet />
+          <DraftRecovery><Outlet /></DraftRecovery>
         </Content>
       </Layout>
       <footer className="app-footer">

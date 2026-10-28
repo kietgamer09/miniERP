@@ -8,6 +8,8 @@ import { useAttendance } from '../hooks/useAttendance';
 import { attendanceReminders, taskNotifications } from '../utils/notifications';
 import { request } from '../services/http';
 import WebPushSettings from './WebPushSettings';
+import { DRAFT_CHANGED, listDrafts } from '../utils/draftStorage';
+import { draftNotification } from '../utils/draftNotifications';
 
 function readSettings(key) {
   try {
@@ -22,6 +24,9 @@ export default function NotificationInbox() {
 }
 
 function Inbox({ storageKey }) {
+  const { user } = useAuth();
+  const userId = user.id ?? user.username;
+  const [draftItems, setDraftItems] = useState(() => listDrafts(userId).map(draftNotification).filter(Boolean));
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState(() => readSettings(storageKey));
   const [now, setNow] = useState(() => new Date());
@@ -32,6 +37,13 @@ function Inbox({ storageKey }) {
   const [commentError, setCommentError] = useState('');
   const [revision, setRevision] = useState(0);
   const [marking, setMarking] = useState(false);
+  useEffect(() => {
+    const refresh = () => setDraftItems(listDrafts(userId).map(draftNotification).filter(Boolean));
+    window.addEventListener(DRAFT_CHANGED, refresh);
+    window.addEventListener('storage', refresh);
+    const timer = setInterval(refresh, 30000);
+    return () => { clearInterval(timer); window.removeEventListener(DRAFT_CHANGED, refresh); window.removeEventListener('storage', refresh); };
+  }, [userId]);
   useEffect(() => {
     let active = true, pending = false;
     async function load() {
@@ -56,7 +68,7 @@ function Inbox({ storageKey }) {
     const timer = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
-  const items = [...commentItems, ...taskNotifications(tasks), ...(settings.reminders ? attendanceReminders(now, record) : [])]
+  const items = [...draftItems, ...commentItems, ...taskNotifications(tasks), ...(settings.reminders ? attendanceReminders(now, record) : [])]
     .sort((a, b) => (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0));
   const isRead = item => item.type === 'comment' ? item.read : settings.read.includes(item.id);
   const unread = items.filter(item => !isRead(item)).length;
@@ -105,7 +117,9 @@ function Inbox({ storageKey }) {
       {!loading && !items.length && <Empty description="Chưa có thông báo" />}
       <div className="notification-list">
         {items.map(item => <button key={item.id} disabled={marking} className={`notification-item ${isRead(item) ? '' : 'is-unread'}`}
-          onClick={async () => { await markRead([item.id]); setOpen(false); navigate(item.path, { state: { notificationId: item.id } }); }}>
+          onClick={async () => { await markRead([item.id]); setOpen(false); navigate(item.path, {
+            state: { notificationId: item.id, ...(item.type === 'draft' ? { resumeDraft: item.draftScope } : {}) },
+          }); }}>
           <Typography.Text strong={!isRead(item)}>{item.title}</Typography.Text>
           <Typography.Text type="secondary">{item.description}</Typography.Text>
           {item.time && <Typography.Text type="secondary" style={{ fontSize: 12 }}>

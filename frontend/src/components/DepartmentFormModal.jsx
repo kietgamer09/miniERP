@@ -2,18 +2,19 @@
 import { useEffect, useState } from 'react';
 import { Form, Input, Modal, message } from 'antd';
 import { createDepartment, updateDepartment } from '../services/departmentApi';
+import { useFormDraft } from '../hooks/useDraft';
 
 function DepartmentFormModal({ open, department, onCancel, onSaved }) {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+  const draft = useFormDraft(form, `department:${department?.department_id ?? 'new'}`, {
+    enabled: open, fields: ['department_name'],
+  });
 
   useEffect(() => {
     if (!open) return;
     form.resetFields();
-    if (department) {
-      form.setFieldsValue({ department_name: department.department_name });
-    }
   }, [open, department, form]);
 
   async function handleSave() {
@@ -27,6 +28,7 @@ function DepartmentFormModal({ open, department, onCancel, onSaved }) {
         await createDepartment(values);
         messageApi.success('Thêm phòng ban thành công');
       }
+      draft.clear();
       onSaved();
     } catch (error) {
       if (error?.errorFields) return;
@@ -50,7 +52,8 @@ function DepartmentFormModal({ open, department, onCancel, onSaved }) {
         cancelText="Hủy"
         destroyOnHidden={false}
       >
-        <Form form={form} layout="vertical" preserve={false}>
+        {draft.notice}
+        <Form form={form} layout="vertical" preserve={false} initialValues={{ department_name: department?.department_name || '' }} onValuesChange={draft.onValuesChange}>
           <Form.Item
             label="Tên phòng ban"
             name="department_name"

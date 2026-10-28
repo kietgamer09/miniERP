@@ -4,6 +4,7 @@ import { EditOutlined } from '@ant-design/icons';
 import { createEmployee, updateEmployee } from '../services/employeeApi';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import { useFormDraft } from '../hooks/useDraft';
 
 dayjs.extend(customParseFormat);
 
@@ -30,6 +31,11 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
   const submitting = useRef(false);
 
   const isEditing = !!employee;
+  const draft = useFormDraft(form, `employee:${employee?.employee_id ?? 'new'}`, {
+    enabled: open && !readOnly,
+    fields: ['fullname', 'phone_number', 'email', 'department_id', 'position', 'birthday', 'status'],
+    dateFields: ['birthday'], onRestore: () => setIsEditingMode(true),
+  });
 
   useEffect(() => {
     if (open) {
@@ -60,6 +66,7 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
         result = await createEmployee(payload);
         message.success('Thêm nhân viên và khởi tạo tài khoản thành công');
       }
+      draft.clear();
       onSaved(result);
     } catch (error) {
       message.error(error.message || 'Có lỗi xảy ra');
@@ -158,11 +165,13 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
       </div>
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', marginBottom: 20 }} />
+      {draft.notice}
 
       <Form
         form={form}
         layout="vertical"
         onFinish={handleSubmit}
+        onValuesChange={draft.onValuesChange}
         disabled={confirmLoading}
       >
         <Row gutter={24}>

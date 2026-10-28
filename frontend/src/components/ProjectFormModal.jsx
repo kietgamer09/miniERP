@@ -6,6 +6,7 @@ import 'dayjs/locale/vi';
 import { createProject, updateProject } from '../services/projectApi';
 import { listEmployees } from '../services/employeeApi';
 import './ProjectFormModal.css';
+import { useFormDraft } from '../hooks/useDraft';
 
 dayjs.locale('vi');
 
@@ -26,6 +27,10 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
   const submitting = useRef(false);
   const today = getTodayDate();
   const startDate = Form.useWatch('start_date', form);
+  const draft = useFormDraft(form, `project:${project?.id ?? 'new'}`, {
+    enabled: open, fields: ['code', 'name', 'description', 'member_ids', 'start_date', 'end_date'],
+    dateFields: ['start_date', 'end_date'],
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -74,6 +79,7 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
         code: values.code.trim(),
         member_ids: values.member_ids || [],
       });
+      draft.clear();
       onSaved();
     } catch (error) {
       if (!error?.errorFields) setSaveError(error.message || 'Không lưu được dự án');
@@ -93,7 +99,9 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
       okText="Lưu" cancelText="Hủy"
     >
       {saveError && <Alert type="error" showIcon title={saveError} style={{ marginBottom: 16 }} />}
+      {draft.notice}
       <Form form={form} layout="vertical" disabled={saving} preserve={false}
+        onValuesChange={draft.onValuesChange}
         initialValues={project ? { ...project,
           start_date: project.start_date ? dayjs(project.start_date).locale('vi') : null,
           end_date: project.end_date ? dayjs(project.end_date).locale('vi') : null,
