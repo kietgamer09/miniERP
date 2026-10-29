@@ -1,16 +1,8 @@
 import { Alert, Tabs, Typography } from 'antd';
 import { useRole } from '../hooks/useAuth';
-import LeaveApprovals from '../components/LeaveApprovals';
+import LeaveApprovals from '../components/LeaveApprovals'; // Component duyệt nghỉ phép
+import AttendanceExplanationApprovals from '../components/AttendanceExplanationApprovals'; // Component duyệt giải trình chấm công vừa tạo
 import Overtime from './Overtime';
-
-// Tab giải trình chấm công tạm ẩn / cô lập để tránh lỗi bảng chưa tồn tại
-function AttendanceExplanationsTab() {
-  return (
-    <div style={{ padding: '12px 0' }}>
-      <Alert type="info" message="Chức năng duyệt giải trình chấm công chưa khả dụng." showIcon />
-    </div>
-  );
-}
 
 export default function AttendanceApprovals() {
   const { role } = useRole();
@@ -23,22 +15,26 @@ export default function AttendanceApprovals() {
   return (
     <div className="approvals-page">
       <Typography.Title level={3} style={{ margin: 0 }}>Trung tâm phê duyệt</Typography.Title>
-
-      <Tabs
-        defaultActiveKey="2"
+      
+      <Tabs 
+        defaultActiveKey="1" // Đặt mặc định mở tab Duyệt giải trình chấm công để test nhanh
         items={[
-          {
-            key: '1',
-            label: 'Duyệt giải trình chấm công',
-            children: <AttendanceExplanationsTab />
+          { 
+            key: '1', 
+            label: 'Duyệt giải trình chấm công', 
+            children: <AttendanceExplanationApprovals /> 
           },
           {
             key: '2',
             label: 'Duyệt đơn nghỉ phép',
             children: <LeaveApprovals />
           },
-          { key: 'overtime', label: 'Duyệt làm thêm', children: <Overtime approvalsOnly /> }
-        ]}
+          { 
+            key: 'overtime', 
+            label: 'Duyệt làm thêm', 
+            children: <Overtime approvalsOnly /> 
+          }
+        ]} 
       />
     </div>
   );

@@ -32,3 +32,4 @@ export async function getPendingLeaveCount() {
   }
   return data.count;
 }
+

@@ -118,10 +118,65 @@ export const getMyAttendances = handler(async (req, res) => {
   const start = `${month}-01`, end = `${month}-${lastDay}`;
   const data = await rangeData(employee, start, end);
   const now = new Date(), clock = vietnamClock(now);
-  const days = Array.from({ length: lastDay }, (_, index) => dayData(`${month}-${String(index + 1).padStart(2, '0')}`, employee, data, clock, req));
+
+  // Tạo danh sách các ngày cơ bản
+  let days = Array.from({ length: lastDay }, (_, index) => dayData(`${month}-${String(index + 1).padStart(2, '0')}`, employee, data, clock, req));
+
+  // --- TRUY VẤN VÀ NHÚNG THÔNG TIN GIẢI TRÌNH CHẤM CÔNG VÀO CÁC NGÀY TRONG THÁNG ---
+  const explanations = await prisma.attendance_explanations.findMany({
+    where: {
+      employee_id: employee.employee_id,
+      date: {
+        gte: new Date(`${start}T00:00:00.000Z`),
+        lte: new Date(`${end}T23:59:59.999Z`)
+      }
+    }
+  });
+
+  const explanationMap = new Map();
+  explanations.forEach(exp => {
+    const dateKey = exp.date.toISOString().slice(0, 10);
+    explanationMap.set(dateKey, exp);
+  });
+
+  // Gắn object giải trình và cập nhật màu sắc / nhãn cho từng ô ngày tương ứng
+  // Gắn object giải trình và cập nhật màu sắc / nhãn / trạng thái cho từng ô ngày tương ứng
+    days = days.map(dayItem => {
+      const foundExp = explanationMap.get(dayItem.date);
+      if (foundExp) {
+        let newColor = dayItem.color;
+        let newLabel = dayItem.label;
+        let newStatus = dayItem.status;
+
+        if (foundExp.status === 'pending') {
+          newColor = 'gold';
+          newLabel = 'Chờ duyệt giải trình';
+          newStatus = 'pending';
+        } else if (foundExp.status === 'rejected') {
+          newColor = 'red';
+          newLabel = 'Giải trình bị từ chối';
+          newStatus = 'rejected';
+        } else if (foundExp.status === 'approved') {
+          // Khớp hoàn toàn với quy chuẩn "Nghỉ phép đã duyệt / Đã duyệt" (màu xanh nước biển)
+          newColor = 'blue';
+          newLabel = 'Đã duyệt giải trình / Chấm bù';
+          newStatus = 'leave'; // Chuyển về trạng thái leave để biểu đồ ngoài tự động gom đúng vào nhóm Nghỉ có phép
+        }
+
+        return {
+          ...dayItem,
+          status: newStatus,
+          explanation: foundExp,
+          color: newColor,
+          label: newLabel
+        };
+      }
+      return dayItem;
+    });
+  // -----------------------------------------------------------------------------------
+
   res.json({ month, server_now: now.toISOString(), start_date: dateOnly(employee.start_date), days });
 });
-
 function punch(action) {
   return handler(async (req, res) => {
     const employee = await employeeFor(req);
