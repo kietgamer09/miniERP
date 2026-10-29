@@ -1,4 +1,3 @@
-/* Reset cơ bản – giữ tối giản, Ant Design lo phần còn lại */
 :root {
   --brand: #315de8;
   --task-normal-bg: #d6fbfa;
@@ -121,7 +120,6 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* Ẩn scrollbar mặc định của Ant Layout Sider */
 .ant-layout-sider-children {
   overflow-y: auto;
 }

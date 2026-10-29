@@ -1,4 +1,3 @@
-/** Chặn các trang nội bộ khi chưa có phiên đăng nhập. */
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 

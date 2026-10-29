@@ -13,7 +13,6 @@ function TaskCard({ task, onClick, clickable = true, draggable = false, dragRef,
   const label = dueState === 'done' && !task.completedAt
     ? `Đã xong · Hạn ${formatDateVN(task.dueDate)}` : getDueLabel(task, dueState);
 
-  // Màu chữ trạng thái theo loại cảnh báo
   const labelColor =
     dueState === 'overdue' ? 'var(--red-text)' :
     dueState === 'near-due' ? 'var(--gold-text)' :

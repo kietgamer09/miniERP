@@ -27,12 +27,12 @@ function LeaveManagement() {
   const [leaveSummary, setLeaveSummary] = useState({ max_days: 12, used_days: 0, remaining_days: 12 });
   const [myLeaveRequests, setMyLeaveRequests] = useState([]);
   const [attachmentLeaveId, setAttachmentLeaveId] = useState(null);
-  
+
   const [selectedDates, setSelectedDates] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
-  
+
   const [messageApi, contextHolder] = message.useMessage();
   const draft = useDraft('leave:new', {
     fields: ['reason', 'selectedDates'],
@@ -45,12 +45,11 @@ function LeaveManagement() {
     },
   });
 
-  // Tự động nhận diện chế độ Sáng / Tối từ hệ thống
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
     const checkTheme = () => {
-      const isDarkMode = document.body.classList.contains('dark') || 
+      const isDarkMode = document.body.classList.contains('dark') ||
                          document.documentElement.classList.contains('dark') ||
                          document.body.getAttribute('data-theme') === 'dark' ||
                          document.documentElement.getAttribute('data-theme') === 'dark' ||
@@ -88,7 +87,6 @@ function LeaveManagement() {
   }, [messageApi]);
 
   useEffect(() => {
-    // Async API loading updates state after the request resolves.
     // oxlint-disable-next-line react/set-state-in-effect
     fetchData();
   }, [fetchData]);
@@ -116,17 +114,17 @@ function LeaveManagement() {
         }
       }
     });
-    
+
     const days = Array.from({ length: totalDays }, (_, i) => {
       const dayNum = String(i + 1).padStart(2, '0');
       const dateStr = `${monthStr}-${dayNum}`;
       const currentDateObj = dayjs(dateStr);
-      
+
       const dayOfWeek = currentDateObj.day();
       const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
       const isPast = currentDateObj.isBefore(todayStr, 'day');
       const bookingInfo = bookedDaysMap[dateStr];
-      
+
       return {
         date: dateStr,
         isWeekend,
@@ -225,7 +223,6 @@ function LeaveManagement() {
   const monthStr = selectedMonth.format('YYYY-MM');
   const offset = (new Date(`${monthStr}-01T00:00:00Z`).getUTCDay() + 6) % 7;
 
-  // Bảng màu: Chế độ tối nền đen y hệt bản gốc, Chế độ sáng tối ưu màu đậm rõ nét, không bị chói
   const themeStyles = isDark ? {
     pageBg: 'var(--page-bg)',
     cardBg: 'var(--surface)',
@@ -262,17 +259,16 @@ function LeaveManagement() {
     weekendBg: '#e2e8f0',
     weekendBorder: '#cbd5e1',
     weekendText: '#475569',
-    // Chế độ sáng: Tăng độ đậm và rõ nét cho các trạng thái để dễ nhìn, không bị chói
     pastBg: 'var(--subtle-bg)',
     pastBorder: 'var(--border)',
     pastText: 'var(--muted)',
-    pendingBg: '#fde68a',    // Vàng cam đậm
+    pendingBg: '#fde68a',
     pendingBorder: '#fbbf24',
     pendingText: '#92400e',
-    approvedBg: '#bbf7d0',   // Xanh lá đậm rõ ràng
+    approvedBg: '#bbf7d0',
     approvedBorder: '#4ade80',
     approvedText: '#166534',
-    selectedBg: '#bae6fd',   // Xanh dương đậm
+    selectedBg: '#bae6fd',
     selectedBorder: '#38bdf8',
     selectedText: '#0369a1',
   };
@@ -285,7 +281,6 @@ function LeaveManagement() {
         {attachmentLeaveId && <Attachments key={attachmentLeaveId} type="leaves" targetId={attachmentLeaveId} />}
       </Modal>
 
-      {/* Header & Thống kê số phép */}
       <div className="leave-page-header">
         <div>
           <Title level={3} style={{ margin: 0, color: themeStyles.textColor }}>Quản lý & Đăng ký nghỉ phép</Title>
@@ -293,23 +288,23 @@ function LeaveManagement() {
         </div>
         <Space wrap size={12}>
           <Card bordered={false} style={{ background: isDark ? '#1f2937' : themeStyles.cardBg, borderRadius: 8, boxShadow: isDark ? 'none' : '0 1px 3px 0 rgba(0, 0, 0, 0.08)' }} bodyStyle={{ padding: '8px 16px' }}>
-            <Statistic 
+            <Statistic
               title={<span style={{ fontSize: '12px', color: themeStyles.textSecondary, fontWeight: 500 }}>Phép còn lại trong năm</span>}
-              value={leaveSummary.remaining_days} 
+              value={leaveSummary.remaining_days}
               suffix={`/ ${leaveSummary.max_days} ngày`}
               valueStyle={{ color: '#52c41a', fontSize: '18px', fontWeight: 'bold' }}
             />
           </Card>
-          <DatePicker 
-            picker="month" 
-            value={selectedMonth} 
-            onChange={(date) => date && setSelectedMonth(date)} 
+          <DatePicker
+            picker="month"
+            value={selectedMonth}
+            onChange={(date) => date && setSelectedMonth(date)}
             allowClear={false}
             format="MM/YYYY"
           />
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
             disabled={selectedDates.length === 0}
             onClick={handleOpenRequestModal}
           >
@@ -318,9 +313,8 @@ function LeaveManagement() {
         </Space>
       </div>
 
-      {/* Thẻ chứa lịch đồng bộ màu sắc */}
-      <Card 
-        bordered={false} 
+      <Card
+        bordered={false}
         style={{ background: themeStyles.cardBg, borderRadius: 8, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', boxShadow: isDark ? 'none' : '0 1px 3px 0 rgba(0, 0, 0, 0.08)' }}
         bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', padding: '24px', background: themeStyles.cardBg }}
       >
@@ -338,7 +332,6 @@ function LeaveManagement() {
               </Space>
             </div>
 
-            {/* Lưới lịch dạng grid */}
             <div className="attendance-calendar" style={{ gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
               {['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'].map(label => (
                 <div className="attendance-weekday" key={label} style={{ textAlign: 'center', fontWeight: 'bold', color: themeStyles.weekdayColor, paddingBottom: '8px' }}>{label}</div>
@@ -348,7 +341,7 @@ function LeaveManagement() {
               ))}
               {monthData.map(item => {
                 const isSelected = selectedDates.includes(item.date);
-                
+
                 let bgColor = themeStyles.normalBg;
                 let borderColor = themeStyles.normalBorder;
                 let textColor = themeStyles.normalText;
@@ -388,8 +381,8 @@ function LeaveManagement() {
                 }
 
                 return (
-                  <button 
-                    key={item.date} 
+                  <button
+                    key={item.date}
                     type="button"
                     style={{
                       border: `1.5px solid ${borderColor}`,
@@ -427,7 +420,6 @@ function LeaveManagement() {
           Đơn #{item.Day_off_id} · {dayjs(item.start_date).format('DD/MM/YYYY')}
         </Button>)}</Space>
       </Card>}
-      {/* Modal Gửi Đơn Xin Nghỉ Phép */}
       <Modal
         title="Tạo đơn xin nghỉ phép"
         forceRender
@@ -439,11 +431,11 @@ function LeaveManagement() {
         {draft.notice}
         <Form form={form} layout="vertical" onFinish={handleSubmitLeave}
           onValuesChange={(_, values) => draft.save({ reason: values.reason || '', selectedDates })}>
-          <Alert 
-            message="Thông tin định tuyến đơn & Hạn mức" 
-            description={`Số phép còn lại trong năm: ${leaveSummary.remaining_days} ngày. Đơn sẽ được tự động gửi đến cấp quản lý.`} 
-            type="info" 
-            showIcon 
+          <Alert
+            message="Thông tin định tuyến đơn & Hạn mức"
+            description={`Số phép còn lại trong năm: ${leaveSummary.remaining_days} ngày. Đơn sẽ được tự động gửi đến cấp quản lý.`}
+            type="info"
+            showIcon
             style={{ marginBottom: 16 }}
           />
 
@@ -455,9 +447,9 @@ function LeaveManagement() {
             <Input.TextArea rows={2} disabled />
           </Form.Item>
 
-          <Form.Item 
-            label="Lý do xin nghỉ phép" 
-            name="reason" 
+          <Form.Item
+            label="Lý do xin nghỉ phép"
+            name="reason"
             rules={[{ required: true, message: 'Vui lòng nhập lý do xin nghỉ phép!' }]}
           >
             <Input.TextArea rows={4} placeholder="Nhập lý do chi tiết..." />

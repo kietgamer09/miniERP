@@ -127,7 +127,6 @@ export default function Overtime({ approvalsOnly = false }) {
         {approvalsOnly && <Button icon={<ReloadOutlined />} onClick={reload}>Tải lại</Button>}
         <Typography.Text type="secondary">{filtered.length} đơn · tối đa 500 đơn gần nhất</Typography.Text></div>
       {result.key === key && result.error && <Alert type="error" showIcon title={result.error} action={<Button onClick={reload}>Thử lại</Button>} />}
-      {view === 'review' && <Typography.Paragraph type="secondary" className="overtime-review-hint">Quản lý cùng phòng hoặc Admin duyệt một lần. Đơn kế hoạch gần ngày làm được xếp trước; bấm vào hàng để xem và xử lý.</Typography.Paragraph>}
       <Table rowKey="id" columns={columns} dataSource={filtered} loading={result.key !== key} scroll={{ x: view === 'review' ? 1100 : 950 }}
         pagination={{ pageSize: 10, hideOnSinglePage: true }} locale={{ emptyText: 'Chưa có đơn làm thêm phù hợp' }}
         onRow={row => ({ className: 'detail-clickable-row', ...detailInteraction(() => choose(String(row.id)), `Xem đơn làm thêm ngày ${formatDateOnlyVN(row.date)}`) })} />

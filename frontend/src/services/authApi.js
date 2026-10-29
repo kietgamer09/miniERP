@@ -1,4 +1,3 @@
-/** Gọi API xác thực của backend miniERP. */
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 
 function normalizeRole(role) {

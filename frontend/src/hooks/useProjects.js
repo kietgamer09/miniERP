@@ -1,4 +1,3 @@
-/** Tải danh sách dự án thật từ API và cung cấp trạng thái tải lại dùng chung. */
 import { useEffect, useState } from 'react';
 import { listProjects } from '../services/projectApi';
 

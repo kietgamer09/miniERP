@@ -1,4 +1,3 @@
-/** Các lời gọi API quản lý phòng ban. */
 import { request } from './http';
 
 function listDepartments() {

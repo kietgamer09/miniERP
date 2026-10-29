@@ -24,10 +24,10 @@ export default function AttendanceApprovals() {
             label: 'Duyệt giải trình chấm công', 
             children: <AttendanceExplanationApprovals /> 
           },
-          { 
-            key: '2', 
-            label: 'Duyệt đơn nghỉ phép', 
-            children: <LeaveApprovals /> 
+          {
+            key: '2',
+            label: 'Duyệt đơn nghỉ phép',
+            children: <LeaveApprovals />
           },
           { 
             key: 'overtime', 

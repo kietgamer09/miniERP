@@ -55,7 +55,7 @@ export const getUsers = async (req, res) => {
     if (search && search.trim()) {
       whereCondition.fullname = {
         contains: search.trim(),
-        mode: 'insensitive', // Giúp tìm kiếm không phân biệt hoa thường (hoặc bỏ mode nếu dùng MySQL cũ)
+        mode: 'insensitive',
       };
     }
     if (department_id) {
@@ -258,7 +258,6 @@ export const updateEmployeesDepartment = async (req, res) => {
       return res.status(400).json({ error: 'Vui lòng chọn phòng ban đích cần chuyển đến.' });
     }
 
-    // Kiểm tra phòng ban đích có tồn tại không
     const dept = await prisma.departments.findUnique({
       where: { department_id: Number(new_department_id) }
     });
@@ -266,7 +265,6 @@ export const updateEmployeesDepartment = async (req, res) => {
       return res.status(404).json({ error: 'Phòng ban đích không tồn tại.' });
     }
 
-    // Thực hiện cập nhật phòng ban hàng loạt cho các nhân viên được chọn
     const updatePromises = employee_ids.map(empId => {
       return prisma.employees.update({
         where: { employee_id: Number(empId) },

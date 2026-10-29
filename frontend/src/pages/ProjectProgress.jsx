@@ -1,4 +1,3 @@
-/** Màn hình tiến độ riêng, dùng trường tổng hợp do API dự án trả về. */
 import { Alert, Button, Card, Space, Spin, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import useProjects from '../hooks/useProjects';
