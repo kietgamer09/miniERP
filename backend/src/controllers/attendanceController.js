@@ -194,7 +194,7 @@ export const createExplanation = handler(async (req, res) => {
 
 export const listExplanations = handler(async (req, res) => {
   await requireCurrentAdmin(req);
-  res.json([]); // Trả về mảng rỗng để không bị lỗi trên giao diện duyệt
+  res.json([]);
 });
 
 export const reviewExplanation = handler(async (req, res) => {
@@ -202,7 +202,6 @@ export const reviewExplanation = handler(async (req, res) => {
   fail(400, 'Tính năng giải trình chấm công đã bị vô hiệu hóa.');
 });
 
-// --- THỐNG KÊ BẢNG CÔNG TOÀN CÔNG TY CHO HR / ADMIN ---
 export const getCompanyAttendanceSummary = handler(async (req, res) => {
   await requireCurrentAdmin(req);
 

@@ -6,7 +6,7 @@ import { getCompanyAttendanceSummary, getEmployeeAttendanceByAdmin } from '../se
 import { explanationLabels } from '../utils/attendance';
 import { formatDateOnlyVN } from '../utils/dates';
 import { detailInteraction } from '../utils/detailInteraction';
-import './TimesheetCard.css'; // Dùng chung file CSS với bảng công cá nhân để đồng bộ màu sắc và style lưới
+import './TimesheetCard.css';
 
 const { Title, Text } = Typography;
 
@@ -22,7 +22,6 @@ function CompanyAttendance() {
   });
   const [employeesData, setEmployeesData] = useState([]);
 
-  // State quản lý Modal xem chi tiết bảng công của nhân viên
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState(null);
@@ -48,7 +47,6 @@ function CompanyAttendance() {
 
   useEffect(() => {
     const monthStr = selectedMonth.format('YYYY-MM');
-    // Async API loading updates state after the request resolves.
     // oxlint-disable-next-line react/set-state-in-effect
     fetchSummary(monthStr);
   }, [selectedMonth, fetchSummary]);
@@ -59,7 +57,6 @@ function CompanyAttendance() {
     }
   };
 
-  // Mở modal và gọi API lấy chi tiết lịch công của nhân viên được chọn
   const handleViewDetail = async (record) => {
     setCurrentEmployee(record);
     setIsModalVisible(true);
@@ -77,7 +74,6 @@ function CompanyAttendance() {
     }
   };
 
-  // Cấu hình cột cho bảng chi tiết nhân viên
   const columns = [
     {
       title: 'Mã NV',
@@ -147,72 +143,69 @@ function CompanyAttendance() {
     <div className="company-attendance-page">
       {contextHolder}
 
-      {/* Header & Bộ lọc tháng */}
       <div className="company-attendance-header">
         <Title level={3} style={{ margin: 0 }}>Bảng công toàn công ty</Title>
         <Space>
           <Text type="secondary">Chọn tháng:</Text>
-          <DatePicker 
-            picker="month" 
-            value={selectedMonth} 
-            onChange={handleMonthChange} 
+          <DatePicker
+            picker="month"
+            value={selectedMonth}
+            onChange={handleMonthChange}
             allowClear={false}
             format="MM/YYYY"
           />
         </Space>
       </div>
 
-      {/* Các Thẻ Thống Kê Tổng Quan (Cards) */}
       <Row gutter={[12, 12]}>
         <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
-            <Statistic 
-              title="Tổng số nhân viên" 
-              value={overview.total_employees} 
-              prefix={<TeamOutlined style={{ color: '#1890ff' }} />} 
+            <Statistic
+              title="Tổng số nhân viên"
+              value={overview.total_employees}
+              prefix={<TeamOutlined style={{ color: '#1890ff' }} />}
             />
           </Card>
         </Col>
         <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
-            <Statistic 
-              title="Nhân viên đủ công" 
-              value={overview.full_attendance_count} 
-              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />} 
+            <Statistic
+              title="Nhân viên đủ công"
+              value={overview.full_attendance_count}
+              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
             />
           </Card>
         </Col>
         <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
-            <Statistic 
-              title="Nhân viên thiếu công" 
-              value={overview.missing_attendance_count} 
-              prefix={<WarningOutlined style={{ color: '#ff4d4f' }} />} 
+            <Statistic
+              title="Nhân viên thiếu công"
+              value={overview.missing_attendance_count}
+              prefix={<WarningOutlined style={{ color: '#ff4d4f' }} />}
             />
           </Card>
         </Col>
         <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
-            <Statistic 
-              title="Đi muộn / Về sớm" 
-              value={overview.late_or_early_count} 
-              prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />} 
+            <Statistic
+              title="Đi muộn / Về sớm"
+              value={overview.late_or_early_count}
+              prefix={<ClockCircleOutlined style={{ color: '#faad14' }} />}
             />
           </Card>
         </Col>
       </Row>
 
-      {/* Bảng Danh Sách Chi Tiết Nhân Viên */}
-      <Card 
-        title="Danh sách chi tiết công nhân viên trong tháng" 
-        bordered={false} 
+      <Card
+        title="Danh sách chi tiết công nhân viên trong tháng"
+        bordered={false}
         style={{ borderRadius: 8, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}
         bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '12px 24px', overflow: 'hidden' }}
       >
-        <Table 
-          dataSource={employeesData} 
-          columns={columns} 
-          rowKey="employee_id" 
+        <Table
+          dataSource={employeesData}
+          columns={columns}
+          rowKey="employee_id"
           loading={loading}
           onRow={employee => ({ className: 'detail-clickable-row', ...detailInteraction(() => handleViewDetail(employee), `Bảng công của ${employee.fullname || 'nhân viên'}`) })}
           pagination={{ pageSize: 8, position: ['bottomRight'] }}
@@ -220,7 +213,6 @@ function CompanyAttendance() {
         />
       </Card>
 
-      {/* Modal Hiển Thị Lịch Chi Tiết Chấm Công Của Nhân Viên */}
       <Modal
         title={`Chi tiết bảng công tháng ${selectedMonth.format('MM/YYYY')} - ${currentEmployee?.fullname || ''}`}
         open={isModalVisible}
@@ -243,11 +235,11 @@ function CompanyAttendance() {
                 <div key={`empty-${i}`} />
               ))}
               {attendanceDays.map(item => (
-                <Tooltip 
-                  key={item.date} 
+                <Tooltip
+                  key={item.date}
                   title={`${formatDateOnlyVN(item.date)}: ${item.label}${item.explanation ? ` · ${explanationLabels[item.explanation.status]}` : ''}`}
                 >
-                  <button 
+                  <button
                     className={`attendance-day attendance-day--${item.color}`}
                     aria-label={`Ngày ${formatDateOnlyVN(item.date)}, ${item.label}`}
                     type="button"

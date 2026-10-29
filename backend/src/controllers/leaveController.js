@@ -165,7 +165,6 @@ export const getLeaveRequests = async (req, res) => {
     if (status && !LEAVE_STATUSES.includes(status)) return res.status(400).json({ error: 'Trạng thái đơn nghỉ không hợp lệ.' });
     const where = status ? { status } : {};
     if (role === 'admin') {
-      // Admin được xem toàn bộ đơn.
     } else if (role === 'manager' && status) {
       where.employee_receive_id = req.employee.employee_id;
     } else {

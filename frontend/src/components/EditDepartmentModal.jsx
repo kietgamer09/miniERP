@@ -26,7 +26,7 @@ export default function EditDepartmentModal({ open, onCancel, onSuccess, departm
         managment: values.managment
       });
       message.success('Cập nhật phòng ban thành công!');
-      onSuccess(); // Reload lại danh sách phòng ban ở trang cha
+      onSuccess();
       onCancel();
     } catch (err) {
       message.error(err.message || 'Cập nhật phòng ban thất bại.');
@@ -44,11 +44,10 @@ export default function EditDepartmentModal({ open, onCancel, onSuccess, departm
       destroyOnClose
     >
       <Form form={form} layout="vertical" onFinish={handleSubmit}>
-        {/* Đã bỏ trường mã phòng ban theo yêu cầu */}
 
-        <Form.Item 
-          name="department_name" 
-          label="Tên phòng ban" 
+        <Form.Item
+          name="department_name"
+          label="Tên phòng ban"
           rules={[{ required: true, message: 'Vui lòng nhập tên phòng ban!' }]}
         >
           <Input placeholder="Nhập tên phòng ban..." />
@@ -59,14 +58,14 @@ export default function EditDepartmentModal({ open, onCancel, onSuccess, departm
         </Form.Item>
 
         <Form.Item name="managment" label="Quản lý phòng ban (Trưởng phòng)">
-          <Select 
-            placeholder="Chọn nhân viên làm quản lý..." 
+          <Select
+            placeholder="Chọn nhân viên làm quản lý..."
             allowClear
             showSearch
             optionFilterProp="children"
-            options={employees.map(emp => ({ 
-              value: emp.employee_id, 
-              label: `${emp.fullname} (${emp.position || 'Nhân viên'})` 
+            options={employees.map(emp => ({
+              value: emp.employee_id,
+              label: `${emp.fullname} (${emp.position || 'Nhân viên'})`
             }))}
           />
         </Form.Item>

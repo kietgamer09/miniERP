@@ -1,4 +1,3 @@
-/** Màn hình đăng nhập và khôi phục trang người dùng định truy cập. */
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, Button, Card, Form, Input, Typography } from 'antd';

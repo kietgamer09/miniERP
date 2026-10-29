@@ -20,11 +20,10 @@ export default function Departments() {
   const [reload, setReload] = useState(0);
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
-  
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingDept, setEditingDept] = useState(null);
 
-  // State quản lý thao tác chọn nhiều thành viên để chuyển phòng
   const [selectedMemberKeys, setSelectedMemberKeys] = useState([]);
   const [targetDeptId, setTargetDeptId] = useState(undefined);
   const [actionLoading, setActionLoading] = useState(false);
@@ -93,7 +92,7 @@ export default function Departments() {
     });
   };
 
-  // Hành động: Chuyển nhân viên sang phòng ban khác (nếu chọn checkbox thì chuyển các mục được chọn, nếu không chọn gì sẽ chuyển toàn bộ phòng)
+  // Không chọn nhân viên thì chuyển toàn bộ phòng.
   const handleMoveMembers = async (moveToAll = false) => {
     const idsToProcess = moveToAll ? currentTeamMembers.map(m => m.employee_id) : selectedMemberKeys;
 
@@ -130,11 +129,11 @@ export default function Departments() {
       </Avatar>
       <div><div className="list-person-name">{name || 'Chưa đặt tên'}</div><div className="list-person-code">Mã phòng: {department.department_id}</div></div>
     </Space> },
-    { 
-      title: 'Phụ trách', 
-      dataIndex: 'managment', 
-      key: 'manager', 
-      render: value => getManagerName(value) 
+    {
+      title: 'Phụ trách',
+      dataIndex: 'managment',
+      key: 'manager',
+      render: value => getManagerName(value)
     },
     { title: 'Thành viên', key: 'members', width: 160, render: (_, department) => {
       const team = members(department.department_id);
@@ -158,7 +157,7 @@ export default function Departments() {
         <span className="list-count">{departments.length} phòng ban</span></Space>
         <Typography.Text type="secondary" className="list-page-subtitle">Xem nhân sự theo phòng ban. Bấm vào một hàng để mở chi tiết.</Typography.Text>
       </div>
-      
+
       {role === 'admin' && (
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsCreateModalOpen(true)}>
           Tạo phòng ban
@@ -168,7 +167,7 @@ export default function Departments() {
 
     {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 16 }}
       action={<Button onClick={() => { setError(''); setLoading(true); setReload(value => value + 1); }}>Tải lại</Button>} />}
-    
+
     <section className="list-panel" aria-label="Danh sách phòng ban">
       <div className="employees-filters list-filters">
         <div className="employees-filter-inputs"><Input aria-label="Tìm phòng ban" placeholder="Tìm tên, mã phòng ban hoặc người phụ trách..."
@@ -184,15 +183,14 @@ export default function Departments() {
       <ListPagination total={filtered.length} page={visiblePage} onChange={setPage} unit="phòng ban" />
     </section>
 
-    {/* Modal chi tiết phòng ban */}
-    <Modal 
-      open={Boolean(selected)} 
-      onCancel={() => { 
-        setParams({}, { replace: true }); 
-        setSelectedMemberKeys([]); 
-      }} 
-      title={`Chi tiết phòng ban: ${selected?.department_name || ''}`} 
-      footer={null} 
+    <Modal
+      open={Boolean(selected)}
+      onCancel={() => {
+        setParams({}, { replace: true });
+        setSelectedMemberKeys([]);
+      }}
+      title={`Chi tiết phòng ban: ${selected?.department_name || ''}`}
+      footer={null}
       width={780}
     >
       {selected && <>
@@ -215,17 +213,16 @@ export default function Departments() {
           <Typography.Title level={5} style={{ margin: 0 }}>Thành viên phòng ban ({currentTeamMembers.length})</Typography.Title>
         </div>
 
-        {/* Thanh công cụ chuyển phòng ban (Tự đổi màu theo Sáng / Tối) */}
         {role === 'admin' && currentTeamMembers.length > 0 && (
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            marginBottom: 12, 
-            background: 'var(--bg-card, var(--bg-container, rgba(0, 0, 0, 0.03)))', 
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            marginBottom: 12,
+            background: 'var(--bg-card, var(--bg-container, rgba(0, 0, 0, 0.03)))',
             border: '1px solid var(--border-color, rgba(0, 0, 0, 0.08))',
-            padding: '10px', 
-            borderRadius: '6px', 
-            alignItems: 'center' 
+            padding: '10px',
+            borderRadius: '6px',
+            alignItems: 'center'
           }}>
             <Select
               size="small"
@@ -237,8 +234,8 @@ export default function Departments() {
                 .filter(d => d.department_id !== selected.department_id)
                 .map(d => ({ value: d.department_id, label: d.department_name }))}
             />
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               size="small"
               loading={actionLoading}
               disabled={targetDeptId === undefined}
@@ -249,19 +246,18 @@ export default function Departments() {
           </div>
         )}
 
-        {/* Bảng danh sách thành viên tích hợp checkbox chọn nhiều dòng */}
         {currentTeamMembers.length ? (
-          <Table 
-            size="small" 
-            rowKey="employee_id" 
+          <Table
+            size="small"
+            rowKey="employee_id"
             rowSelection={role === 'admin' ? memberRowSelection : undefined}
             pagination={{ pageSize: 5, hideOnSinglePage: true }}
             columns={[
-              { title: 'Nhân viên', dataIndex: 'fullname' }, 
+              { title: 'Nhân viên', dataIndex: 'fullname' },
               { title: 'Chức vụ', dataIndex: 'position', render: value => value || 'Chưa cập nhật' },
               { title: 'Email', dataIndex: 'email' }
             ]}
-            dataSource={currentTeamMembers} 
+            dataSource={currentTeamMembers}
           />
         ) : (
           <Empty description="Chưa có thành viên nào trong phòng ban này" />
@@ -269,16 +265,14 @@ export default function Departments() {
       </>}
     </Modal>
 
-    {/* Popup Tạo phòng ban */}
-    <CreateDepartmentModal 
+    <CreateDepartmentModal
       open={isCreateModalOpen}
       onCancel={() => setIsCreateModalOpen(false)}
       onSuccess={() => setReload(v => v + 1)}
       employees={employees}
     />
 
-    {/* Popup Sửa phòng ban */}
-    <EditDepartmentModal 
+    <EditDepartmentModal
       open={Boolean(editingDept)}
       department={editingDept}
       onCancel={() => setEditingDept(null)}

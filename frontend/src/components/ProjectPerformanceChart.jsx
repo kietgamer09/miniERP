@@ -69,7 +69,6 @@ export default function ProjectPerformanceChart({ projects = [] }) {
     <div className="project-performance-legend">
       {states.map(state => <span key={state.key}><i className={`performance-dot performance-${state.className}`} />{state.label}</span>)}
       <span><i className="performance-line-sample" />Hoàn thành đúng hạn</span>
-      <Typography.Text type="secondary">Bấm dự án để xem công việc</Typography.Text>
     </div>
     <div className="project-performance-scroll" ref={container}>
       <div style={{ width }}>
@@ -117,10 +116,6 @@ export default function ProjectPerformanceChart({ projects = [] }) {
         </div>
       </div>
     </div>
-    <Typography.Text type="secondary" className="project-performance-note">Đúng hạn = xong đúng hạn / việc đã xong có ngày hoàn thành, theo hạn chót hiện tại và giờ Việt Nam.
-      {totals.missing > 0 && ` Có ${totals.missing} việc thiếu ngày hoàn thành, chưa tính vào tỷ lệ.`}
-      {projects.some(project => percentage(project.performance?.on_time_percent) === null) && ' Dự án chưa có dữ liệu đánh giá sẽ không có điểm trên đường.'}
-    </Typography.Text>
     {availableWidth < width && <Typography.Text type="secondary" className="project-performance-note">Vuốt ngang biểu đồ để xem đủ các dự án.</Typography.Text>}
     <Modal open={Boolean(selected)} title={selected ? `Công việc · ${selected.name}` : 'Công việc dự án'} width={1040}
       onCancel={() => setSelectedId(null)} footer={selected ? <Link to={`/du-an/${selected.id}`}>Mở chi tiết dự án →</Link> : null}>

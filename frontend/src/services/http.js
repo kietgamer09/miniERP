@@ -1,4 +1,3 @@
-/** Hàm gọi API dùng chung cho các dịch vụ frontend. */
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 let currentToken = '';
 let sessionVersion = 0;

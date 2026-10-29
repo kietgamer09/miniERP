@@ -187,7 +187,6 @@ function Employees() {
       }} />}
     {isAdmin && loginInfo && <Modal open title="Tài khoản nhân viên vừa tạo" okText="Đã lưu thông tin"
       cancelButtonProps={{ style: { display: 'none' } }} onOk={() => setLoginInfo(null)} onCancel={() => setLoginInfo(null)}>
-      <Typography.Paragraph>Thông tin đăng nhập do máy chủ trả về. Hộp thoại này chỉ hiển thị trong phiên hiện tại.</Typography.Paragraph>
       <Typography.Paragraph>Tài khoản: <Typography.Text copyable>{loginInfo.username}</Typography.Text></Typography.Paragraph>
       <Typography.Paragraph>Mật khẩu ban đầu:</Typography.Paragraph>
       <Input.Password readOnly value={loginInfo.default_password} aria-label="Mật khẩu ban đầu" autoComplete="off" />

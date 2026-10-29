@@ -136,12 +136,6 @@ function Inbox({ storageKey }) {
         <Typography.Text>Nhắc chấm công lúc 08:00 và 17:00</Typography.Text>
       </Space>
       <WebPushSettings />
-      <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-        Công việc tự cập nhật mỗi phút. Trạng thái chấm công được đọc từ máy chủ, đồng bộ giữa các tab/trình duyệt;
-          {' '}nhắc công việc sắp đến hạn trong 3 ngày và nhắc lại việc quá hạn hằng ngày. Lời nhắc chấm công ẩn sau khi đã vào/ra ca.
-        {' '}Bình luận cập nhật mỗi 15 giây khi mở website; hiển thị 100 bình luận gần nhất. Trạng thái đọc bình luận lưu trên máy chủ.
-        {' '}Chưa đọc lên trước; đơn tăng ca kế hoạch gần ngày làm được ưu tiên, sau đó đến thời gian mới nhất. Đơn bổ sung ngày cũ không đẩy desktop.
-      </Typography.Paragraph>
       {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />}
       {commentError && <Alert type="warning" title={commentError} showIcon style={{ marginBottom: 12 }} />}
       {overtimeError && <Alert type="warning" title={overtimeError} showIcon style={{ marginBottom: 12 }} />}

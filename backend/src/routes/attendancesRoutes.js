@@ -14,7 +14,6 @@ router.put('/explanations/:id/review', authorizeRoles('admin'), reviewExplanatio
 router.post('/check-in', checkIn);
 router.post('/check-out', checkOut);
 
-// Route cho phép HR/Admin lấy bảng công toàn công ty theo tháng
 router.get('/company-summary', authorizeRoles('admin'), getCompanyAttendanceSummary);
 
 router.get('/employee-attendance/:id', authorizeRoles('admin'), getEmployeeAttendanceByAdmin);
