@@ -3,6 +3,7 @@ import { AuthContext } from './appContexts';
 import { login as loginRequest, normalizeRole } from '../services/authApi';
 import { setAuthToken } from '../services/http';
 import { stopBrowserPush } from '../services/pushApi';
+import { clearChatSession } from '../services/chatApi';
 
 const STORAGE_KEY = 'miniErpAuth';
 
@@ -45,6 +46,7 @@ function AuthProvider({ children }) {
   }
 
   function logout() {
+    clearChatSession();
     stopBrowserPush().catch(() => {});
     setAuthToken(null);
     setSession({ user: null, token: null });

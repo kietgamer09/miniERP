@@ -12,6 +12,7 @@ import HistoryNavigation from '../components/HistoryNavigation';
 import { useTheme } from '../hooks/useTheme';
 import { useMyWork } from '../hooks/useMyWork';
 import NotificationInbox from '../components/NotificationInbox';
+import ChatInbox from '../components/ChatInbox';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import DraftRecovery from '../components/DraftRecovery';
 
@@ -129,6 +130,7 @@ function MainLayout() {
             <Button type="text" icon={mode === 'dark' ? <SunOutlined /> : <MoonOutlined />}
               aria-label={mode === 'dark' ? 'Chuyển sang nền sáng' : 'Chuyển sang nền tối'} onClick={toggleTheme} />
           </Tooltip>
+          <ChatInbox />
           <NotificationInbox />
           <Dropdown menu={avatarMenu} trigger={['click']}>
             <button type="button" className="account-trigger" aria-label="Tài khoản của tôi">
