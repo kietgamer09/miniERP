@@ -245,3 +245,44 @@ export const updateUser = async (req, res) => {
     return res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
   }
 };
+
+export const updateEmployeesDepartment = async (req, res) => {
+  try {
+    const { employee_ids, new_department_id } = req.body;
+
+    if (!Array.isArray(employee_ids) || employee_ids.length === 0) {
+      return res.status(400).json({ error: 'Danh sách nhân viên không hợp lệ.' });
+    }
+
+    if (new_department_id === null || new_department_id === undefined) {
+      return res.status(400).json({ error: 'Vui lòng chọn phòng ban đích cần chuyển đến.' });
+    }
+
+    // Kiểm tra phòng ban đích có tồn tại không
+    const dept = await prisma.departments.findUnique({
+      where: { department_id: Number(new_department_id) }
+    });
+    if (!dept) {
+      return res.status(404).json({ error: 'Phòng ban đích không tồn tại.' });
+    }
+
+    // Thực hiện cập nhật phòng ban hàng loạt cho các nhân viên được chọn
+    const updatePromises = employee_ids.map(empId => {
+      return prisma.employees.update({
+        where: { employee_id: Number(empId) },
+        data: {
+          departments: {
+            connect: { department_id: Number(new_department_id) }
+          }
+        }
+      });
+    });
+
+    await Promise.all(updatePromises);
+
+    return res.status(200).json({ message: 'Chuyển phòng ban cho nhân viên thành công!' });
+  } catch (error) {
+    console.error('Lỗi chuyển phòng ban nhân viên:', error);
+    return res.status(500).json({ error: error.message || 'Lỗi máy chủ nội bộ.' });
+  }
+};
