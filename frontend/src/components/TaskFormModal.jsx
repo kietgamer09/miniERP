@@ -7,6 +7,7 @@ import { createTask } from '../services/projectApi';
 import { updateTask } from '../services/taskApi';
 import { formatDateOnlyVN } from '../utils/dates';
 import { TASK_PRIORITY_OPTIONS } from '../config/taskConstants';
+import { useFormDraft } from '../hooks/useDraft';
 
 dayjs.locale('vi');
 
@@ -16,6 +17,9 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
   const [saveError, setSaveError] = useState('');
   const submitting = useRef(false);
   const editing = Boolean(task);
+  const draft = useFormDraft(form, `task:${project.id}:${task?.id ?? 'new'}`, {
+    fields: ['title', 'description', 'assignee_id', 'due_date', 'priority'], dateFields: ['due_date'],
+  });
   const assigneeOptions = (project.members || []).map((member) => ({
     value: member.employee_id, label: member.fullname || `Nhân viên ${member.employee_id}`,
   }));
@@ -28,15 +32,6 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
 
   useEffect(() => {
     form.resetFields();
-    if (task) {
-      form.setFieldsValue({
-        title: task.title,
-        description: task.description || '',
-        assignee_id: task.assignee_id,
-        due_date: task.due_date ? dayjs(task.due_date) : null,
-        priority: task.priority,
-      });
-    }
   }, [form, project.id, task]);
 
   async function handleSave() {
@@ -52,6 +47,7 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
       };
       if (editing) await updateTask(task.id, payload);
       else await createTask(project.id, payload);
+      draft.clear();
       onSaved();
     } catch (error) {
       if (!error?.errorFields) setSaveError(error.message || (editing ? 'Không sửa được task' : 'Không tạo được task'));
@@ -67,7 +63,13 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
     confirmLoading={saving} closable={!saving} cancelButtonProps={{ disabled: saving }}
     okButtonProps={{ disabled: project.status === 'hoan_thanh' }}>
     {saveError && <Alert type="error" title={saveError} showIcon style={{ marginBottom: 16 }} />}
-    <Form form={form} layout="vertical" disabled={saving} preserve={false} onValuesChange={() => setSaveError('')}>
+    {draft.notice}
+    <Form form={form} layout="vertical" disabled={saving} preserve={false}
+      initialValues={task ? { title: task.title, description: task.description || '', assignee_id: task.assignee_id,
+        due_date: task.due_date ? dayjs(task.due_date) : null, priority: task.priority } : {}}
+      onValuesChange={(changed, values) => {
+      setSaveError(''); draft.onValuesChange(changed, values);
+    }}>
       <Form.Item label="Tiêu đề" name="title" rules={[
         { required: true, whitespace: true, message: 'Vui lòng nhập tiêu đề' },
         { max: 200, message: 'Tiêu đề không được quá 200 ký tự' },

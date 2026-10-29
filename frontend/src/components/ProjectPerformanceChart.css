@@ -1,0 +1,39 @@
+.project-performance { --performance-done: #83b897; --performance-doing: #829fce; --performance-todo: #d8e0ec; --performance-line: #a66513; display: grid; gap: 10px; min-width: 0; }
+:root[data-theme='dark'] .project-performance { --performance-done: #577d65; --performance-doing: #627b9e; --performance-todo: #414a58; --performance-line: #e4bb70; }
+.project-performance-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 24px; padding: 6px 10px; border-radius: 6px; background: var(--subtle-bg); color: var(--muted); font-size: 12px; }
+.project-performance-summary strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.project-performance-summary .project-performance-overdue { color: var(--red-text); }
+.project-performance-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; font-size: 11px; }
+.project-performance-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+.project-performance-legend > .ant-typography { margin-left: auto; font-size: 11px; }
+.performance-dot { width: 9px; height: 9px; border-radius: 2px; }
+.performance-done { background: var(--performance-done); }
+.performance-doing { background: var(--performance-doing); }
+.performance-todo { background: var(--performance-todo); }
+.performance-line-sample { position: relative; width: 18px; border-top: 2px solid var(--performance-line); }
+.performance-line-sample::after { content: ''; position: absolute; left: 6px; top: -4px; width: 6px; height: 6px; border-radius: 50%; background: var(--performance-line); }
+.project-performance-scroll { min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.project-performance-scroll svg { display: block; overflow: visible; }
+.performance-gridline { stroke: var(--border); stroke-dasharray: 3 3; }
+.performance-tick, .performance-axis-title { fill: var(--muted); font-size: 10px; }
+.performance-axis-title { font-size: 11px; }
+.performance-fill-done { fill: var(--performance-done); }
+.performance-fill-doing { fill: var(--performance-doing); }
+.performance-fill-todo { fill: var(--performance-todo); }
+.performance-segment-label { fill: #253040; font-size: 11px; font-weight: 600; pointer-events: none; }
+:root[data-theme='dark'] .performance-segment-label { fill: #f2f4f7; }
+.performance-project, .performance-point { cursor: pointer; outline: none; }
+.performance-project:hover .performance-hit, .performance-project:focus-visible .performance-hit { fill: var(--brand-soft); }
+.performance-point:focus-visible .performance-point-dot { stroke-width: 4px; stroke: var(--brand); }
+.performance-trend { fill: none; stroke: var(--performance-line); stroke-width: 2.5px; stroke-linejoin: round; pointer-events: none; }
+.performance-point-dot { fill: var(--performance-line); stroke: var(--surface); stroke-width: 2px; }
+.performance-point-label { fill: var(--performance-line); font-size: 11px; font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; pointer-events: none; }
+.performance-project-labels { display: grid; margin-inline: 52px; gap: 6px; }
+.performance-project-labels > button { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding: 0 6px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 11px; line-height: 16px; text-align: center; overflow-wrap: anywhere; }
+.performance-project-labels > button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.project-performance-note.ant-typography { font-size: 10px; line-height: 1.5; }
+.project-performance-tooltip { display: grid; gap: 3px; font-size: 12px; }
+@media (max-width: 767px) {
+  .project-performance-legend > .ant-typography { flex-basis: 100%; margin-left: 0; }
+  .project-performance-summary { gap: 6px 14px; }
+}

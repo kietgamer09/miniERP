@@ -2,6 +2,7 @@ import prisma from '../config/prisma.js';
 import { formatTask, taskFields } from './taskController.js';
 import { parseId } from '../utils/validators.js';
 import { getAllowedMoves } from '../utils/taskRules.js';
+import { canAccessTaskProject } from '../utils/taskAccess.js';
 
 const statuses = ['can_lam', 'dang_lam', 'xong'];
 
@@ -20,11 +21,12 @@ export const changeTaskStatus = async (req, res) => {
 
       const employeeId = req.employee.employee_id;
       const isAdmin = req.user.role === 'admin';
-      const isMember = isAdmin || Boolean(await tx.project_members.findUnique({
-        where: { project_id_employee_id: { project_id: task.project_id, employee_id: employeeId } },
-        select: { id: true },
-      }));
-      if (!isMember) return { status: 403, error: 'Bạn không thuộc dự án này' };
+      const hasProjectAccess = await canAccessTaskProject(
+        tx, task, employeeId, req.user.role, { allowProjectManager: true },
+      );
+      if (!hasProjectAccess) {
+        return { status: 403, error: 'Bạn không thuộc dự án này' };
+      }
 
       const targetStatus = req.body?.status;
       if (!statuses.includes(targetStatus)) return { status: 400, error: 'Trạng thái không hợp lệ' };
@@ -36,7 +38,8 @@ export const changeTaskStatus = async (req, res) => {
       const distance = Math.abs(statuses.indexOf(targetStatus) - statuses.indexOf(task.status));
       if (distance !== 1) return { status: 409, error: 'Chỉ được chuyển task sang cột kề nhau' };
 
-      const canManage = isAdmin || task.projects.manager_id === employeeId;
+      const canManage = isAdmin
+        || (req.user.role === 'manager' && task.projects.manager_id === employeeId);
       const isAssignee = task.assignee_id === employeeId;
       const allowedMoves = getAllowedMoves({
         status: task.status,

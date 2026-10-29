@@ -1,5 +1,17 @@
 import bcrypt from 'bcrypt';
 import prisma from '../config/prisma.js';
+
+function makeEmployeeUsername(fullname) {
+  const nameParts = fullname.trim().split(/\s+/).filter(Boolean);
+  const nameWithoutSurname = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0] || '';
+  const slug = nameWithoutSurname.normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[đĐ]/g, (letter) => letter === 'đ' ? 'd' : 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+  return slug ? `emp_${slug}` : '';
+}
+
 export const changePassword = async (req, res) => {
   try {
     const userId = req.user.user_id;
@@ -114,13 +126,16 @@ export const createUser = async (req, res) => {
         error: 'Số điện thoại, họ tên và phòng ban là bắt buộc để hệ thống tự khởi tạo tài khoản.'
       });
     }
-    const autoUsername = phone_number.trim();
+    const autoUsername = makeEmployeeUsername(fullname);
+    if (!autoUsername) {
+      return res.status(400).json({ error: 'Không tạo được tên đăng nhập từ họ tên nhân viên.' });
+    }
     const existingUser = await prisma.users.findFirst({
       where: { username: autoUsername },
     });
 
     if (existingUser) {
-      return res.status(409).json({ error: 'Số điện thoại này đã được sử dụng làm tài khoản trong hệ thống.' });
+      return res.status(409).json({ error: `Tên đăng nhập ${autoUsername} đã được sử dụng. Hãy phân biệt tên nhân viên trước khi tạo tài khoản.` });
     }
     const defaultPassword = '12345';
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
@@ -138,7 +153,7 @@ export const createUser = async (req, res) => {
           department_id: Number(department_id),
           fullname,
           email: email || null,
-          phone_number: autoUsername,
+          phone_number: phone_number.trim(),
           birthday: birthday || null,
         },
         include: {

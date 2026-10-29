@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, Form, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import { getLeaveRequests, reviewLeaveRequest } from '../services/leaveApi';
 import { formatDateOnlyVN } from '../utils/dates';
+import Attachments from './Attachments';
 
 // Nhãn và màu sắc trạng thái đơn nghỉ
 const leaveStatusLabels = {
@@ -62,6 +63,7 @@ function ReviewLeaveModal({ item, onCancel, onSaved }) {
         <strong>Lý do xin nghỉ:</strong> {item.reason}
       </Typography.Paragraph>
 
+      <Attachments type="leaves" targetId={item.Day_off_id} readOnly />
       <Alert 
         type="info" 
         message="Quyết định duyệt/từ chối sẽ được cập nhật trực tiếp vào trạng thái đơn và quỹ phép của nhân viên." 

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Alert, Tabs, Typography } from 'antd';
 import { useRole } from '../hooks/useAuth';
 import LeaveApprovals from '../components/LeaveApprovals'; // Component duyệt nghỉ phép
@@ -21,8 +20,8 @@ export default function AttendanceApprovals() {
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      <Typography.Title level={3}>Trung tâm phê duyệt</Typography.Title>
+    <div className="approvals-page">
+      <Typography.Title level={3} style={{ margin: 0 }}>Trung tâm phê duyệt</Typography.Title>
       
       <Tabs 
         defaultActiveKey="2" // Mặc định mở tab Duyệt đơn nghỉ phép để xem ngay các đơn vừa đăng ký

@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react';
-import { Card, Table, Typography, Space, Statistic, DatePicker, message, Row, Col, Tag, Button, Modal, Tooltip, Spin } from 'antd';
-import { TeamOutlined, CheckCircleOutlined, WarningOutlined, ClockCircleOutlined, EyeOutlined } from '@ant-design/icons';
+import { useCallback, useState, useEffect } from 'react';
+import { Card, Table, Typography, Space, Statistic, DatePicker, message, Row, Col, Tag, Modal, Tooltip, Spin } from 'antd';
+import { TeamOutlined, CheckCircleOutlined, WarningOutlined, ClockCircleOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getCompanyAttendanceSummary, getEmployeeAttendanceByAdmin } from '../services/attendanceApi';
 import { explanationLabels } from '../utils/attendance';
 import { formatDateOnlyVN } from '../utils/dates';
+import { detailInteraction } from '../utils/detailInteraction';
 import './TimesheetCard.css'; // Dùng chung file CSS với bảng công cá nhân để đồng bộ màu sắc và style lưới
 
 const { Title, Text } = Typography;
 
 function CompanyAttendance() {
-  const [loading, setLoading] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(dayjs());
+  const [loadedMonth, setLoadedMonth] = useState('');
   const [overview, setOverview] = useState({
     total_employees: 0,
     full_attendance_count: 0,
@@ -28,9 +29,10 @@ function CompanyAttendance() {
   const [attendanceDays, setAttendanceDays] = useState([]);
 
   const [messageApi, contextHolder] = message.useMessage();
+  const monthKey = selectedMonth.format('YYYY-MM');
+  const loading = loadedMonth !== monthKey;
 
-  const fetchSummary = async (monthStr) => {
-    setLoading(true);
+  const fetchSummary = useCallback(async (monthStr) => {
     try {
       const res = await getCompanyAttendanceSummary(monthStr);
       if (res) {
@@ -40,14 +42,16 @@ function CompanyAttendance() {
     } catch (err) {
       messageApi.error(err.message || 'Không thể tải dữ liệu bảng công công ty.');
     } finally {
-      setLoading(false);
+      setLoadedMonth(monthStr);
     }
-  };
+  }, [messageApi]);
 
   useEffect(() => {
     const monthStr = selectedMonth.format('YYYY-MM');
+    // Async API loading updates state after the request resolves.
+    // oxlint-disable-next-line react/set-state-in-effect
     fetchSummary(monthStr);
-  }, [selectedMonth]);
+  }, [selectedMonth, fetchSummary]);
 
   const handleMonthChange = (date) => {
     if (date) {
@@ -85,12 +89,15 @@ function CompanyAttendance() {
       title: 'Họ và tên',
       dataIndex: 'fullname',
       key: 'fullname',
+      width: 210,
       render: (text) => <Text strong>{text}</Text>,
     },
     {
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
+      width: 240,
+      ellipsis: true,
     },
     {
       title: 'Số ngày làm việc',
@@ -125,20 +132,11 @@ function CompanyAttendance() {
       },
     },
     {
-      title: 'Thao tác',
+      title: '',
       key: 'action',
       align: 'center',
-      render: (_, record) => (
-        <Button 
-          type="primary" 
-          ghost 
-          size="small" 
-          icon={<EyeOutlined />} 
-          onClick={() => handleViewDetail(record)}
-        >
-          Xem chi tiết
-        </Button>
-      ),
+      width: 36,
+      render: () => <RightOutlined aria-hidden />,
     },
   ];
 
@@ -146,11 +144,11 @@ function CompanyAttendance() {
   const offset = (new Date(`${monthStr}-01T00:00:00Z`).getUTCDay() + 6) % 7;
 
   return (
-    <div style={{ padding: '24px', height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="company-attendance-page">
       {contextHolder}
 
       {/* Header & Bộ lọc tháng */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
+      <div className="company-attendance-header">
         <Title level={3} style={{ margin: 0 }}>Bảng công toàn công ty</Title>
         <Space>
           <Text type="secondary">Chọn tháng:</Text>
@@ -165,8 +163,8 @@ function CompanyAttendance() {
       </div>
 
       {/* Các Thẻ Thống Kê Tổng Quan (Cards) */}
-      <Row gutter={16} style={{ marginBottom: 16, flexShrink: 0 }}>
-        <Col span={6}>
+      <Row gutter={[12, 12]}>
+        <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
             <Statistic 
               title="Tổng số nhân viên" 
@@ -175,7 +173,7 @@ function CompanyAttendance() {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
             <Statistic 
               title="Nhân viên đủ công" 
@@ -184,7 +182,7 @@ function CompanyAttendance() {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
             <Statistic 
               title="Nhân viên thiếu công" 
@@ -193,7 +191,7 @@ function CompanyAttendance() {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col xs={12} xl={6}>
           <Card bordered={false} style={{ background: 'var(--subtle-bg)', borderRadius: 8 }} bodyStyle={{ padding: '16px' }}>
             <Statistic 
               title="Đi muộn / Về sớm" 
@@ -216,8 +214,9 @@ function CompanyAttendance() {
           columns={columns} 
           rowKey="employee_id" 
           loading={loading}
+          onRow={employee => ({ className: 'detail-clickable-row', ...detailInteraction(() => handleViewDetail(employee), `Bảng công của ${employee.fullname || 'nhân viên'}`) })}
           pagination={{ pageSize: 8, position: ['bottomRight'] }}
-          scroll={{ y: 300 }}
+          scroll={{ x: 1200, y: 360 }}
         />
       </Card>
 

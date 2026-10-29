@@ -1,4 +1,5 @@
 import prisma from '../config/prisma.js';
+import { Prisma } from '@prisma/client';
 import { parseId, isValidDate, toDateOnly } from '../utils/validators.js';
 
 const serializeProject = (project) => ({
@@ -8,7 +9,7 @@ const serializeProject = (project) => ({
 });
 
 const canManageProject = (req, project) => req.user.role === 'admin'
-  || project.manager_id === req.employee.employee_id;
+  || (req.user.role === 'manager' && project.manager_id === req.employee.employee_id);
 
 function getTodayDate() {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -57,16 +58,31 @@ export const createProject = async (req, res) => {
   try {
     const { data, error } = validateProject(req.body ?? {}, true);
     if (error) return res.status(400).json({ error });
+    const requestedMemberIds = req.body?.member_ids ?? [];
+    if (!Array.isArray(requestedMemberIds)
+      || requestedMemberIds.some((id) => typeof id !== 'number' || !parseId(id))) {
+      return res.status(400).json({ error: 'member_ids phải là mảng gồm các ID nhân viên hợp lệ' });
+    }
+    const memberIds = [...new Set(requestedMemberIds)];
     const existing = await prisma.projects.findUnique({ where: { code: data.code }, select: { id: true } });
     if (existing) return res.status(409).json({ error: 'Mã dự án đã tồn tại' });
     const project = await prisma.$transaction(async (tx) => {
+      const members = memberIds.length ? await tx.employees.findMany({
+        where: { employee_id: { in: memberIds }, status: 'dang_lam_viec' },
+        select: { employee_id: true },
+      }) : [];
+      if (members.length !== memberIds.length) {
+        return { error: 'Có nhân viên không tồn tại hoặc đã nghỉ việc' };
+      }
       const created = await tx.projects.create({ data: { ...data, manager_id: req.employee.employee_id } });
-      await tx.project_members.create({
-        data: { project_id: created.id, employee_id: req.employee.employee_id },
+      const allMemberIds = [...new Set([req.employee.employee_id, ...memberIds])];
+      await tx.project_members.createMany({
+        data: allMemberIds.map((employeeId) => ({ project_id: created.id, employee_id: employeeId })),
       });
-      return created;
+      return { created };
     });
-    res.status(201).json(serializeProject(project));
+    if (project.error) return res.status(400).json({ error: project.error });
+    res.status(201).json(serializeProject(project.created));
   } catch (error) {
     // Kiểm tra trước không chặn được hai yêu cầu cùng mã chạy đồng thời.
     if (error.code === 'P2002') return res.status(409).json({ error: 'Mã dự án đã tồn tại' });
@@ -79,7 +95,10 @@ export const listProjects = async (req, res) => {
   try {
     const projects = await prisma.projects.findMany({
       where: req.user.role === 'admin' ? {} : {
-        project_members: { some: { employee_id: req.employee.employee_id } },
+        OR: [
+          { project_members: { some: { employee_id: req.employee.employee_id } } },
+          ...(req.user.role === 'manager' ? [{ manager_id: req.employee.employee_id }] : []),
+        ],
       },
       include: {
         employees: { select: { fullname: true } },
@@ -88,6 +107,16 @@ export const listProjects = async (req, res) => {
       orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
     });
     if (!projects.length) return res.json([]);
+    const performanceRows = await prisma.$queryRaw`
+      SELECT project_id,
+        count(*) FILTER (WHERE status = 'xong' AND completed_at IS NOT NULL)::int AS completed_with_date,
+        count(*) FILTER (WHERE status = 'xong' AND completed_at IS NOT NULL
+          AND (completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <= due_date)::int AS completed_on_time,
+        count(*) FILTER (WHERE status = 'xong' AND completed_at IS NOT NULL
+          AND (completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Ho_Chi_Minh')::date > due_date)::int AS completed_late,
+        count(*) FILTER (WHERE status <> 'xong' AND due_date < (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS active_overdue
+      FROM tasks WHERE project_id IN (${Prisma.join(projects.map(project => project.id))}) GROUP BY project_id`;
+    const performance = new Map(performanceRows.map(row => [row.project_id, row]));
     const groups = await prisma.tasks.groupBy({
       by: ['project_id', 'status'],
       where: { project_id: { in: projects.map((project) => project.id) } },
@@ -95,19 +124,30 @@ export const listProjects = async (req, res) => {
     });
     const progress = new Map();
     for (const group of groups) {
-      const counts = progress.get(group.project_id) ?? { tasks_done: 0, tasks_total: 0 };
+      const counts = progress.get(group.project_id) ?? { tasks_done: 0, tasks_doing: 0, tasks_todo: 0, tasks_total: 0 };
       counts.tasks_total += group._count._all;
       if (group.status === 'xong') counts.tasks_done += group._count._all;
+      if (group.status === 'dang_lam') counts.tasks_doing += group._count._all;
+      if (group.status === 'can_lam') counts.tasks_todo += group._count._all;
       progress.set(group.project_id, counts);
     }
     res.json(projects.map(({ employees, _count, ...project }) => {
-      const counts = progress.get(project.id) ?? { tasks_done: 0, tasks_total: 0 };
+      const counts = progress.get(project.id) ?? { tasks_done: 0, tasks_doing: 0, tasks_todo: 0, tasks_total: 0 };
+      const metrics = performance.get(project.id) ?? { completed_with_date: 0, completed_on_time: 0, completed_late: 0, active_overdue: 0 };
       return {
         ...serializeProject(project),
         manager_name: employees.fullname,
         can_manage: canManageProject(req, project),
         members_count: _count.project_members,
         ...counts,
+        performance: {
+          completed_with_date: metrics.completed_with_date,
+          completed_on_time: metrics.completed_on_time,
+          completed_late: metrics.completed_late,
+          active_overdue: metrics.active_overdue,
+          missing_completion_date: Math.max(0, counts.tasks_done - metrics.completed_with_date),
+          on_time_percent: metrics.completed_with_date ? Math.round(metrics.completed_on_time / metrics.completed_with_date * 100) : null,
+        },
         progress_percent: counts.tasks_total ? Math.round(counts.tasks_done / counts.tasks_total * 100) : 0,
       };
     }));
@@ -148,7 +188,9 @@ export const getProject = async (req, res) => {
     const isMember = project.project_members.some(
       (member) => member.employee_id === req.employee.employee_id,
     );
-    if (req.user.role !== 'admin' && !isMember) {
+    const isProjectManager = req.user.role === 'manager'
+      && project.manager_id === req.employee.employee_id;
+    if (req.user.role !== 'admin' && !isMember && !isProjectManager) {
       return res.status(403).json({ error: 'Bạn không thuộc dự án này' });
     }
 
@@ -159,8 +201,10 @@ export const getProject = async (req, res) => {
     });
     const taskCounts = taskGroups.reduce((counts, group) => ({
       tasks_done: counts.tasks_done + (group.status === 'xong' ? group._count._all : 0),
+      tasks_doing: counts.tasks_doing + (group.status === 'dang_lam' ? group._count._all : 0),
+      tasks_todo: counts.tasks_todo + (group.status === 'can_lam' ? group._count._all : 0),
       tasks_total: counts.tasks_total + group._count._all,
-    }), { tasks_done: 0, tasks_total: 0 });
+    }), { tasks_done: 0, tasks_doing: 0, tasks_todo: 0, tasks_total: 0 });
 
     const { employees, project_members: members, ...projectData } = project;
     res.json({
@@ -235,26 +279,24 @@ export const updateProject = async (req, res) => {
 
 export const deleteProject = async (req, res) => {
   try {
-    const project = await loadManagedProject(req, res);
-    if (!project) return;
-
-    await prisma.$transaction(async (tx) => {
-      const tasks = await tx.tasks.findMany({
-        where: { project_id: project.id },
-        select: { id: true },
-      });
-      const taskIds = tasks.map((task) => task.id);
-      if (taskIds.length) {
-        await tx.task_comments.deleteMany({ where: { task_id: { in: taskIds } } });
-        await tx.tasks.deleteMany({ where: { id: { in: taskIds } } });
-      }
+    const result = await prisma.$transaction(async (tx) => {
+      const project = await loadManagedProject(req, res, tx);
+      if (!project) return null;
+      const taskCount = await tx.tasks.count({ where: { project_id: project.id } });
+      if (taskCount) return { status: 409, error: 'Chỉ có thể xóa dự án chưa có task' };
       await tx.project_members.deleteMany({ where: { project_id: project.id } });
       await tx.projects.delete({ where: { id: project.id } });
-    });
+      return { deleted: true };
+    }, { isolationLevel: 'Serializable' });
 
+    if (!result) return;
+    if (result.error) return res.status(result.status).json({ error: result.error });
     res.status(204).end();
   } catch (error) {
     console.error('Không thể xóa dự án:', error);
+    if (error.code === 'P2034' || error.code === 'P2003') {
+      return res.status(409).json({ error: 'Dữ liệu dự án vừa thay đổi, vui lòng tải lại' });
+    }
     res.status(500).json({ error: 'Lỗi máy chủ khi xóa dự án' });
   }
 };

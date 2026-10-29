@@ -27,10 +27,16 @@ function WorkSession({ children }) {
     document.addEventListener('visibilitychange', visible);
     return () => { active = false; clearInterval(timer); document.removeEventListener('visibilitychange', visible); };
   }, [reloadKey]);
+  function updateTask(updatedTask) {
+    setState((previous) => ({
+      ...previous,
+      tasks: previous.tasks.map((task) => String(task.id) === String(updatedTask.id) ? updatedTask : task),
+    }));
+  }
   return <WorkContext.Provider value={{ ...state, reload: () => {
     setState(previous => ({ ...previous, loading: true, error: '' }));
     setReloadKey(value => value + 1);
-  } }}>
+  }, updateTask }}>
     {children}
   </WorkContext.Provider>;
 }

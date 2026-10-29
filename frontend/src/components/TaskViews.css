@@ -1,0 +1,38 @@
+.task-views { display: grid; gap: 12px; min-width: 0; }
+.task-view-toolbar, .task-calendar-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.task-view-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.task-view-filters > .ant-input-affix-wrapper { flex: 1 1 260px; }
+.task-view-filters > .ant-select { flex: 0 1 180px; min-width: 160px; }
+.task-view-content { min-width: 0; }
+.task-list-title { display: grid; gap: 3px; }
+.task-list-title .ant-btn { padding: 0; height: auto; text-align: left; justify-content: flex-start; white-space: normal; }
+.task-list-title .ant-btn > span { overflow-wrap: anywhere; }
+.task-list-title > .ant-typography { font-size: 12px; }
+.task-due--overdue { color: var(--red-text); }
+.task-due--near-due { color: var(--gold-text); }
+.task-calendar { display: grid; gap: 12px; min-width: 0; }
+.task-calendar-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+.task-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); min-width: 680px; background: var(--surface); }
+.task-calendar-weekday { text-align: center; padding: 8px; background: var(--subtle-bg); color: var(--muted); }
+.task-calendar-day { min-height: clamp(72px, 9vh, 108px); min-width: 0; padding: 6px; border-top: 1px solid var(--border); border-right: 1px solid var(--border); }
+.task-calendar-grid--week .task-calendar-day { min-height: 260px; }
+.task-calendar-day.is-outside { background: var(--subtle-bg); color: var(--muted); }
+.task-calendar-day.is-today { background: var(--blue-bg); }
+.task-calendar-date { display: inline-flex; justify-content: center; align-items: center; min-width: 22px; height: 22px; margin-bottom: 4px; font-size: 12px; }
+.is-today .task-calendar-date { border-radius: 50%; background: var(--brand); color: var(--surface); }
+.task-calendar-event { display: block; width: 100%; padding: 3px 5px; margin-bottom: 3px; border: 1px solid var(--border); border-left: 3px solid var(--blue-text); border-radius: 4px; text-align: left; background: var(--surface); color: var(--text); font: inherit; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task-calendar-event--overdue { border-left-color: var(--red-text); }
+.task-calendar-event--near-due { border-left-color: var(--gold-text); }
+.task-calendar-event--done { border-left-color: var(--green-text); }
+.task-calendar-more { border: 0; padding: 2px; background: transparent; color: var(--blue-text); font: inherit; font-size: 11px; }
+.task-calendar-day-list { display: grid; gap: 8px; }
+.task-calendar-day-list .ant-btn { height: auto; min-height: 40px; white-space: normal; overflow-wrap: anywhere; }
+.work-project-picker { width: 100%; max-width: 480px; }
+@media (max-width: 767px) {
+  .work-projects-header .work-project-picker { width: min(340px, calc(100vw - 40px)) !important; }
+  .task-view-switch { width: 100%; }
+  .task-view-switch .ant-segmented-item-icon { display: none; }
+  .task-view-switch .ant-segmented-group { display: flex; }
+  .task-view-switch .ant-segmented-item { flex: 1; }
+  .task-view-filters > .ant-select { flex: 1 1 140px; min-width: 0; }
+}

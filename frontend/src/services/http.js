@@ -9,8 +9,9 @@ function setAuthToken(token) {
   sessionVersion += 1;
 }
 
-async function request(path, { method = 'GET', body, params } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
+async function request(path, { method = 'GET', body, params, file, download = false } = {}) {
+  const headers = { 'Content-Type': file ? 'application/octet-stream' : 'application/json' };
+  if (file) headers['X-File-Name'] = encodeURIComponent(file.name);
   const token = currentToken;
   const requestSession = sessionVersion;
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -25,7 +26,7 @@ async function request(path, { method = 'GET', body, params } = {}) {
     response = await fetch(`${API_URL}${path}${suffix}`, {
       method,
       headers,
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      ...(file ? { body: file } : body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   } catch {
     const error = new Error('Không kết nối được máy chủ');
@@ -34,6 +35,7 @@ async function request(path, { method = 'GET', body, params } = {}) {
   }
 
   if (response.status === 204) return null;
+  if (response.ok && download) return response.blob();
 
   let payload;
   try {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
-  Alert, Button, Card, Col, Collapse, Empty, Popconfirm, Row, Space, Spin,
+  Alert, Button, Card, Col, Empty, Popconfirm, Row, Space, Spin,
   Tag, Typography, message,
 } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -9,7 +9,8 @@ import { deleteProject as deleteProjectRequest, listProjects } from '../services
 import { useAuth } from '../hooks/useAuth';
 import ProjectFormModal from '../components/ProjectFormModal';
 import DepartmentPreview from '../components/DepartmentPreview';
-import ProgressBar from '../components/ProgressBar';
+import ProjectPerformanceChart from '../components/ProjectPerformanceChart';
+import { detailInteraction } from '../utils/detailInteraction';
 
 const { Title, Text } = Typography;
 
@@ -20,6 +21,7 @@ function formatDate(date) {
 }
 
 function ProjectOverview() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +67,7 @@ function ProjectOverview() {
     setDeletingProjectId(project.id);
     try {
       await deleteProjectRequest(project.id);
-      messageApi.success('Đã xóa dự án và toàn bộ công việc, bình luận, thành viên thuộc dự án');
+      messageApi.success('Đã xóa dự án rỗng');
       reload();
     } catch (error) {
       messageApi.error(error.message || 'Không xóa được dự án');
@@ -79,7 +81,8 @@ function ProjectOverview() {
 
   function renderProjectSummary(project) {
     return (
-      <Card size="small" className="project-summary-card">
+      <Card size="small" className="project-summary-card detail-clickable-card" role="link"
+        {...detailInteraction(() => navigate(`/du-an/${project.id}`), `Mở dự án ${project.name}`)}>
         <Space align="start" style={{ width: '100%', justifyContent: 'space-between' }}>
           <div>
             <Link to={`/du-an/${project.id}`} style={{ fontWeight: 600 }}>{project.name}</Link>
@@ -99,7 +102,7 @@ function ProjectOverview() {
             <Button size="small" icon={<EditOutlined />} onClick={() => openForm(project)}>Sửa dự án</Button>
             <Popconfirm
               title="Xóa dự án này?"
-              description="Công việc, bình luận và thành viên thuộc dự án cũng sẽ bị xóa vĩnh viễn."
+              description="Chỉ xóa được dự án chưa có task. Dự án có task sẽ được giữ nguyên."
               okText="Xóa dự án"
               cancelText="Hủy"
               okButtonProps={{ danger: true, loading: deletingProjectId === project.id }}
@@ -112,24 +115,6 @@ function ProjectOverview() {
       </Card>
     );
   }
-
-  const progressItems = projects.map((project) => ({
-    key: String(project.id),
-    label: (
-      <div className="project-progress-heading">
-        <Text strong>{project.name}</Text>
-        <Text type="secondary">Thời hạn: {formatDate(project.start_date)} – {formatDate(project.end_date)}</Text>
-        <ProgressBar {...project} />
-      </div>
-    ),
-    children: (
-      <>
-        <Text type="secondary">
-          {project.tasks_done ?? 0}/{project.tasks_total ?? 0} công việc hoàn thành
-        </Text>
-      </>
-    ),
-  }));
 
   return (
     <div className="project-overview">
@@ -171,13 +156,13 @@ function ProjectOverview() {
         </Col>
       </Row>
 
-      <Card title="Tiến độ tất cả dự án" className="project-progress-panel">
+      <Card title="Tiến độ và hiệu suất dự án" className="project-progress-panel">
         {loadError ? (
           <Alert type="error" showIcon title={loadError} action={<Button onClick={reload}>Thử lại</Button>} />
         ) : loading ? (
           <div className="project-panel-loading"><Spin /></div>
-        ) : progressItems.length ? (
-          <Collapse items={progressItems} expandIconPlacement="end" />
+        ) : projects.length ? (
+          <ProjectPerformanceChart projects={projects} />
         ) : (
           <Empty description="Chưa có dự án để hiển thị tiến độ" />
         )}

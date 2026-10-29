@@ -34,6 +34,20 @@ const trainingTitles = [
   'Tổ chức buổi đào tạo tại xưởng', 'Chấm bài kiểm tra kiến thức',
   'Thu thập ý kiến sau đào tạo', 'Tổng hợp báo cáo kết quả đào tạo',
 ];
+const sampleCommentPlan = [
+  { project: 'MAU-01', task: 0, author: 0, daysAgo: 5, content: 'Cảm biến số 3 báo sai, em đang thay thử.' },
+  { project: 'MAU-01', task: 1, author: 1, daysAgo: 5, content: 'Đã kiểm tra bơm tuần hoàn, lưu lượng vẫn ổn định.' },
+  { project: 'MAU-01', task: 2, author: 2, daysAgo: 4, content: 'Em đã tổng hợp danh sách vật tư cần bổ sung.' },
+  { project: 'MAU-01', task: 3, author: 3, daysAgo: 4, content: 'Bể xử lý đã được vệ sinh theo quy trình.' },
+  { project: 'MAU-01', task: 4, author: 4, daysAgo: 3, content: 'Bộ lọc mới đã được lắp, đang theo dõi áp suất.' },
+  { project: 'MAU-01', task: 5, author: 5, daysAgo: 2, content: 'Sơ đồ tủ điện đã cập nhật.\nEm gửi bản mới để mọi người cùng kiểm tra.' },
+  { project: 'MAU-03', task: 0, author: 0, daysAgo: 5, content: 'Quy trình an toàn đã được rà soát, không có mục cần sửa.' },
+  { project: 'MAU-03', task: 1, author: 1, daysAgo: 4, content: 'Khảo sát đã nhận được phản hồi từ các tổ sản xuất.' },
+  { project: 'MAU-03', task: 2, author: 2, daysAgo: 3, content: 'Danh sách nhân viên tham gia đã được xác nhận.' },
+  { project: 'MAU-03', task: 3, author: 3, daysAgo: 2, content: 'Tài liệu sơ cứu đã hoàn tất bản nháp.' },
+  { project: 'MAU-03', task: 4, author: 4, daysAgo: 1, content: 'Hướng dẫn sử dụng hóa chất đã được gửi cho quản lý.' },
+  { project: 'MAU-03', task: 5, author: 5, daysAgo: 1, content: 'Thiết bị trình chiếu đã được kiểm tra trước buổi học.' },
+];
 
 function getTodayDate() {
   const parts = new Intl.DateTimeFormat('en-GB', {
@@ -222,25 +236,50 @@ async function seed() {
       await tx.project_members.deleteMany({ where: { project_id: { in: oldIds } } });
       await tx.projects.deleteMany({ where: { id: { in: oldIds } } });
     }
+    const createdProjects = new Map();
     for (const project of projects) {
       const created = await tx.projects.create({ data: project.data });
+      const projectSeed = { created, project, taskIds: [] };
+      createdProjects.set(project.data.code, projectSeed);
       const memberResult = await tx.project_members.createMany({ data: project.members.map((employeeId) => ({ project_id: created.id, employee_id: employeeId })) });
       const taskResult = await tx.tasks.createMany({ data: project.tasks.map((task) => ({ ...task, project_id: created.id })) });
       if (memberResult.count !== project.members.length || taskResult.count !== project.tasks.length) {
         throw new SeedError(`Không ghi đủ thành viên hoặc task của ${project.data.code}.`);
       }
+      projectSeed.taskIds = (await tx.tasks.findMany({
+        where: { project_id: created.id },
+        select: { id: true },
+        orderBy: { id: 'asc' },
+      })).map((task) => task.id);
     }
-    return result;
+    const commentRows = [];
+    for (const [index, comment] of sampleCommentPlan.entries()) {
+      const { project, taskIds } = createdProjects.get(comment.project);
+      const createdAt = relativeDate(today, -comment.daysAgo);
+      createdAt.setUTCHours(2, 30 + index * 2, 0, 0);
+      commentRows.push({
+        task_id: taskIds[comment.task],
+        author_id: project.members[comment.author],
+        content: comment.content,
+        created_at: createdAt,
+      });
+    }
+    const commentResult = await tx.task_comments.createMany({ data: commentRows });
+    if (commentResult.count !== sampleCommentPlan.length) {
+      throw new SeedError('Không ghi đủ bình luận mẫu.');
+    }
+    return { summaries: result, comments: commentResult.count };
   }, { isolationLevel: 'Serializable', maxWait: 10000, timeout: 30000 });
 
   console.log(`Dữ liệu mẫu phần Công việc — ngày ${today} (Asia/Ho_Chi_Minh)`);
-  console.table(summaries.map((summary) => ({
+  console.table(summaries.summaries.map((summary) => ({
     'Dự án': summary.code, 'Thành viên': summary.members, 'Cần làm': summary.can_lam,
     'Đang làm': summary.dang_lam, 'Xong': summary.xong, 'Tổng task': summary.tasks,
     'Quá hạn': summary.overdue, 'Sắp hạn': summary.near_due,
   })));
-  const total = (field) => summaries.reduce((sum, summary) => sum + summary[field], 0);
+  const total = (field) => summaries.summaries.reduce((sum, summary) => sum + summary[field], 0);
   console.log(`Tổng: ${total('tasks')} task; ${total('overdue')} quá hạn; ${total('near_due')} sắp hạn (không tính task xong).`);
+  console.log(`Tổng bình luận mẫu: ${summaries.comments}.`);
   const monday = toDateOnly(relativeDate(today, -daysSinceMonday(today)));
   const completedThisWeek = await prisma.tasks.count({
     where: {

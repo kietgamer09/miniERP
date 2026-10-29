@@ -1,25 +1,17 @@
-.project-progress-bar {
-  position: relative;
+.project-progress-summary {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  min-height: 32px;
-  padding: 4px 10px;
-  margin: 8px 0 4px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--subtle-bg);
-  color: var(--text);
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-block: 8px 4px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
-.project-progress-fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--progress-fill, #95deaa);
-}
-
-.project-progress-bar > span {
-  position: relative;
-  z-index: 1;
-}
+.project-progress-visual { display: grid; gap: 7px; margin-block: 12px; min-width: 0; }
+.project-progress-caption { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.project-progress-caption > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.project-progress-caption > :last-child { flex-shrink: 0; }
+.project-progress-track { height: 8px; overflow: hidden; border-radius: 8px; background: var(--border); }
+.project-progress-fill { height: 100%; border-radius: inherit; background: var(--brand); }
+.project-progress-track.is-complete .project-progress-fill { background: var(--green-text); }

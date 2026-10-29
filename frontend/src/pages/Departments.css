@@ -1,0 +1,10 @@
+.departments-page > .list-panel { flex: 0 0 auto; }
+.departments-page .department-clickable-row { cursor: pointer; }
+.departments-page .department-clickable-row > td { padding-block: 14px !important; }
+.departments-page .department-clickable-row:hover > td,
+.departments-page .department-clickable-row:focus-visible > td { background: var(--brand-soft) !important; }
+.departments-page .department-clickable-row:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.department-team-count, .department-member-preview { display: grid; gap: 5px; }
+.department-team-count > .ant-typography:last-child,
+.department-member-preview > .ant-typography { color: var(--muted); font-size: 12px; }
+.department-member-preview > .ant-typography { overflow-wrap: anywhere; }

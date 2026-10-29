@@ -6,8 +6,10 @@ import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '../config/taskConstant
 import { adaptTask } from '../utils/taskAdapter';
 import { formatDateVN } from '../utils/dates';
 import { getDueState } from '../utils/taskStatus';
+import TaskComments from './TaskComments';
+import Attachments from './Attachments';
 
-export default function TaskDetailDrawer({ taskId, open, onClose, onEdit }) {
+export default function TaskDetailDrawer({ taskId, open, onClose, onEdit, readOnly = false }) {
   const [loadState, setLoadState] = useState({ key: '', task: null, error: '' });
   const [reloadKey, setReloadKey] = useState(0);
   const requestKey = `${taskId ?? ''}:${reloadKey}`;
@@ -39,7 +41,7 @@ export default function TaskDetailDrawer({ taskId, open, onClose, onEdit }) {
   return (
     <Drawer title={task?.title || 'Chi tiết task'} open={open} onClose={onClose}
       width={560} styles={{ wrapper: { maxWidth: '100vw' } }}
-      extra={canEdit && <Tooltip title={completedProject ? 'Mở lại dự án để sửa task' : undefined}>
+      extra={canEdit && onEdit && !readOnly && <Tooltip title={completedProject ? 'Mở lại dự án để sửa task' : undefined}>
         <span><Button icon={<EditOutlined />} disabled={completedProject || loading}
           onClick={() => onEdit?.(task)}>Sửa task</Button></span>
       </Tooltip>}>
@@ -48,7 +50,7 @@ export default function TaskDetailDrawer({ taskId, open, onClose, onEdit }) {
           action={<Button icon={<ReloadOutlined />} onClick={() => setReloadKey((key) => key + 1)}>Thử lại</Button>} />
           : task && <>
             <Descriptions bordered column={1} size="small" items={[
-              { key: 'description', label: 'Mô tả', children: <span style={{ whiteSpace: 'pre-wrap' }}>{task.description || 'Chưa có mô tả'}</span> },
+              { key: 'description', label: 'Mô tả', children: <span style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{task.description || 'Chưa có mô tả'}</span> },
               { key: 'assignee', label: 'Người làm', children: task.assignee_name || 'Chưa phân công' },
               { key: 'creator', label: 'Người tạo', children: task.created_by_name || '—' },
               { key: 'due', label: 'Hạn chót', children: <>
@@ -60,7 +62,8 @@ export default function TaskDetailDrawer({ taskId, open, onClose, onEdit }) {
               { key: 'status', label: 'Trạng thái', children: TASK_STATUS_LABELS[task.status] || task.status },
               { key: 'project', label: 'Dự án', children: task.project_name },
             ]} />
-            <Alert type="info" showIcon message="Bình luận sẽ có ở tuần 6" style={{ marginTop: 20 }} />
+            <Attachments key={`files-${task.id}`} type="tasks" targetId={task.id} readOnly={readOnly} />
+            <TaskComments taskId={task.id} />
           </>}
     </Drawer>
   );

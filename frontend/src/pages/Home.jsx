@@ -2,20 +2,22 @@ import { Row, Col, Card } from 'antd';
 import AttendanceCard from '../components/AttendanceCard';
 import TimesheetCard from '../components/TimesheetCard';
 import MyTasksBoard from '../components/MyTasksBoard';
+import HomeSummary from '../components/HomeSummary';
 
 function Home() {
   return (
     <div className="home-page">
+      <HomeSummary />
       <Row className="home-top" gutter={[12, 12]}>
         <Col xs={24} lg={11}>
           <AttendanceCard />
         </Col>
         <Col xs={24} lg={13}>
-          <TimesheetCard />
+          <TimesheetCard compact />
         </Col>
       </Row>
       <Card className="home-tasks" styles={{ body: { padding: 16 } }}>
-        <MyTasksBoard />
+        <MyTasksBoard compact />
       </Card>
     </div>
   );

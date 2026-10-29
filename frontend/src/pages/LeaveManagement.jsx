@@ -1,18 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, Typography, Space, DatePicker, message, Button, Modal, Form, Input, Alert, Spin, Tag, Statistic } from 'antd';
 import { PlusOutlined, SendOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { createLeaveRequest, getLeaveSummary, getLeaveRequests, cancelLeaveRequest } from '../services/leaveApi';
 import '../components/TimesheetCard.css';
+import Attachments from '../components/Attachments';
+import useDraft from '../hooks/useDraft';
 
 const { Title, Text } = Typography;
 
 function LeaveManagement() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(dayjs());
-  const [monthData, setMonthData] = useState([]);
   const [leaveSummary, setLeaveSummary] = useState({ max_days: 12, used_days: 0, remaining_days: 12 });
   const [myLeaveRequests, setMyLeaveRequests] = useState([]);
+  const [attachmentLeaveId, setAttachmentLeaveId] = useState(null);
   
   const [selectedDates, setSelectedDates] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -20,6 +22,16 @@ function LeaveManagement() {
   const [form] = Form.useForm();
   
   const [messageApi, contextHolder] = message.useMessage();
+  const draft = useDraft('leave:new', {
+    fields: ['reason', 'selectedDates'],
+    onRestore: values => {
+      const dates = Array.isArray(values.selectedDates) ? values.selectedDates.filter(date => /^\d{4}-\d{2}-\d{2}$/.test(date)).sort() : [];
+      setSelectedDates(dates);
+      if (dates.length) setSelectedMonth(dayjs(dates[0]));
+      form.setFieldsValue({ reason: values.reason || '', dates: dates.join(', '), recipient: 'Quản lý trực thuộc / Ban Giám Đốc' });
+      if (dates.length) setIsModalVisible(true);
+    },
+  });
 
   // Tự động nhận diện chế độ Sáng / Tối từ hệ thống
   const [isDark, setIsDark] = useState(true);
@@ -44,8 +56,7 @@ function LeaveManagement() {
     return () => observer.disconnect();
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
     try {
       const [summaryRes, requestsRes] = await Promise.all([
         getLeaveSummary(),
@@ -62,13 +73,15 @@ function LeaveManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [messageApi]);
 
   useEffect(() => {
+    // Async API loading updates state after the request resolves.
+    // oxlint-disable-next-line react/set-state-in-effect
     fetchData();
-  }, [selectedMonth]);
+  }, [fetchData]);
 
-  useEffect(() => {
+  const monthData = useMemo(() => {
     const monthStr = selectedMonth.format('YYYY-MM');
     const [year, month] = monthStr.split('-').map(Number);
     const totalDays = new Date(year, month, 0).getDate();
@@ -111,7 +124,7 @@ function LeaveManagement() {
       };
     });
 
-    setMonthData(days);
+    return days;
   }, [selectedMonth, myLeaveRequests]);
 
   const handleDayClick = (item) => {
@@ -127,6 +140,7 @@ function LeaveManagement() {
           try {
             const res = await cancelLeaveRequest(item.bookingInfo.id);
             messageApi.success(res.message || 'Đã hủy đơn thành công.');
+            setLoading(true);
             fetchData();
             setSelectedDates([]);
           } catch (err) {
@@ -148,13 +162,9 @@ function LeaveManagement() {
       return;
     }
 
-    setSelectedDates(prev => {
-      if (prev.includes(item.date)) {
-        return prev.filter(d => d !== item.date);
-      } else {
-        return [...prev, item.date].sort();
-      }
-    });
+    const dates = selectedDates.includes(item.date) ? selectedDates.filter(date => date !== item.date) : [...selectedDates, item.date].sort();
+    setSelectedDates(dates);
+    draft.save({ selectedDates: dates, reason: form.getFieldValue('reason') || '' });
   };
 
   const handleOpenRequestModal = () => {
@@ -182,9 +192,12 @@ function LeaveManagement() {
       });
 
       messageApi.success(res.message || 'Gửi đơn xin nghỉ phép thành công!');
+      draft.clear();
+      if (res.data?.Day_off_id) setAttachmentLeaveId(res.data.Day_off_id);
       setIsModalVisible(false);
       setSelectedDates([]);
       form.resetFields();
+      setLoading(true);
       fetchData();
     } catch (err) {
       messageApi.error(err.message || 'Gửi đơn thất bại.');
@@ -198,8 +211,8 @@ function LeaveManagement() {
 
   // Bảng màu: Chế độ tối nền đen y hệt bản gốc, Chế độ sáng tối ưu màu đậm rõ nét, không bị chói
   const themeStyles = isDark ? {
-    pageBg: '#141414',
-    cardBg: '#141414',
+    pageBg: 'var(--page-bg)',
+    cardBg: 'var(--surface)',
     textColor: '#ffffff',
     textSecondary: '#aaa',
     weekdayColor: '#fff',
@@ -209,9 +222,9 @@ function LeaveManagement() {
     weekendBg: '#1a1a1a',
     weekendBorder: '#2a2a2a',
     weekendText: '#777',
-    pastBg: '#3a1c1c',
-    pastBorder: '#5c2222',
-    pastText: '#ff9999',
+    pastBg: 'var(--subtle-bg)',
+    pastBorder: 'var(--border)',
+    pastText: 'var(--muted)',
     pendingBg: 'rgba(250, 173, 20, 0.2)',
     pendingBorder: '#faad14',
     pendingText: '#faad14',
@@ -222,7 +235,7 @@ function LeaveManagement() {
     selectedBorder: '#1890ff',
     selectedText: '#fff',
   } : {
-    pageBg: '#f0f2f5',
+    pageBg: 'var(--page-bg)',
     cardBg: '#ffffff',
     textColor: '#1f2937',
     textSecondary: '#4b5563',
@@ -234,9 +247,9 @@ function LeaveManagement() {
     weekendBorder: '#cbd5e1',
     weekendText: '#475569',
     // Chế độ sáng: Tăng độ đậm và rõ nét cho các trạng thái để dễ nhìn, không bị chói
-    pastBg: '#fecaca',       // Đỏ hồng đậm rõ nét
-    pastBorder: '#f87171',
-    pastText: '#991b1b',
+    pastBg: 'var(--subtle-bg)',
+    pastBorder: 'var(--border)',
+    pastText: 'var(--muted)',
     pendingBg: '#fde68a',    // Vàng cam đậm
     pendingBorder: '#fbbf24',
     pendingText: '#92400e',
@@ -249,16 +262,20 @@ function LeaveManagement() {
   };
 
   return (
-    <div style={{ padding: '24px', height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: themeStyles.pageBg, transition: 'background 0.3s' }}>
+    <div className="leave-management-page" style={{ background: themeStyles.pageBg, transition: 'background 0.3s' }}>
       {contextHolder}
+      {draft.notice}
+      <Modal open={Boolean(attachmentLeaveId)} title="Tệp đính kèm đơn nghỉ phép" footer={null} onCancel={() => setAttachmentLeaveId(null)}>
+        {attachmentLeaveId && <Attachments key={attachmentLeaveId} type="leaves" targetId={attachmentLeaveId} />}
+      </Modal>
 
       {/* Header & Thống kê số phép */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexShrink: 0 }}>
+      <div className="leave-page-header">
         <div>
           <Title level={3} style={{ margin: 0, color: themeStyles.textColor }}>Quản lý & Đăng ký nghỉ phép</Title>
           <Text style={{ color: themeStyles.textSecondary }}>Chọn các ngày trong tương lai trên lịch để tiến hành xin nghỉ phép (Tối đa 12 ngày/năm, không cộng dồn).</Text>
         </div>
-        <Space size={16}>
+        <Space wrap size={12}>
           <Card bordered={false} style={{ background: isDark ? '#1f2937' : themeStyles.cardBg, borderRadius: 8, boxShadow: isDark ? 'none' : '0 1px 3px 0 rgba(0, 0, 0, 0.08)' }} bodyStyle={{ padding: '8px 16px' }}>
             <Statistic 
               title={<span style={{ fontSize: '12px', color: themeStyles.textSecondary, fontWeight: 500 }}>Phép còn lại trong năm</span>}
@@ -389,15 +406,23 @@ function LeaveManagement() {
         )}
       </Card>
 
+      {myLeaveRequests.length > 0 && <Card title="Tệp đính kèm đơn nghỉ phép">
+        <Space wrap>{myLeaveRequests.map(item => <Button key={item.Day_off_id} onClick={() => setAttachmentLeaveId(item.Day_off_id)}>
+          Đơn #{item.Day_off_id} · {dayjs(item.start_date).format('DD/MM/YYYY')}
+        </Button>)}</Space>
+      </Card>}
       {/* Modal Gửi Đơn Xin Nghỉ Phép */}
       <Modal
         title="Tạo đơn xin nghỉ phép"
+        forceRender
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}
         width={550}
       >
-        <Form form={form} layout="vertical" onFinish={handleSubmitLeave}>
+        {draft.notice}
+        <Form form={form} layout="vertical" onFinish={handleSubmitLeave}
+          onValuesChange={(_, values) => draft.save({ reason: values.reason || '', selectedDates })}>
           <Alert 
             message="Thông tin định tuyến đơn & Hạn mức" 
             description={`Số phép còn lại trong năm: ${leaveSummary.remaining_days} ngày. Đơn sẽ được tự động gửi đến cấp quản lý.`} 

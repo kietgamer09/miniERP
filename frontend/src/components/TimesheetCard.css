@@ -1,9 +1,14 @@
 .timesheet-summary { display: grid; grid-template-columns: minmax(150px, .9fr) minmax(0, 1.1fr); align-items: center; gap: 18px; }
-.timesheet-donut { position: relative; width: min(100%, 170px); aspect-ratio: 1; margin: 0 auto; }
+.timesheet-donut { position: relative; width: min(100%, 170px); aspect-ratio: 1; margin: 0 auto; container: attendance-donut / inline-size; }
 .timesheet-donut svg { display: block; width: 100%; height: 100%; }
 .timesheet-donut-center { position: absolute; inset: 29%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; color: var(--text); font-size: 12px; }
 .timesheet-donut-center strong { font-size: 25px; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .timesheet-donut-center small { white-space: nowrap; color: var(--muted); font-size: 10px; }
+@container attendance-donut (max-width: 140px) {
+  .timesheet-donut-center { inset: 25%; gap: 0; font-size: 9px !important; line-height: 1.2; }
+  .timesheet-donut-center strong { font-size: 17px !important; line-height: 1.15; }
+  .timesheet-donut-center small { display: none; }
+}
 .timesheet-donut-legend { display: grid; gap: 4px; }
 .timesheet-legend-item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--text); text-align: left; font: inherit; font-size: 12px; cursor: pointer; }
 .timesheet-legend-item:hover, .timesheet-legend-item[aria-pressed='true'] { background: var(--subtle-bg); border-color: var(--border); }

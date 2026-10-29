@@ -8,7 +8,9 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed:cong-viec": "node prisma/seed-cong-viec.js",
-    "setup:attendance": "node scripts/setup-attendance.js"
+    "setup:attendance": "node scripts/setup-attendance.js",
+    "setup:notifications": "node scripts/setup-notifications.js",
+    "setup:web-push": "node scripts/setup-web-push.js"
   },
   "keywords": [],
   "author": "",
@@ -23,7 +25,8 @@
     "dotenv": "^18.0.8",
     "express": "^5.3.0",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

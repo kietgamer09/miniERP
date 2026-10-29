@@ -18,16 +18,16 @@ export function ThemeProvider({ children }) {
   return <ThemeContext.Provider value={{ mode, toggleTheme: () => setMode(value => value === 'dark' ? 'light' : 'dark') }}>
     <ConfigProvider locale={viVN} theme={{
       algorithm: mode === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
-      token: { colorPrimary: '#315de8', borderRadius: 8, controlHeight: 40,
+      token: { colorPrimary: mode === 'dark' ? '#8fa2ca' : '#315de8', borderRadius: 8, controlHeight: 40,
         fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        colorText: mode === 'dark' ? '#f0f0f0' : '#242b38',
-        colorTextSecondary: mode === 'dark' ? '#bfbfbf' : '#788397',
-        colorBorder: mode === 'dark' ? '#424242' : '#dce1ea' },
+        colorText: mode === 'dark' ? '#e0e3e6' : '#242b38',
+        colorTextSecondary: mode === 'dark' ? '#a6adb5' : '#788397',
+        colorBorder: mode === 'dark' ? '#383d43' : '#dce1ea' },
       components: {
-        Menu: { itemSelectedBg: mode === 'dark' ? '#17254c' : '#eef1ff',
-          itemSelectedColor: mode === 'dark' ? '#91aaff' : '#315de8', itemHeight: 40, itemMarginBlock: 8 },
-        Table: { headerBg: mode === 'dark' ? '#202020' : '#f5f6f8', headerColor: mode === 'dark' ? '#bfbfbf' : '#58667c',
-          borderColor: mode === 'dark' ? '#424242' : '#e8ecf2', cellPaddingBlock: 12, cellPaddingInline: 24 },
+        Menu: { itemSelectedBg: mode === 'dark' ? '#293142' : '#eef1ff',
+          itemSelectedColor: mode === 'dark' ? '#b4c2df' : '#315de8', itemHeight: 40, itemMarginBlock: 8 },
+        Table: { headerBg: mode === 'dark' ? '#25292e' : '#f5f6f8', headerColor: mode === 'dark' ? '#a6adb5' : '#58667c',
+          borderColor: mode === 'dark' ? '#383d43' : '#e8ecf2', cellPaddingBlock: 12, cellPaddingInline: 24 },
         Card: { borderRadiusLG: 12 }, Button: { primaryShadow: 'none', defaultShadow: 'none' },
       },
     }}>

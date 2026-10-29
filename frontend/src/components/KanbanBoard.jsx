@@ -26,7 +26,7 @@ function getInvalidMoveMessage(task, targetStatus, locked) {
 }
 
 export default function KanbanBoard({ tasks = [], loading = false, locked = false, onMove,
-  onOpen, onEdit, emptyText = 'Không có công việc', doneLabel = DONE_COLUMN_LABEL, sortMode = 'due' }) {
+  onOpen, onEdit, readOnly = false, emptyText = 'Không có công việc', doneLabel = DONE_COLUMN_LABEL, sortMode = 'due' }) {
   const [boardState, setBoardState] = useState({ source: tasks, items: tasks });
   const boardTasks = boardState.source === tasks ? boardState.items : tasks;
   const [activeTask, setActiveTask] = useState(null);
@@ -106,7 +106,7 @@ export default function KanbanBoard({ tasks = [], loading = false, locked = fals
                 <Col xs={24} lg={8} key={column.status}>
                   <KanbanColumn status={column.uiStatus} dropStatus={column.status} dropState={dropState}
                     label={index === 2 ? doneLabel : column.label} count={columnTasks.length} emptyText={emptyText}>
-                    {columnTasks.map((task) => <KanbanCard key={task.id} task={task} locked={locked}
+                    {columnTasks.map((task) => <KanbanCard key={task.id} task={task} locked={locked} readOnly={readOnly}
                       disabled={loading || pendingIds.has(String(task.id))} onOpen={onOpen} onEdit={onEdit} />)}
                   </KanbanColumn>
                 </Col>

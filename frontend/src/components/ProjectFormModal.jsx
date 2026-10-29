@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, DatePicker, Form, Input, Modal } from 'antd';
+import { Alert, DatePicker, Form, Input, Modal, Select, Spin, Button } from 'antd';
 import viVN from 'antd/es/locale/vi_VN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import { createProject, updateProject } from '../services/projectApi';
+import { listEmployees } from '../services/employeeApi';
+import './ProjectFormModal.css';
+import { useFormDraft } from '../hooks/useDraft';
 
 dayjs.locale('vi');
 
@@ -19,19 +22,42 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [employeeState, setEmployeeState] = useState({ key: -1, employees: [], error: '' });
+  const [employeesReloadKey, setEmployeesReloadKey] = useState(0);
   const submitting = useRef(false);
   const today = getTodayDate();
   const startDate = Form.useWatch('start_date', form);
+  const draft = useFormDraft(form, `project:${project?.id ?? 'new'}`, {
+    enabled: open, fields: ['code', 'name', 'description', 'member_ids', 'start_date', 'end_date'],
+    dateFields: ['start_date', 'end_date'],
+  });
 
   useEffect(() => {
     if (!open) return;
     form.resetFields();
-    if (project) form.setFieldsValue({
-      ...project,
-      start_date: dayjs(project.start_date).locale('vi'),
-      end_date: dayjs(project.end_date).locale('vi'),
-    });
   }, [open, project, form]);
+
+  useEffect(() => {
+    if (!open || project) return undefined;
+    let active = true;
+    listEmployees()
+      .then((data) => {
+        const list = Array.isArray(data) ? data : (data?.data || []);
+        if (active) setEmployeeState({
+          key: employeesReloadKey,
+          employees: list.filter((employee) => employee.status === 'dang_lam_viec'),
+          error: '',
+        });
+      })
+      .catch((error) => {
+        if (active) setEmployeeState({ key: employeesReloadKey, employees: [], error: error.message || 'Không tải được danh sách nhân viên' });
+      });
+    return () => { active = false; };
+  }, [open, project, employeesReloadKey]);
+
+  const employeesLoading = open && !project && employeeState.key !== employeesReloadKey;
+  const employees = employeesLoading ? [] : employeeState.employees;
+  const employeesError = employeesLoading ? '' : employeeState.error;
 
   async function handleSave() {
     if (submitting.current) return;
@@ -48,7 +74,12 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
         end_date: values.end_date.format('YYYY-MM-DD'),
       };
       if (project) await updateProject(project.id, body);
-      else await createProject({ ...body, code: values.code.trim() });
+      else await createProject({
+        ...body,
+        code: values.code.trim(),
+        member_ids: values.member_ids || [],
+      });
+      draft.clear();
       onSaved();
     } catch (error) {
       if (!error?.errorFields) setSaveError(error.message || 'Không lưu được dự án');
@@ -60,13 +91,21 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
 
   return (
     <Modal
+      className="project-editor-modal" centered
       title={project ? 'Sửa dự án' : 'Thêm dự án'} open={open} forceRender
       onCancel={() => { if (!submitting.current) onCancel(); }} onOk={handleSave}
       confirmLoading={saving} cancelButtonProps={{ disabled: saving }} closable={!saving}
+      okButtonProps={{ disabled: saving || (!project && (employeesLoading || Boolean(employeesError))) }}
       okText="Lưu" cancelText="Hủy"
     >
       {saveError && <Alert type="error" showIcon title={saveError} style={{ marginBottom: 16 }} />}
-      <Form form={form} layout="vertical" disabled={saving} preserve={false}>
+      {draft.notice}
+      <Form form={form} layout="vertical" disabled={saving} preserve={false}
+        onValuesChange={draft.onValuesChange}
+        initialValues={project ? { ...project,
+          start_date: project.start_date ? dayjs(project.start_date).locale('vi') : null,
+          end_date: project.end_date ? dayjs(project.end_date).locale('vi') : null,
+        } : {}}>
         <Form.Item label="Mã dự án" name="code" rules={[
           { required: true, whitespace: true, message: 'Vui lòng nhập mã dự án' },
           { max: 20, message: 'Mã dự án không được quá 20 ký tự' },
@@ -79,6 +118,22 @@ function ProjectFormModal({ open, project, onCancel, onSaved }) {
         ]}>
           <Input maxLength={200} placeholder="Nhập tên dự án" />
         </Form.Item>
+        {!project && <>
+          {employeesError && <Alert type="warning" showIcon title={employeesError}
+            action={<Button size="small" onClick={() => setEmployeesReloadKey((key) => key + 1)}>Thử lại</Button>}
+            style={{ marginBottom: 16 }} />}
+          <Form.Item label="Thành viên dự án" name="member_ids" extra="Bạn có thể chọn nhiều nhân viên; người tạo dự án được thêm tự động.">
+            <Select mode="multiple" showSearch optionFilterProp="label" loading={employeesLoading}
+              maxTagCount="responsive" maxTagTextLength={24}
+              maxTagPlaceholder={(omitted) => `+${omitted.length} người`}
+              placeholder={employeesLoading ? 'Đang tải danh sách nhân viên…' : 'Chọn thành viên'}
+              notFoundContent={employeesLoading ? <Spin size="small" /> : 'Không có nhân viên phù hợp'}
+              options={employees.map((employee) => ({
+                value: employee.employee_id,
+                label: `${employee.fullname || `Nhân viên ${employee.employee_id}`}${employee.departments?.department_name ? ` · ${employee.departments.department_name}` : ''}`,
+              }))} />
+          </Form.Item>
+        </>}
         <Form.Item label="Mô tả" name="description"><Input.TextArea rows={3} /></Form.Item>
         <Form.Item label="Ngày bắt đầu" name="start_date" rules={[{ required: true, message: 'Vui lòng chọn ngày bắt đầu' }]}>
           <DatePicker locale={viVN.DatePicker} format="DD/MM/YYYY" placeholder="Chọn ngày bắt đầu" style={{ width: '100%' }} />

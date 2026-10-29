@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Alert, Avatar, Button, Empty, Input, Modal, Select, Space, Spin, Table, Typography, message } from 'antd';
-import { ArrowUpOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { RightOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { listEmployees } from '../services/employeeApi';
 import { listDepartments } from '../services/departmentApi';
 import EmployeeFormModal from '../components/EmployeeFormModal';
 import { useRole } from '../hooks/useAuth';
 import ListPagination from '../components/ListPagination';
+import { detailInteraction } from '../utils/detailInteraction';
 import './Employees.css';
 
 const { Title, Text } = Typography;
@@ -114,11 +115,7 @@ function Employees() {
         {status === 'da_nghi_viec' ? 'Đã nghỉ việc' : 'Đang làm việc'}
       </span>
     ) },
-    { title: 'Thao tác', key: 'actions', align: 'right', width: 150, render: (_, employee) => (
-      <Button className="list-detail-button" onClick={() => openEditForm(employee)}>
-        Xem chi tiết <ArrowUpOutlined rotate={45} />
-      </Button>
-    ) },
+    { title: '', key: 'detail', align: 'right', width: 36, render: () => <RightOutlined aria-hidden /> },
   ];
   const pageSize = 8;
   const totalItems = filteredData.length;
@@ -153,12 +150,14 @@ function Employees() {
       </div>
       <div className="employees-desktop-table">
         <Table rowKey="employee_id" columns={columns} dataSource={paginatedData} loading={loading}
+          onRow={employee => ({ className: 'detail-clickable-row', ...detailInteraction(() => openEditForm(employee), `Thông tin ${employee.fullname || 'nhân viên'}`) })}
           locale={{ emptyText: 'Chưa có nhân viên nào' }} pagination={false} scroll={{ x: 850 }} />
       </div>
       <div className="employees-mobile-list">
         <Spin spinning={loading}>
           {paginatedData.length ? paginatedData.map(employee => (
-            <article className="employee-mobile-card" key={employee.employee_id}>
+            <article className="employee-mobile-card detail-clickable-card" key={employee.employee_id} role="button"
+              {...detailInteraction(() => openEditForm(employee), `Thông tin ${employee.fullname || 'nhân viên'}`)}>
               <div className="employee-mobile-heading">
                 <Avatar className="employee-avatar" size={40}>
                   {employee.fullname?.trim().split(/\s+/).slice(-2).map(part => part[0]).join('') || 'NV'}
@@ -175,9 +174,6 @@ function Employees() {
                 <div><span>Chức vụ</span><strong>{employee.position || 'Chưa cập nhật'}</strong></div>
                 <div><span>Phòng ban</span><strong>{employee.departments?.department_name || 'Chưa phân ban'}</strong></div>
               </div>
-              <Button className="list-detail-button" onClick={() => openEditForm(employee)}>
-                Xem chi tiết <ArrowUpOutlined rotate={45} />
-              </Button>
             </article>
           )) : !loading && <Empty description="Chưa có nhân viên nào" />}
         </Spin>

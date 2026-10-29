@@ -1,22 +1,26 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import RequireAuth from './components/RequireAuth';
 import RequireRole from './components/RequireRole';
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Departments from './pages/Departments';
-import Employees from './pages/Employees';
-import ProjectOverview from './pages/ProjectOverview';
-import Projects from './pages/Projects';
-import ProjectDetail from './pages/ProjectDetail';
-import ProjectProgress from './pages/ProjectProgress';
-import MyTasks from './pages/MyTasks';
-import MyProfile from './pages/MyProfile';
-import Placeholder from './pages/Placeholder';
-import Attendance from './pages/Attendance';
-import AttendanceApprovals from './pages/AttendanceApprovals';
-import CompanyAttendance from './components/CompanyAttendance';
-import LeaveManagement from './pages/LeaveManagement';
+const Home = lazy(() => import('./pages/Home'));
+const Login = lazy(() => import('./pages/Login'));
+const Departments = lazy(() => import('./pages/Departments'));
+const Employees = lazy(() => import('./pages/Employees'));
+const ProjectOverview = lazy(() => import('./pages/ProjectOverview'));
+const Projects = lazy(() => import('./pages/Projects'));
+const ProjectDetail = lazy(() => import('./pages/ProjectDetail'));
+const ProjectProgress = lazy(() => import('./pages/ProjectProgress'));
+const MyTasks = lazy(() => import('./pages/MyTasks'));
+const WorkProjects = lazy(() => import('./pages/WorkProjects'));
+const AssignTasks = lazy(() => import('./pages/AssignTasks'));
+const OtherProjectTasks = lazy(() => import('./pages/OtherProjectTasks'));
+const MyProfile = lazy(() => import('./pages/MyProfile'));
+const Placeholder = lazy(() => import('./pages/Placeholder'));
+const Attendance = lazy(() => import('./pages/Attendance'));
+const AttendanceApprovals = lazy(() => import('./pages/AttendanceApprovals'));
+const CompanyAttendance = lazy(() => import('./components/CompanyAttendance'));
+const LeaveManagement = lazy(() => import('./pages/LeaveManagement'));
 import { getAllPaths, fullMenuItems } from './config/menu';
 
 // Lấy toàn bộ đường dẫn từ cây menu
@@ -29,8 +33,10 @@ const pages = {
   '/du-an/cua-toi': Projects,
   '/du-an/tien-do': ProjectProgress,
   '/quan-ly-nhan-vien': Employees,
-  '/viec-cua-toi': MyTasks,
+  '/viec-cua-toi': WorkProjects,
   '/viec-cua-toi/duoc-giao': MyTasks,
+  '/viec-cua-toi/giao-viec': AssignTasks,
+  '/viec-cua-toi/viec-khac': OtherProjectTasks,
   '/quan-ly-phong-ban': Departments,
   '/cham-cong/bang-cong-cong-ty': CompanyAttendance,
   '/cham-cong/nghi-phep': LeaveManagement,
@@ -38,6 +44,7 @@ const pages = {
 
 function App() {
   return (
+    <Suspense fallback={<div className="route-loading" role="status">Đang tải trang...</div>}>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAuth />}>
@@ -58,6 +65,7 @@ function App() {
         </Route>
       </Route>
     </Routes>
+    </Suspense>
   );
 }
 
