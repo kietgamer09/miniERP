@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Alert, Avatar, Button, Card, Descriptions, Space, Spin, Tag, Typography } from 'antd';
-import { ReloadOutlined, UserOutlined } from '@ant-design/icons';
+import { Alert, App, Avatar, Button, Card, Descriptions, Space, Spin, Tag, Typography } from 'antd';
+import { EditOutlined, ReloadOutlined, UserOutlined } from '@ant-design/icons';
 import { getMyProfile } from '../services/employeeApi';
+import ProfileFormModal from '../components/ProfileFormModal';
 
 const roleLabels = { employee: 'Nhân viên', manager: 'Quản lý', admin: 'Quản trị viên' };
 const statusLabels = { dang_lam_viec: 'Đang làm việc', da_nghi_viec: 'Đã nghỉ việc' };
@@ -18,6 +19,8 @@ function MyProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [editing, setEditing] = useState(false);
+  const { message } = App.useApp();
 
   async function loadProfile() {
     setLoading(true);
@@ -64,7 +67,10 @@ function MyProfile() {
           <Typography.Title level={3} style={{ margin: 0 }}>Thông tin cá nhân</Typography.Title>
           <Typography.Text type="secondary">Hồ sơ của tài khoản đang đăng nhập</Typography.Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={loadProfile} loading={loading}>Tải lại</Button>
+        <Space wrap>
+          <Button icon={<ReloadOutlined />} onClick={loadProfile} loading={loading}>Tải lại</Button>
+          <Button type="primary" icon={<EditOutlined />} disabled={!profile || loading} onClick={() => setEditing(true)}>Chỉnh sửa</Button>
+        </Space>
       </Space>
 
       {error && <Alert type="error" showIcon message={error} action={<Button size="small" onClick={loadProfile}>Thử lại</Button>} />}
@@ -83,6 +89,9 @@ function MyProfile() {
           <Descriptions bordered column={{ xs: 1, sm: 2, lg: 2 }} items={items} />
         </Card>}
       </Spin>
+      {editing && profile && <ProfileFormModal profile={profile} onCancel={() => setEditing(false)} onSaved={updated => {
+        setProfile(updated); setEditing(false); setError(''); message.success('Đã cập nhật thông tin cá nhân');
+      }} />}
     </Space>
   );
 }

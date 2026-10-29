@@ -8,7 +8,7 @@ import { useAttendance } from '../hooks/useAttendance';
 import { draftKey, readDraft, removeDraft } from '../utils/draftStorage';
 import { getProject } from '../services/projectApi';
 import { getTask } from '../services/taskApi';
-import { listEmployees } from '../services/employeeApi';
+import { getMyProfile, listEmployees } from '../services/employeeApi';
 import { listDepartments } from '../services/departmentApi';
 import { getMyAttendances } from '../services/attendanceApi';
 
@@ -20,6 +20,7 @@ const DepartmentFormModal = lazy(() => import('./DepartmentFormModal'));
 const AttendanceExplanationModal = lazy(() => import('./AttendanceExplanationModal'));
 const TaskComments = lazy(() => import('./TaskComments'));
 const OvertimeFormModal = lazy(() => import('./OvertimeFormModal'));
+const ProfileFormModal = lazy(() => import('./ProfileFormModal'));
 
 function requirePermission(allowed) {
   if (!allowed) throw new Error('Bạn không còn quyền tiếp tục nội dung này. Bản nháp vẫn được giữ lại.');
@@ -28,6 +29,7 @@ function requirePermission(allowed) {
 async function loadDraft(scope, user) {
   if (!readDraft(draftKey(user.id ?? user.username, scope))) throw new Error('Bản nháp đã được gửi, bị xóa hoặc hết hạn.');
   let match;
+  if (scope === 'profile:me') return { kind: 'profile', profile: await getMyProfile() };
   if (scope === 'overtime:new') return { kind: 'overtime' };
   if ((match = /^project:(new|\d+)$/.exec(scope))) {
     if (match[1] === 'new') { requirePermission(['admin', 'manager'].includes(user.role)); return { kind: 'project' }; }
@@ -95,6 +97,7 @@ function ResumeOverlay({ scope, onClose, onSaved }) {
     {data.kind === 'department' && <DepartmentFormModal open department={data.target} {...props} />}
     {data.kind === 'explanation' && <AttendanceExplanationModal day={data.day} {...props} />}
     {data.kind === 'overtime' && <OvertimeFormModal {...props} />}
+    {data.kind === 'profile' && <ProfileFormModal profile={data.profile} {...props} />}
     {data.kind === 'comment' && <Modal open title={`Tiếp tục ${data.projectId ? 'thảo luận' : 'bình luận'} · ${data.target.name || data.target.title}`}
       footer={null} onCancel={onClose} width={620}>
       <TaskComments projectId={data.projectId} taskId={data.taskId} onSubmitted={onSaved} />
