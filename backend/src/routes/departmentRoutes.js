@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.get('/department-list', verifyToken, listDepartments);
 router.post('/department-create', verifyToken, createDepartment);
-router.put('/department-update/:id', verifyToken, updateDepartment);     // API Sửa phòng ban
-router.delete('/department-delete/:id', verifyToken, deleteDepartment);  // API Xóa phòng ban
+router.put('/department-update/:id', verifyToken, updateDepartment);
+router.delete('/department-delete/:id', verifyToken, deleteDepartment);
 
 export default router;

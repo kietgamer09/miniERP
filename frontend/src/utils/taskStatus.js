@@ -1,20 +1,15 @@
 // BRD: quá hạn đỏ, sắp hạn 0–3 ngày vàng; task xong không cảnh báo.
 import { startOfDay, formatDateVN } from './dates';
 
-/** Mã trạng thái nội bộ dùng trong code */
 const STATUS = {
   TODO: 'todo',
   DOING: 'doing',
   DONE: 'done',
 };
 
-/** Thứ tự ưu tiên: Cao > Trung bình > Thấp */
 const PRIORITY_ORDER = { 'Cao': 0, 'Trung bình': 1, 'Thấp': 2 };
 
-/**
- * Tính trạng thái cảnh báo hạn của task.
- * @returns {'overdue' | 'near-due' | 'normal' | 'done'}
- */
+/** @returns {'overdue' | 'near-due' | 'normal' | 'done'} */
 function getDueState(task, today = new Date()) {
 
   if (task.status === STATUS.DONE) return 'done';
@@ -25,13 +20,11 @@ function getDueState(task, today = new Date()) {
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
   if (diffDays < 0) return 'overdue';
-  // Sắp hạn: còn 0–3 ngày lịch (kể cả đúng ngày hạn)
   if (diffDays <= 3) return 'near-due';
 
   return 'normal';
 }
 
-/** Màu nền/viền theo trạng thái cảnh báo */
 function getDueColor(dueState) {
   switch (dueState) {
     case 'overdue': return { bg: '#fff1f0', border: '#ff4d4f' };
@@ -42,13 +35,8 @@ function getDueColor(dueState) {
   }
 }
 
-/**
- * Nhãn hiển thị cho dòng trạng thái trên thẻ task.
- * Ví dụ: "Quá hạn (20/10/2026)", "Sắp hạn (29/10/2026)", "Xong (27/10/2026)"
- */
 function getDueLabel(task, dueState) {
   if (dueState === 'done') {
-    // Task hoàn thành: hiện ngày hoàn thành nếu có, không thì ngày hạn
     const dateStr = task.completedAt
       ? formatDateVN(task.completedAt)
       : formatDateVN(task.dueDate);

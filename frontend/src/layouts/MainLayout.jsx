@@ -34,7 +34,6 @@ function MainLayout() {
   const location = useLocation();
   const menuPath = /^\/du-an\/\d+$/.test(location.pathname) ? '/du-an/cua-toi' : location.pathname;
 
-  // Lọc menu theo vai trò hiện tại
   const menuItems = filterMenuByRole(fullMenuItems, role).map((group) => ({
     ...group,
     children: group.children?.map((item) => item.children ? {
@@ -60,7 +59,6 @@ function MainLayout() {
     setMenuState({ path: menuPath, keys: newlyOpenedKey ? [newlyOpenedKey] : nextOpenKeys });
   }
 
-  // Menu thả xuống của avatar
   const avatarMenu = {
     items: [
       { key: 'password', label: 'Đổi mật khẩu', onClick: () => setPasswordOpen(true) },

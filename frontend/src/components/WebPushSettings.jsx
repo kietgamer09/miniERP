@@ -27,10 +27,9 @@ export default function WebPushSettings() {
         try { await testPush(); setSent(true); } catch (err) { setError(err.message); }
         finally { setBusy(false); }
       }}>Gửi thử thông báo</Button>}
-      <Typography.Text type="secondary">{enabled ? 'Đã bật trên trình duyệt này' : 'Nhận bình luận mới kể cả khi đóng tab'}</Typography.Text>
     </Space>
-    {!supported && <Typography.Text type="secondary">Cần trình duyệt hỗ trợ Push và HTTPS (localhost dùng được).</Typography.Text>}
+    {!supported && <Typography.Text type="secondary">Trình duyệt này chưa hỗ trợ thông báo desktop.</Typography.Text>}
     {error && <Alert type="warning" showIcon title={error} />}
-    {sent && <Typography.Text type="secondary">Đã chuyển thông báo thử tới dịch vụ push. Kiểm tra thông báo của hệ điều hành.</Typography.Text>}
+    {sent && <Typography.Text type="secondary">Đã gửi thông báo thử.</Typography.Text>}
   </div>;
 }

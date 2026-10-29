@@ -25,7 +25,6 @@ const CompanyDocuments = lazy(() => import('./pages/CompanyDocuments'));
 const Overtime = lazy(() => import('./pages/Overtime'));
 import { getAllPaths, fullMenuItems } from './config/menu';
 
-// Lấy toàn bộ đường dẫn từ cây menu
 const allPaths = getAllPaths(fullMenuItems);
 const pages = {
   '/phe-duyet': AttendanceApprovals,

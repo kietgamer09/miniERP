@@ -36,8 +36,8 @@ export default function OvertimeFormModal({ onCancel, onSaved }) {
     <Form form={form} layout="vertical" disabled={saving} onValuesChange={draft.onValuesChange}
       initialValues={{ mode: 'planned', start_time: '18:00', end_time: '20:00', end_next_day: false }}>
       <Form.Item name="mode" label="Loại đơn"><Segmented block options={[{ value: 'planned', label: 'Ngày sắp tới' }, { value: 'past', label: 'Bổ sung ngày đã qua' }]} /></Form.Item>
-      <Typography.Paragraph type="secondary">{mode === 'past' ? 'Chọn ngày trước hôm nay. Đơn gửi vào hòm thư quản lý cùng phòng và Admin, không đẩy desktop.'
-        : `Chọn từ hôm nay đến ${formatDateOnlyVN(maxDate)} (tối đa 1 tháng). Đơn gần ngày làm được ưu tiên; đẩy desktop khi còn tối đa 3 ngày.`}</Typography.Paragraph>
+      <Typography.Paragraph type="secondary">{mode === 'past' ? 'Chọn ngày trước hôm nay.'
+        : `Có thể đăng ký đến ${formatDateOnlyVN(maxDate)}.`}</Typography.Paragraph>
       <Form.Item name="date" label="Ngày làm thêm" dependencies={['mode']} rules={[{ required: true, message: 'Chọn ngày làm thêm' }, {
         validator: (_, value) => !value || (mode === 'past' ? value.format('YYYY-MM-DD') < attendanceDay()
           : value.format('YYYY-MM-DD') >= attendanceDay() && value.format('YYYY-MM-DD') <= dayjs(attendanceDay()).add(1, 'month').format('YYYY-MM-DD'))

@@ -1,4 +1,3 @@
-/** Form thêm/sửa phòng ban dùng chung. */
 import { useEffect, useState } from 'react';
 import { Form, Input, Modal, message } from 'antd';
 import { createDepartment, updateDepartment } from '../services/departmentApi';

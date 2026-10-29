@@ -28,7 +28,6 @@ export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
   return <Modal open forceRender title={`Giải trình ngày ${formatDateOnlyVN(day.date)}`} okText="Gửi đề nghị" cancelText="Hủy"
     onOk={save} onCancel={() => { if (!pending.current) onCancel(); }} confirmLoading={saving}
     closable={!saving} cancelButtonProps={{ disabled: saving }}>
-    <Alert type="info" showIcon title="Admin duyệt đề nghị; giờ công và màu ngày công thực tế được giữ nguyên." style={{ marginBottom: 16 }} />
     {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />}
     {draft.notice}
     <Form form={form} layout="vertical" disabled={saving} onValuesChange={draft.onValuesChange}>

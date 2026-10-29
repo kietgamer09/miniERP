@@ -1,6 +1,5 @@
 import prisma from '../config/prisma.js';
 
-// 1. Xem danh sách phòng ban (đã có)
 export const listDepartments = async (req, res) => {
   try {
     const departments = await prisma.departments.findMany({
@@ -18,7 +17,6 @@ export const listDepartments = async (req, res) => {
   }
 };
 
-// 2. Sửa phòng ban (Cập nhật tên, thông tin và quản lý phòng ban)
 export const updateDepartment = async (req, res) => {
   try {
     const { id } = req.params;
@@ -26,7 +24,6 @@ export const updateDepartment = async (req, res) => {
 
     const departmentId = Number(id);
 
-    // Kiểm tra phòng ban tồn tại hay không
     const existingDept = await prisma.departments.findUnique({
       where: { department_id: departmentId }
     });
@@ -35,13 +32,10 @@ export const updateDepartment = async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy phòng ban.' });
     }
 
-    // Chuẩn hóa giá trị managment (nếu rỗng hoặc null thì về null)
     const newManagerId = managment !== undefined && managment !== '' && managment !== null ? Number(managment) : null;
     const oldManagerId = existingDept.managment ? Number(existingDept.managment) : null;
 
-    // Nếu có thay đổi quản lý mới
     if (newManagerId !== oldManagerId) {
-      // 1. Nếu có quản lý mới, nâng quyền lên 'manager'
       if (newManagerId) {
         const employee = await prisma.employees.findUnique({
           where: { employee_id: newManagerId }
@@ -55,9 +49,7 @@ export const updateDepartment = async (req, res) => {
         }
       }
 
-      // 2. (Tùy chọn) Nếu quản lý cũ bị thay thế và không còn làm quản lý ở phòng nào khác, có thể hạ role về 'member'
       if (oldManagerId && oldManagerId !== newManagerId) {
-        // Kiểm tra xem quản lý cũ có còn quản lý phòng nào khác không
         const otherDeptAsManager = await prisma.departments.findFirst({
           where: {
             managment: String(oldManagerId),
@@ -65,7 +57,6 @@ export const updateDepartment = async (req, res) => {
           }
         });
 
-        // Nếu không còn quản lý phòng nào khác, hạ role về 'member'
         if (!otherDeptAsManager) {
           const oldEmployee = await prisma.employees.findUnique({
             where: { employee_id: oldManagerId }
@@ -80,7 +71,6 @@ export const updateDepartment = async (req, res) => {
       }
     }
 
-    // Thực hiện cập nhật phòng ban
     const updatedDepartment = await prisma.departments.update({
       where: { department_id: departmentId },
       data: {
@@ -100,17 +90,15 @@ export const updateDepartment = async (req, res) => {
   }
 };
 
-// 3. Xóa phòng ban (Kiểm tra xem còn nhân viên hay không)
 export const deleteDepartment = async (req, res) => {
   try {
     const { id } = req.params;
     const departmentId = Number(id);
 
-    // Kiểm tra phòng ban có tồn tại không
     const department = await prisma.departments.findUnique({
       where: { department_id: departmentId },
       include: {
-        employees: true // Bao gồm danh sách nhân viên để kiểm tra số lượng
+        employees: true
       }
     });
 
@@ -118,14 +106,12 @@ export const deleteDepartment = async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy phòng ban cần xóa.' });
     }
 
-    // Kiểm tra điều kiện: Nếu phòng ban vẫn còn nhân viên thì không cho phép xóa
     if (department.employees && department.employees.length > 0) {
       return res.status(400).json({
         error: `Không thể xóa phòng ban này vì vẫn còn ${department.employees.length} nhân viên trực thuộc. Vui lòng chuyển nhân viên sang phòng ban khác trước khi xóa.`
       });
     }
 
-    // Tiến hành xóa phòng ban nếu không còn nhân viên
     await prisma.departments.delete({
       where: { department_id: departmentId }
     });
@@ -137,7 +123,6 @@ export const deleteDepartment = async (req, res) => {
   }
 };
 
-// 4. Tạo phòng ban mới
 export const createDepartment = async (req, res) => {
   try {
     const { department_id, department_name, category, managment } = req.body;
@@ -146,10 +131,8 @@ export const createDepartment = async (req, res) => {
       return res.status(400).json({ error: 'Mã phòng ban và Tên phòng ban là bắt buộc.' });
     }
 
-    // Chuyển department_id sang kiểu số (vì trong Prisma schema khai báo là Int)
     const deptIdNumber = Number(department_id);
 
-    // Kiểm tra xem mã phòng ban này đã tồn tại hay chưa
     const existingDept = await prisma.departments.findUnique({
       where: { department_id: deptIdNumber }
     });
@@ -158,7 +141,6 @@ export const createDepartment = async (req, res) => {
       return res.status(400).json({ error: `Mã phòng ban "${deptIdNumber}" đã tồn tại. Vui lòng chọn mã khác.` });
     }
 
-    // Nếu có chỉ định quản lý (managment là employee_id), tiến hành cập nhật role thành manager
     if (managment) {
       const newManagerId = Number(managment);
       const employee = await prisma.employees.findUnique({
@@ -173,7 +155,6 @@ export const createDepartment = async (req, res) => {
       }
     }
 
-    // Tạo phòng ban mới trong database với mã phòng ban do người dùng nhập
     const newDepartment = await prisma.departments.create({
       data: {
         department_id: deptIdNumber,

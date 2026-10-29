@@ -31,7 +31,6 @@ function formatDateTimeVN(isoString) {
   return `${hour}:${minute} ${day}/${month}/${date.getFullYear()}`;
 }
 
-/** "22/10/2026" */
 function formatDateVN(date) {
   const d = new Date(date);
   const dd = String(d.getDate()).padStart(2, '0');
@@ -39,24 +38,20 @@ function formatDateVN(date) {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
-/** "Thứ 5" */
 function getDayName(date) {
   return DAY_NAMES[new Date(date).getDay()];
 }
 
-/** "Thứ 5, ngày 22/10/2026" */
 function formatFullDateVN(date) {
   return `${getDayName(date)}, ngày ${formatDateVN(date)}`;
 }
 
-/** Cộng n ngày vào date, trả Date mới */
 function addDays(date, n) {
   const d = new Date(date);
   d.setDate(d.getDate() + n);
   return d;
 }
 
-/** Chỉ lấy phần ngày (00:00:00) để so sánh chính xác */
 function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -82,11 +77,7 @@ function isWorkingDay(date) {
   return dow !== 0 && dow !== 6;
 }
 
-/**
- * Đếm số ngày làm việc từ Thứ 2 đến Thứ 6 trong tháng.
- * @param {number} year
- * @param {number} month 0-indexed (0=tháng 1)
- */
+/** month: 0–11; chỉ tính Thứ 2–Thứ 6. */
 function countWorkingDays(year, month) {
   let count = 0;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -97,7 +88,6 @@ function countWorkingDays(year, month) {
   return count;
 }
 
-/** Tạo danh sách ngày làm việc từ Thứ 2 đến Thứ 6 trong tháng. */
 function getWorkingDaysInMonth(year, month) {
   const days = [];
   const daysInMonth = new Date(year, month + 1, 0).getDate();

@@ -111,12 +111,8 @@ export default function TimesheetCard({ compact = false }) {
           </button>
         </Tooltip>)}
       </div>
-      <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 12, marginBottom: 0 }}>
-        Bấm ngày để xem giờ công và gửi giải trình. Ngày chưa kết thúc, ngày tương lai và cuối tuần không tính nghỉ cả ngày.
-        {' '}Duyệt chấm bù không thay đổi màu hoặc giờ công gốc.
-      </Typography.Paragraph>
       {!data.start_date && <Typography.Paragraph type="secondary" style={{ fontSize: 12 }}>
-        Hồ sơ chưa có ngày bắt đầu làm việc; ngày trống sau ca được ghi nhận là chưa có công/nghỉ phép duyệt.
+        Chưa cập nhật ngày bắt đầu làm việc.
       </Typography.Paragraph>}
     </Modal>}
     {selectedDay && <Modal open title={`Công ngày ${formatDateOnlyVN(selectedDay.date)}`} footer={null} onCancel={() => setSelected(null)}>
@@ -130,7 +126,6 @@ export default function TimesheetCard({ compact = false }) {
         <Typography.Paragraph style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', marginTop: 12 }}>{selectedDay.explanation.reason}</Typography.Paragraph>
         {selectedDay.explanation.makeup_date && <Typography.Paragraph>Ngày đề nghị chấm bù: {formatDateOnlyVN(selectedDay.explanation.makeup_date)}</Typography.Paragraph>}
         {selectedDay.explanation.review_note && <Alert type="info" title={selectedDay.explanation.review_note} />}
-        <Typography.Text type="secondary">Giữ nguyên màu theo giờ chấm công thực tế.</Typography.Text>
       </> : selectedDay.can_explain && <Alert type={selectedDay.color === 'red' ? 'error' : 'warning'} showIcon
         title="Bạn có thể gửi yêu cầu giải trình và đề nghị chấm bù." action={<Button onClick={() => setExplaining(true)}>Gửi giải trình</Button>} />}
     </Modal>}

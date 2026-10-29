@@ -6,7 +6,6 @@
 .overtime-filters > .ant-input-affix-wrapper { flex: 1 1 260px; max-width: 460px; }
 .overtime-filters > .ant-select { min-width: 175px; }
 .overtime-muted { color: var(--muted); font-size: 12px; margin-top: 3px; }
-.overtime-review-hint { padding: 0 16px; font-size: 12px; }
 .overtime-time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 @media (max-width: 600px) {
   .overtime-header > .ant-space { width: 100%; }
