@@ -9,9 +9,10 @@ function setAuthToken(token) {
   sessionVersion += 1;
 }
 
-async function request(path, { method = 'GET', body, params, file, download = false } = {}) {
+async function request(path, { method = 'GET', body, params, file, download = false, chatUnlock } = {}) {
   const headers = { 'Content-Type': file ? 'application/octet-stream' : 'application/json' };
   if (file) headers['X-File-Name'] = encodeURIComponent(file.name);
+  if (chatUnlock) headers['X-Chat-Unlock'] = chatUnlock;
   const token = currentToken;
   const requestSession = sessionVersion;
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -47,6 +48,7 @@ async function request(path, { method = 'GET', body, params, file, download = fa
   if (!response.ok) {
     const error = new Error(payload?.error || 'Có lỗi xảy ra');
     error.status = response.status;
+    error.code = payload?.code;
     if (response.status === 401 && token && requestSession === sessionVersion) {
       window.dispatchEvent(new Event('auth:unauthorized'));
     }

@@ -9,6 +9,18 @@ import useDraft from '../hooks/useDraft';
 
 const { Title, Text } = Typography;
 
+function isContinuousWeekdayRange(dates) {
+  if (!dates.length) return true;
+  const expected = [];
+  let cursor = dayjs(dates[0]);
+  const end = dayjs(dates.at(-1));
+  while (cursor.isBefore(end, 'day') || cursor.isSame(end, 'day')) {
+    if (cursor.day() !== 0 && cursor.day() !== 6) expected.push(cursor.format('YYYY-MM-DD'));
+    cursor = cursor.add(1, 'day');
+  }
+  return expected.length === dates.length && expected.every((date, index) => date === dates[index]);
+}
+
 function LeaveManagement() {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(dayjs());
@@ -89,7 +101,7 @@ function LeaveManagement() {
 
     const bookedDaysMap = {};
     myLeaveRequests.forEach(req => {
-      if (req.start_date && req.end_date) {
+      if (req.status !== 'bi_tu_choi' && req.start_date && req.end_date) {
         let curr = dayjs(req.start_date);
         const end = dayjs(req.end_date);
         while (curr.isBefore(end) || curr.isSame(end, 'day')) {
@@ -163,6 +175,10 @@ function LeaveManagement() {
     }
 
     const dates = selectedDates.includes(item.date) ? selectedDates.filter(date => date !== item.date) : [...selectedDates, item.date].sort();
+    if (!isContinuousWeekdayRange(dates)) {
+      messageApi.warning('Mỗi đơn chỉ gồm một khoảng ngày làm việc liên tiếp. Hãy tạo đơn riêng cho khoảng khác.');
+      return;
+    }
     setSelectedDates(dates);
     draft.save({ selectedDates: dates, reason: form.getFieldValue('reason') || '' });
   };

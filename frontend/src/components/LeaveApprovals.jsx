@@ -3,6 +3,7 @@ import { Alert, App, Button, Form, Modal, Select, Space, Table, Tag, Typography 
 import { getLeaveRequests, reviewLeaveRequest } from '../services/leaveApi';
 import { formatDateOnlyVN } from '../utils/dates';
 import Attachments from './Attachments';
+import { useAuth } from '../hooks/useAuth';
 
 // Nhãn và màu sắc trạng thái đơn nghỉ
 const leaveStatusLabels = {
@@ -90,6 +91,7 @@ export default function LeaveApprovals() {
   const [reload, setReload] = useState(0);
   const [selected, setSelected] = useState(null);
   const { message } = App.useApp();
+  const { user } = useAuth();
 
   useEffect(() => {
     let active = true;
@@ -182,8 +184,10 @@ export default function LeaveApprovals() {
           { 
             title: 'Xử lý', 
             width: 140,
-            render: (_, row) => row.status === 'cho_xac_thuc' ? (
+            render: (_, row) => row.status === 'cho_xac_thuc' && row.employee_send_id !== user?.employee_id ? (
               <Button type="primary" size="small" onClick={() => setSelected(row)}>Xử lý</Button>
+            ) : row.status === 'cho_xac_thuc' ? (
+              <Typography.Text type="secondary">Không thể tự duyệt</Typography.Text>
             ) : (
               <Typography.Text type="secondary">Đã xử lý</Typography.Text>
             ) 
