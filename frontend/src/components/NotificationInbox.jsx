@@ -16,6 +16,10 @@ function loadDraftNotifications(userId) {
   return listDrafts(userId).filter(draft => draft.interrupted === true).map(draftNotification).filter(Boolean);
 }
 
+function loadDraftNotifications(userId) {
+  return listDrafts(userId).filter(draft => draft.interrupted === true).map(draftNotification).filter(Boolean);
+}
+
 function readSettings(key) {
   try {
     const saved = JSON.parse(localStorage.getItem(key) || '{}');
