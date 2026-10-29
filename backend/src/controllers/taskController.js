@@ -164,9 +164,20 @@ function getCurrentWeekRange() {
 export const listMyTasks = async (req, res) => {
   try {
     const { start, nextWeek } = getCurrentWeekRange();
+    const projectVisibility = req.user.role === 'admin' ? {} : {
+      projects: {
+        is: {
+          OR: [
+            { project_members: { some: { employee_id: req.employee.employee_id } } },
+            ...(req.user.role === 'manager' ? [{ manager_id: req.employee.employee_id }] : []),
+          ],
+        },
+      },
+    };
     const tasks = await prisma.tasks.findMany({
       where: {
         assignee_id: req.employee.employee_id,
+        ...projectVisibility,
         OR: [
           { status: { not: 'xong' } },
           { status: 'xong', completed_at: { gte: start, lt: nextWeek } },

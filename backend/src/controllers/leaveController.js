@@ -1,248 +1,234 @@
 import prisma from '../config/prisma.js';
 
-// --- 1. TẠO ĐƠN XIN NGHỈ PHÉP ---
+const MAX_LEAVE_DAYS = 12;
+const ACTIVE_LEAVE_STATUSES = ['cho_xac_thuc', 'da_duoc_duyet'];
+const LEAVE_STATUSES = [...ACTIVE_LEAVE_STATUSES, 'bi_tu_choi'];
+
+function dateKey(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
+}
+
+function isValidDateOnly(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function isWeekday(value) {
+  const day = new Date(`${value}T00:00:00.000Z`).getUTCDay();
+  return day !== 0 && day !== 6;
+}
+
+function workingDatesBetween(start, end) {
+  const dates = [];
+  const cursor = new Date(`${start}T00:00:00.000Z`);
+  const last = new Date(`${end}T00:00:00.000Z`);
+  while (cursor <= last) {
+    const value = cursor.toISOString().slice(0, 10);
+    if (isWeekday(value)) dates.push(value);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return dates;
+}
+
+function reservedWorkingDates(requests, year) {
+  const dates = new Set();
+  for (const request of requests) {
+    const start = dateKey(request.start_date);
+    const end = dateKey(request.end_date);
+    if (!start || !end) continue;
+    for (const date of workingDatesBetween(start, end)) {
+      if (date.slice(0, 4) === String(year)) dates.add(date);
+    }
+  }
+  return dates;
+}
+
+function validateRequestedDates(input) {
+  if (!Array.isArray(input) || input.length === 0) return { error: 'Vui lòng chọn ít nhất một ngày xin nghỉ.' };
+  if (input.some(date => !isValidDateOnly(date))) return { error: 'Ngày nghỉ không hợp lệ.' };
+  const dates = [...new Set(input)].sort();
+  if (dates.length !== input.length) return { error: 'Danh sách ngày nghỉ bị trùng.' };
+  if (dates.some(date => !isWeekday(date))) return { error: 'Ngày phép chỉ tính từ Thứ 2 đến Thứ 6.' };
+  if (dates.some(date => date.slice(0, 4) !== dates[0].slice(0, 4))) {
+    return { error: 'Mỗi đơn nghỉ phép chỉ áp dụng trong một năm.' };
+  }
+
+  // Cơ sở dữ liệu hiện lưu mỗi đơn dưới dạng một khoảng ngày; buộc các ngày
+  // đã chọn liền nhau theo ngày làm việc để số phép không bị tính sai.
+  const representedDates = workingDatesBetween(dates[0], dates.at(-1));
+  if (representedDates.length !== dates.length || representedDates.some((date, index) => date !== dates[index])) {
+    return { error: 'Hãy chọn một khoảng ngày làm việc liên tiếp cho mỗi đơn nghỉ phép.' };
+  }
+  return { dates };
+}
+
+function summarizeLeave(requests, year) {
+  const dates = reservedWorkingDates(requests, year);
+  const usedDays = dates.size;
+  return { usedDays, remainingDays: Math.max(0, MAX_LEAVE_DAYS - usedDays) };
+}
+
+function currentVietnamYear() {
+  return Number(new Intl.DateTimeFormat('en', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric' }).format(new Date()));
+}
+
 export const createLeaveRequest = async (req, res) => {
+  const { dates: inputDates, reason } = req.body || {};
+  const { dates, error: datesError } = validateRequestedDates(inputDates);
+  if (datesError) return res.status(400).json({ error: datesError });
+  if (typeof reason !== 'string' || !reason.trim()) {
+    return res.status(400).json({ error: 'Vui lòng nhập lý do xin nghỉ phép.' });
+  }
+
+  const employeeId = req.employee.employee_id;
+  const startDate = dates[0];
+  const endDate = dates.at(-1);
+  const year = Number(startDate.slice(0, 4));
+
   try {
-    const userId = req.user.user_id;
-    const { dates, reason } = req.body;
-
-    if (!dates || !Array.isArray(dates) || dates.length === 0) {
-      return res.status(400).json({ error: 'Vui lòng chọn ít nhất một ngày xin nghỉ.' });
-    }
-    if (!reason || !reason.trim()) {
-      return res.status(400).json({ error: 'Vui lòng nhập lý do xin nghỉ phép.' });
-    }
-
-    const employee = await prisma.employees.findUnique({
-      where: { user_id: userId }
-    });
-
-    if (!employee) {
-      return res.status(404).json({ error: 'Không tìm thấy thông tin nhân viên.' });
-    }
-
-    const employeeId = employee.employee_id;
-
-    const sortedDates = [...dates].sort();
-    const startDate = new Date(sortedDates[0]);
-    const endDate = new Date(sortedDates[sortedDates.length - 1]);
-    const year = startDate.getFullYear();
-
-    // Lấy các đơn đang chờ hoặc đã duyệt trong năm
-    const existingRequests = await prisma.Day_off_requests.findMany({
-      where: {
-        employee_send_id: employeeId,
-        status: { in: ['cho_xac_thuc', 'da_duoc_duyet'] }
-      }
-    });
-
-    let usedDaysCount = 0;
-    existingRequests.forEach(reqItem => {
-      if (reqItem.start_date && reqItem.end_date) {
-        const start = new Date(reqItem.start_date);
-        const end = new Date(reqItem.end_date);
-        if (start.getFullYear() === year) {
-          const diffTime = Math.abs(end - start);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-          usedDaysCount += diffDays;
-        }
-      }
-    });
-
-    const requestedDaysCount = dates.length;
-    const MAX_LEAVE_DAYS = 12;
-
-    if (usedDaysCount + requestedDaysCount > MAX_LEAVE_DAYS) {
-      return res.status(400).json({
-        error: `Bạn đã dùng/đăng ký ${usedDaysCount} ngày phép trong năm ${year}. Hạn mức tối đa là ${MAX_LEAVE_DAYS} ngày/năm!`
+    const result = await prisma.$transaction(async tx => {
+      const existingRequests = await tx.Day_off_requests.findMany({
+        where: { employee_send_id: employeeId, status: { in: ACTIVE_LEAVE_STATUSES } },
+        select: { start_date: true, end_date: true },
       });
-    }
+      const reservedDates = reservedWorkingDates(existingRequests, year);
+      const overlap = dates.find(date => reservedDates.has(date));
+      if (overlap) return { status: 409, error: `Ngày ${overlap} đã có đơn chờ duyệt hoặc đã được duyệt.` };
 
-    let recipientId = employee.manager_id || null;
-    const adminEmployee = await prisma.employees.findFirst({
-      where: { users: { role: 'ADMIN' } }
-    });
-    recipientId = recipientId || (adminEmployee ? adminEmployee.employee_id : employeeId);
-
-    const newLeaveRequest = await prisma.Day_off_requests.create({
-      data: {
-        employee_send_id: employeeId,
-        employee_receive_id: recipientId,
-        start_date: startDate,
-        end_date: endDate,
-        reason: reason.trim(),
-        status: 'cho_xac_thuc'
+      const requestedTotal = reservedDates.size + dates.length;
+      if (requestedTotal > MAX_LEAVE_DAYS) {
+        return { status: 400, error: `Bạn đã dùng/đăng ký ${reservedDates.size} ngày phép trong năm ${year}; chỉ còn ${Math.max(0, MAX_LEAVE_DAYS - reservedDates.size)} ngày.` };
       }
-    });
 
-    res.json({
+      const adminEmployee = await tx.employees.findFirst({
+        where: {
+          employee_id: { not: employeeId },
+          status: 'dang_lam_viec',
+          users: { role: { equals: 'ADMIN', mode: 'insensitive' } },
+        },
+        select: { employee_id: true },
+        orderBy: { employee_id: 'asc' },
+      });
+      const recipientId = adminEmployee?.employee_id;
+      if (!recipientId || recipientId === employeeId) {
+        return { status: 409, error: 'Chưa có người duyệt khác người gửi. Hãy liên hệ quản trị viên.' };
+      }
+
+      const request = await tx.Day_off_requests.create({
+        data: {
+          employee_send_id: employeeId,
+          employee_receive_id: recipientId,
+          start_date: new Date(`${startDate}T00:00:00.000Z`),
+          end_date: new Date(`${endDate}T00:00:00.000Z`),
+          reason: reason.trim(),
+          status: 'cho_xac_thuc',
+        },
+      });
+      return { request, requestedTotal };
+    }, { isolationLevel: 'Serializable' });
+
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    return res.status(201).json({
       success: true,
-      message: `Gửi đơn thành công! Tổng số phép đã dùng/đăng ký: ${usedDaysCount + requestedDaysCount}/${MAX_LEAVE_DAYS} ngày.`,
-      data: newLeaveRequest
+      message: `Gửi đơn thành công! Tổng số phép đã dùng/đăng ký: ${result.requestedTotal}/${MAX_LEAVE_DAYS} ngày.`,
+      data: result.request,
     });
   } catch (error) {
     console.error('Create Leave Error:', error);
-    res.status(500).json({ error: 'Lỗi server khi tạo đơn xin nghỉ phép.' });
+    if (error.code === 'P2034') return res.status(409).json({ error: 'Dữ liệu phép năm vừa thay đổi, vui lòng tải lại và thử lại.' });
+    return res.status(500).json({ error: 'Lỗi server khi tạo đơn xin nghỉ phép.' });
   }
 };
 
-// --- 2. LẤY TỔNG QUAN SỐ PHÉP CÒN LẠI ---
 export const getMyLeaveSummary = async (req, res) => {
   try {
-    const userId = req.user.user_id;
-    const employee = await prisma.employees.findUnique({ where: { user_id: userId } });
-
-    if (!employee) {
-      return res.status(404).json({ error: 'Không tìm thấy nhân viên.' });
-    }
-
-    const employeeId = employee.employee_id;
-    const year = new Date().getFullYear();
-
-    const existingRequests = await prisma.Day_off_requests.findMany({
-      where: {
-        employee_send_id: employeeId,
-        status: { in: ['cho_xac_thuc', 'da_duoc_duyet'] }
-      }
+    const year = currentVietnamYear();
+    const requests = await prisma.Day_off_requests.findMany({
+      where: { employee_send_id: req.employee.employee_id, status: { in: ACTIVE_LEAVE_STATUSES } },
+      select: { start_date: true, end_date: true },
     });
-
-    let usedDays = 0;
-    existingRequests.forEach(reqItem => {
-      if (reqItem.start_date && reqItem.end_date) {
-        const start = new Date(reqItem.start_date);
-        const end = new Date(reqItem.end_date);
-        if (start.getFullYear() === year) {
-          const diffTime = Math.abs(end - start);
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-          usedDays += diffDays;
-        }
-      }
-    });
-
-    const maxDays = 12;
-    const remainingDays = Math.max(0, maxDays - usedDays);
-
-    res.json({
-      success: true,
-      year,
-      max_days: maxDays,
-      used_days: usedDays,
-      remaining_days: remainingDays
-    });
+    const { usedDays, remainingDays } = summarizeLeave(requests, year);
+    return res.json({ success: true, year, max_days: MAX_LEAVE_DAYS, used_days: usedDays, remaining_days: remainingDays });
   } catch (error) {
     console.error('Get Leave Summary Error:', error);
-    res.status(500).json({ error: 'Lỗi khi tải thông tin số ngày phép.' });
+    return res.status(500).json({ error: 'Lỗi khi tải thông tin số ngày phép.' });
   }
 };
 
-// --- 3. LẤY DANH SÁCH ĐƠN XIN NGHỈ (Đã fix chuẩn role chữ thường) ---
 export const getLeaveRequests = async (req, res) => {
   try {
-    const { user_id, role } = req.user;
+    const role = String(req.user.role || '').toLowerCase();
     const { status } = req.query;
-
-    let whereCondition = {};
-    if (status) {
-      whereCondition.status = status;
-    }
-
-    let requests;
-    // Chuẩn hóa role về chữ thường để so khớp chính xác với DB ('admin', 'manager', 'member')
-    const currentRole = role ? role.toLowerCase() : '';
-
-    if (currentRole === 'admin' || currentRole === 'manager') {
-      // Admin hoặc Manager được xem toàn bộ danh sách đơn theo trạng thái lọc
-      requests = await prisma.Day_off_requests.findMany({
-        where: whereCondition,
-        include: {
-          employees_Day_off_requests_employee_send_idToemployees: {
-            select: { fullname: true, email: true }
-          }
-        },
-        orderBy: { created_at: 'desc' }
-      });
+    if (status && !LEAVE_STATUSES.includes(status)) return res.status(400).json({ error: 'Trạng thái đơn nghỉ không hợp lệ.' });
+    const where = status ? { status } : {};
+    if (role === 'admin') {
+      // Admin được xem toàn bộ đơn.
+    } else if (role === 'manager' && status) {
+      where.employee_receive_id = req.employee.employee_id;
     } else {
-      // Member (nhân viên thường) chỉ được xem đơn do chính mình gửi đi
-      const employee = await prisma.employees.findUnique({ where: { user_id } });
-      if (!employee) return res.json({ success: true, requests: [] });
-
-      whereCondition.employee_send_id = employee.employee_id;
-      requests = await prisma.Day_off_requests.findMany({
-        where: whereCondition,
-        orderBy: { created_at: 'desc' }
-      });
+      where.employee_send_id = req.employee.employee_id;
     }
-
-    res.json({ success: true, requests });
+    const requests = await prisma.Day_off_requests.findMany({
+      where,
+      include: {
+        employees_Day_off_requests_employee_send_idToemployees: { select: { fullname: true, email: true } },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+    return res.json({ success: true, requests });
   } catch (error) {
     console.error('Get Leaves Error:', error);
-    res.status(500).json({ error: 'Không thể tải danh sách đơn nghỉ phép.' });
+    return res.status(500).json({ error: 'Không thể tải danh sách đơn nghỉ phép.' });
   }
 };
 
-// --- 4. HỦY ĐƠN XIN NGHỈ (Dành cho nhân viên khi đơn còn chờ xác thực) ---
 export const cancelLeaveRequest = async (req, res) => {
   try {
-    const { id } = req.params;
-    const userId = req.user.user_id;
-
-    const employee = await prisma.employees.findUnique({ where: { user_id: userId } });
-    if (!employee) {
-      return res.status(404).json({ error: 'Không tìm thấy nhân viên.' });
-    }
-
-    const leaveReq = await prisma.Day_off_requests.findUnique({
-      where: { Day_off_id: Number(id) }
-    });
-
-    if (!leaveReq) {
-      return res.status(404).json({ error: 'Không tìm thấy đơn xin nghỉ.' });
-    }
-
-    if (leaveReq.employee_send_id !== employee.employee_id) {
-      return res.status(403).json({ error: 'Bạn không có quyền hủy đơn này.' });
-    }
-
-    if (leaveReq.status !== 'cho_xac_thuc') {
-      return res.status(400).json({ error: 'Chỉ có thể hủy các đơn đang ở trạng thái chờ xác thực.' });
-    }
-
-    await prisma.Day_off_requests.delete({
-      where: { Day_off_id: Number(id) }
-    });
-
-    res.json({
-      success: true,
-      message: 'Đã hủy đơn xin nghỉ phép thành công.'
-    });
+    const id = Number(req.params.id);
+    const leaveReq = await prisma.Day_off_requests.findUnique({ where: { Day_off_id: id } });
+    if (!leaveReq) return res.status(404).json({ error: 'Không tìm thấy đơn xin nghỉ.' });
+    if (leaveReq.employee_send_id !== req.employee.employee_id) return res.status(403).json({ error: 'Bạn không có quyền hủy đơn này.' });
+    if (leaveReq.status !== 'cho_xac_thuc') return res.status(400).json({ error: 'Chỉ có thể hủy các đơn đang chờ duyệt.' });
+    await prisma.Day_off_requests.delete({ where: { Day_off_id: id } });
+    return res.json({ success: true, message: 'Đã hủy đơn xin nghỉ phép thành công.' });
   } catch (error) {
     console.error('Cancel Leave Error:', error);
-    res.status(500).json({ error: 'Lỗi server khi hủy đơn.' });
+    return res.status(500).json({ error: 'Lỗi server khi hủy đơn.' });
   }
 };
 
-// --- 5. DUYỆT HOẶC TỪ CHỐI ĐƠN XIN NGHỈ ---
 export const reviewLeaveRequest = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { status } = req.body;
+    const role = String(req.user.role || '').toLowerCase();
+    if (!['admin', 'manager'].includes(role)) return res.status(403).json({ error: 'Chỉ quản lý hoặc Admin được duyệt đơn nghỉ phép.' });
+    const { status } = req.body || {};
+    if (!['da_duoc_duyet', 'bi_tu_choi'].includes(status)) return res.status(400).json({ error: 'Trạng thái duyệt không hợp lệ.' });
 
-    if (!['da_duoc_duyet', 'bi_tu_choi'].includes(status)) {
-      return res.status(400).json({ error: 'Trạng thái duyệt không hợp lệ.' });
+    const id = Number(req.params.id);
+    const leaveReq = await prisma.Day_off_requests.findUnique({ where: { Day_off_id: id } });
+    if (!leaveReq) return res.status(404).json({ error: 'Không tìm thấy đơn xin nghỉ.' });
+    if (leaveReq.employee_send_id === req.employee.employee_id) return res.status(403).json({ error: 'Bạn không thể duyệt hoặc từ chối đơn nghỉ của chính mình.' });
+    if (role !== 'admin' && leaveReq.employee_receive_id !== req.employee.employee_id) {
+      return res.status(403).json({ error: 'Đơn này không được gửi đến bạn để duyệt.' });
     }
+    if (leaveReq.status !== 'cho_xac_thuc') return res.status(409).json({ error: 'Đơn này đã được xử lý.' });
 
-    const updated = await prisma.Day_off_requests.update({
-      where: { Day_off_id: Number(id) },
-      data: { status }
+    const changed = await prisma.Day_off_requests.updateMany({
+      where: { Day_off_id: id, status: 'cho_xac_thuc', employee_send_id: { not: req.employee.employee_id } },
+      data: { status },
     });
-
-    res.json({
+    if (!changed.count) return res.status(409).json({ error: 'Đơn đã được xử lý hoặc không thể tự duyệt.' });
+    const updated = await prisma.Day_off_requests.findUnique({ where: { Day_off_id: id } });
+    return res.json({
       success: true,
       message: status === 'da_duoc_duyet' ? 'Đã duyệt đơn nghỉ phép.' : 'Đã từ chối đơn nghỉ phép.',
-      data: updated
+      data: updated,
     });
   } catch (error) {
     console.error('Review Leave Error:', error);
-    res.status(500).json({ error: 'Lỗi khi xử lý duyệt đơn.' });
+    return res.status(500).json({ error: 'Lỗi khi xử lý duyệt đơn.' });
   }
 };
