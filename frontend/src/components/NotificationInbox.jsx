@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Alert, Badge, Button, Drawer, Empty, Space, Spin, Switch, Typography } from 'antd';
+import { Alert, Badge, Button, Drawer, Empty, Space, Spin, Switch, Tag, Typography } from 'antd';
 import { MailOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useMyWork } from '../hooks/useMyWork';
 import { useAttendance } from '../hooks/useAttendance';
-import { attendanceReminders, taskDueReminders, taskNotifications } from '../utils/notifications';
+import { attendanceReminders, sortNotifications, taskDueReminders, taskNotifications } from '../utils/notifications';
 import { request } from '../services/http';
 import WebPushSettings from './WebPushSettings';
 import { DRAFT_CHANGED, listDrafts } from '../utils/draftStorage';
 import { draftNotification } from '../utils/draftNotifications';
+import { OVERTIME_CHANGED, overtimeNotifications, readOvertimeNotifications } from '../services/overtimeApi';
 
 function loadDraftNotifications(userId) {
   return listDrafts(userId).filter(draft => draft.interrupted === true).map(draftNotification).filter(Boolean);
@@ -39,6 +40,8 @@ function Inbox({ storageKey }) {
   const navigate = useNavigate();
   const [commentItems, setCommentItems] = useState([]);
   const [commentError, setCommentError] = useState('');
+  const [overtimeItems, setOvertimeItems] = useState([]);
+  const [overtimeError, setOvertimeError] = useState('');
   const [revision, setRevision] = useState(0);
   const [marking, setMarking] = useState(false);
   useEffect(() => {
@@ -72,9 +75,23 @@ function Inbox({ storageKey }) {
     const timer = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
-  const items = [...draftItems, ...commentItems, ...taskNotifications(tasks), ...taskDueReminders(tasks, now), ...(settings.reminders ? attendanceReminders(now, record) : [])]
-    .sort((a, b) => (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0));
-  const isRead = item => item.type === 'comment' ? item.read : settings.read.includes(item.id);
+  useEffect(() => {
+    let active = true, pending = false;
+    async function load() {
+      if (pending || document.hidden) return;
+      pending = true;
+      try { const data = await overtimeNotifications(); if (active) { setOvertimeItems(data); setOvertimeError(''); } }
+      catch (err) { if (active) setOvertimeError(err.message); }
+      finally { pending = false; }
+    }
+    load();
+    const timer = setInterval(load, 15000);
+    window.addEventListener('focus', load); window.addEventListener(OVERTIME_CHANGED, load);
+    document.addEventListener('visibilitychange', load);
+    return () => { active = false; clearInterval(timer); window.removeEventListener('focus', load); window.removeEventListener(OVERTIME_CHANGED, load); document.removeEventListener('visibilitychange', load); };
+  }, [revision]);
+  const isRead = item => ['comment', 'overtime'].includes(item.type) ? item.read : settings.read.includes(item.id);
+  const items = sortNotifications([...draftItems, ...commentItems, ...overtimeItems, ...taskNotifications(tasks), ...taskDueReminders(tasks, now), ...(settings.reminders ? attendanceReminders(now, record) : [])], isRead);
   const unread = items.filter(item => !isRead(item)).length;
   function save(next) {
     setSettings(next);
@@ -82,15 +99,25 @@ function Inbox({ storageKey }) {
   }
   async function markRead(ids) {
     const commentIds = ids.filter(id => id.startsWith('comment:'));
-    save({ ...settings, read: [...new Set([...settings.read, ...ids.filter(id => !id.startsWith('comment:'))])].slice(-2000) });
-    if (!commentIds.length) return;
+    const overtimeIds = ids.filter(id => id.startsWith('overtime:'));
+    save({ ...settings, read: [...new Set([...settings.read, ...ids.filter(id => !id.startsWith('comment:') && !id.startsWith('overtime:'))])].slice(-2000) });
+    if (!commentIds.length && !overtimeIds.length) return;
     setMarking(true);
-    try {
-      await request('/api/notifications/comments/read', { method: 'PATCH', body: { ids: commentIds } });
-      setCommentItems(previous => previous.map(item => commentIds.includes(item.id) ? { ...item, read: true } : item));
-      setRevision(value => value + 1);
-    } catch (err) { setCommentError(err.message); }
-    finally { setMarking(false); }
+    const jobs = [];
+    for (let i = 0; i < commentIds.length; i += 100) {
+      const batch = commentIds.slice(i, i + 100);
+      jobs.push(request('/api/notifications/comments/read', { method: 'PATCH', body: { ids: batch } }).then(() => {
+        setCommentItems(previous => previous.map(item => batch.includes(item.id) ? { ...item, read: true } : item));
+      }).catch(err => setCommentError(err.message)));
+    }
+    for (let i = 0; i < overtimeIds.length; i += 100) {
+      const batch = overtimeIds.slice(i, i + 100);
+      jobs.push(readOvertimeNotifications(batch).then(() => {
+        setOvertimeItems(previous => previous.map(item => batch.includes(item.id) ? { ...item, read: true } : item));
+      }).catch(err => setOvertimeError(err.message)));
+    }
+    await Promise.allSettled(jobs);
+    setMarking(false);
   }
   return <>
     <Badge count={unread} size="small" overflowCount={99} offset={[-7, 8]}>
@@ -113,9 +140,11 @@ function Inbox({ storageKey }) {
         Công việc tự cập nhật mỗi phút. Trạng thái chấm công được đọc từ máy chủ, đồng bộ giữa các tab/trình duyệt;
           {' '}nhắc công việc sắp đến hạn trong 3 ngày và nhắc lại việc quá hạn hằng ngày. Lời nhắc chấm công ẩn sau khi đã vào/ra ca.
         {' '}Bình luận cập nhật mỗi 15 giây khi mở website; hiển thị 100 bình luận gần nhất. Trạng thái đọc bình luận lưu trên máy chủ.
+        {' '}Chưa đọc lên trước; đơn tăng ca kế hoạch gần ngày làm được ưu tiên, sau đó đến thời gian mới nhất. Đơn bổ sung ngày cũ không đẩy desktop.
       </Typography.Paragraph>
       {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />}
       {commentError && <Alert type="warning" title={commentError} showIcon style={{ marginBottom: 12 }} />}
+      {overtimeError && <Alert type="warning" title={overtimeError} showIcon style={{ marginBottom: 12 }} />}
       {warning && <Alert type="warning" title={warning} showIcon style={{ marginBottom: 12 }} />}
       {loading && <Spin />}
       {!loading && !items.length && <Empty description="Chưa có thông báo" />}
@@ -125,6 +154,7 @@ function Inbox({ storageKey }) {
             state: { notificationId: item.id, ...(item.type === 'draft' ? { resumeDraft: item.draftScope } : {}) },
           }); }}>
           <Typography.Text strong={!isRead(item)}>{item.title}</Typography.Text>
+          {item.priority_label && <Tag color="orange" style={{ width: 'fit-content' }}>{item.priority_label}</Tag>}
           <Typography.Text type="secondary">{item.description}</Typography.Text>
           {item.time && <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             {new Date(item.time).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}

@@ -11,7 +11,8 @@
     "setup:attendance": "node scripts/setup-attendance.js",
     "setup:notifications": "node scripts/setup-notifications.js",
     "setup:web-push": "node scripts/setup-web-push.js",
-    "setup:chat": "node scripts/setup-chat.js"
+    "setup:chat": "node scripts/setup-chat.js",
+    "setup:overtime": "node scripts/setup-overtime.js"
   },
   "keywords": [],
   "author": "",

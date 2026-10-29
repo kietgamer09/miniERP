@@ -2,6 +2,27 @@
 
 Backend API service cho hệ thống **MiniERP** được xây dựng bằng Node.js, Express và Prisma ORM quản lý cơ sở dữ liệu PostgreSQL.
 
+## Đơn làm thêm / tăng ca
+
+Sau khi nhận bản có chức năng làm thêm, chạy một lần trong `backend` rồi khởi động lại backend:
+
+```bash
+npm run setup:overtime
+npm run dev
+```
+
+Lệnh tạo bảng `work_overtime_requests` và `work_overtime_notifications`, chạy lại được và giữ dữ liệu cũ. Không cần cài thư viện mới hoặc generate Prisma cho phần này.
+
+- Mục **Làm thêm** có đơn kế hoạch (từ hôm nay đến cùng ngày tháng sau, chặn ở ngày cuối tháng nếu tháng sau ngắn hơn) và đơn bổ sung (ngày trước hôm nay). Tính ngày theo `Asia/Ho_Chi_Minh`, cho phép cuối tuần và giờ qua ngày; khoảng giờ phải lớn hơn 0 và tối đa 24 giờ. Không nhận ngày trước ngày vào làm nếu hồ sơ đã có ngày vào làm.
+- Nhân viên chỉ thấy đơn của mình; quản lý được xem/duyệt đơn thuộc phòng ban ghi nhận lúc gửi; Admin được xem/duyệt tất cả. Quản lý cùng phòng và tất cả Admin đang làm việc đều nhận thông báo, trừ người gửi. Một quyết định là đủ; không ai được tự duyệt đơn của mình hoặc xử lý lại đơn đã duyệt/hủy.
+- Gửi đơn khóa giao dịch theo nhân viên để ngăn hai đơn trùng giờ, kể cả ca qua ngày. Duyệt/hủy khóa theo đơn để hai người không xử lý thành hai kết quả. Từ chối bắt buộc lý do; người gửi chỉ hủy khi đơn còn chờ. Người gửi nhận thông báo kết quả. Có thể đính kèm file vào đơn đang chờ; chỉ người có quyền xem đơn mới tải được file.
+- Đơn ngày cũ chỉ vào hòm thông báo, không đẩy desktop. Đơn kế hoạch được xếp theo ngày làm gần nhất, kể cả đơn còn xa. Worker Web Push bắt đầu đẩy khi còn 0–3 ngày, nếu đơn vẫn chờ và người nhận chưa đọc: hôm nay/ngày mai `high`, sau 2 ngày `normal`, sau 3 ngày `low`. Đơn xa hơn tự đủ điều kiện khi đến gần ngày làm. Mỗi trình duyệt nhận tối đa một lần thành công cho mỗi thông báo; dừng đẩy nếu đã đọc, đã duyệt hoặc hủy. Cần backend đang chạy, cấu hình Web Push và trình duyệt đã đăng ký nhận thông báo.
+- Hòm thư sắp chưa đọc trước, mức ưu tiên giảm dần, rồi thời gian mới nhất trước. Đơn làm thêm và bình luận lưu trạng thái đọc trong DB, đồng bộ giữa các tab/trình duyệt. Thông báo làm thêm hiển thị tối đa 200 mục, danh sách đơn tối đa 500 đơn gần nhất.
+
+API: `GET/POST /api/overtime`, `GET /api/overtime/:id`, `POST /api/overtime/:id/review`, `POST /api/overtime/:id/cancel`, `GET /api/overtime/notifications`, `PATCH /api/overtime/notifications/read`. Tạo đơn: `{ mode: "past" | "planned", date: "YYYY-MM-DD", start_time: "HH:mm", end_time: "HH:mm", end_next_day: boolean, reason }`. Duyệt: `{ decision: "approved" | "rejected", note? }`.
+
+Kiểm tra bằng `node --test scripts/check-overtime-contract.mjs`. Script cần quyền tạo database PostgreSQL tạm, dùng tài khoản riêng trong database đó, dùng bộ gửi push giả và tự dọn database kiểm thử; không gửi thông báo đến nhân viên thật. Kiểm tra thứ tự hòm thư từ `frontend`: `node --test src/utils/notificationOrder.test.js`.
+
 ---
 
 ## 🛠️ Tech Stack
