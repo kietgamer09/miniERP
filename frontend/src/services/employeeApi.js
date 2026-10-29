@@ -8,6 +8,10 @@ export function getMyProfile() {
   return request('/api/users/me');
 }
 
+export function updateMyProfile(data) {
+  return request('/api/users/me', { method: 'PATCH', body: data });
+}
+
 export function createEmployee(data) {
   return request('/api/users/employee-create', { method: 'POST', body: data });
 }

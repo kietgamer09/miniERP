@@ -80,6 +80,7 @@ test('maps supported draft types to internal pages and rejects unknown scopes', 
     'employee:new': '/quan-ly-nhan-vien', 'department:2': '/quan-ly-phong-ban',
     'attendance-explanation:2026-10-28': '/cham-cong/bang-cong?date=2026-10-28',
     'leave:new': '/cham-cong/nghi-phep',
+    'profile:me': '/thong-tin',
   };
   for (const [scope, path] of Object.entries(examples)) {
     assert.equal(draftNotification({ scope, values: {}, updatedAt: Date.now() }).path, path);
