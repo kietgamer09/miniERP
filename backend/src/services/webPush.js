@@ -1,5 +1,6 @@
 import webpush from 'web-push';
 import prisma from '../config/prisma.js';
+import { overtimePushPayload, pendingOvertimePush } from './overtime.js';
 
 export function pushConfig() {
   return {
@@ -42,6 +43,8 @@ export async function pendingPush(db = prisma) {
       )) ORDER BY c.created_at ASC, s.id LIMIT 100`;
 }
 export async function deliverPush(row, db = prisma, send = webpush.sendNotification.bind(webpush)) {
+  const overtime = row.kind === 'overtime' ? await overtimePushPayload(row, db) : null;
+  if (row.kind === 'overtime' && !overtime) return;
   const claims = await db.$queryRaw`
     INSERT INTO work_push_deliveries(subscription_id, kind, comment_id, attempts, next_attempt_at)
     VALUES (${row.id}, ${row.kind}, ${row.comment_id}, 1, now() + interval '60 seconds')
@@ -51,12 +54,12 @@ export async function deliverPush(row, db = prisma, send = webpush.sendNotificat
       AND work_push_deliveries.next_attempt_at <= now() RETURNING subscription_id`;
   if (!claims.length) return;
   try {
-    await send({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, JSON.stringify({
+    await send({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, JSON.stringify(overtime?.payload || {
       title: 'miniERP · Bình luận mới',
       body: 'Có bình luận mới trong dự án hoặc công việc bạn tham gia. Bấm để xem chi tiết.',
       tag: `comment:${row.kind}:${row.comment_id}`,
       path: `/du-an/${row.project_id}${row.task_id ? `?task=${row.task_id}` : '?discussion=1'}`,
-    }), { vapidDetails: pushConfig(), TTL: 3600, urgency: 'normal', timeout: 10000 });
+    }), { vapidDetails: pushConfig(), TTL: 3600, urgency: overtime?.urgency || 'normal', timeout: 10000 });
     await db.$executeRaw`UPDATE work_push_deliveries SET delivered_at = now() WHERE subscription_id = ${row.id} AND kind = ${row.kind} AND comment_id = ${row.comment_id}`;
   } catch (error) {
     if ([404, 410].includes(error.statusCode)) await db.$executeRaw`DELETE FROM work_push_subscriptions WHERE id = ${row.id}`;
@@ -70,7 +73,12 @@ export function startPushWorker() {
     if (busy) return;
     busy = true;
     try {
-      const rows = await pendingPush();
+      const feeds = await Promise.allSettled([pendingOvertimePush(), pendingPush()]);
+      const rows = [];
+      for (const feed of feeds) {
+        if (feed.status === 'fulfilled') rows.push(...feed.value);
+        else console.error('Web Push feed:', feed.reason.code || feed.reason.name);
+      }
       for (let i = 0; i < rows.length; i += 5) await Promise.allSettled(rows.slice(i, i + 5).map(row => deliverPush(row)));
     } catch (error) { console.error('Web Push worker:', error.code || error.name); }
     finally { busy = false; }

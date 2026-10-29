@@ -44,3 +44,10 @@ export function taskDueReminders(tasks, now = new Date()) {
     return [];
   });
 }
+
+export function sortNotifications(items, isRead) {
+  return [...items].sort((a, b) => Number(Boolean(isRead(a))) - Number(Boolean(isRead(b)))
+    || (b.priority || 0) - (a.priority || 0)
+    || (Date.parse(b.time) || 0) - (Date.parse(a.time) || 0)
+    || String(a.id).localeCompare(String(b.id)));
+}

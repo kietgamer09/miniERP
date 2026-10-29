@@ -1,0 +1,14 @@
+.overtime-page { display: grid; align-content: start; gap: 16px; min-width: 0; }
+.overtime-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.overtime-header h3 { margin: 0 0 4px; }
+.overtime-page .ant-tabs { margin-bottom: -16px; }
+.overtime-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px; }
+.overtime-filters > .ant-input-affix-wrapper { flex: 1 1 260px; max-width: 460px; }
+.overtime-filters > .ant-select { min-width: 175px; }
+.overtime-muted { color: var(--muted); font-size: 12px; margin-top: 3px; }
+.overtime-review-hint { padding: 0 16px; font-size: 12px; }
+.overtime-time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 600px) {
+  .overtime-header > .ant-space { width: 100%; }
+  .overtime-filters > .ant-input-affix-wrapper, .overtime-filters > .ant-select { max-width: none; width: 100%; flex-basis: 100%; }
+}

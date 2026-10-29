@@ -91,6 +91,39 @@ npm run dev
 
 Server sẽ chạy tại địa chỉ mặc định: http://localhost:5000
 
+## Nhắn tin nội bộ
+
+Sau khi pull phiên bản có chat, chạy một lần trong `backend`:
+
+```bash
+npm run setup:chat
+npm run dev
+```
+
+Lệnh tạo các bảng chat bằng SQL, chạy lại được và giữ dữ liệu hiện có. Không cần thư viện mới hoặc generate Prisma để dùng chat. Lịch sử và trạng thái đọc lưu trong PostgreSQL; tệp mã hóa lưu ở `backend/uploads/chat`, cần sao lưu thư mục này cùng database khi chuyển máy.
+
+### Mở khóa chat theo ngày và mã hóa dữ liệu
+
+Chạy lại `npm run setup:chat` rồi khởi động lại backend để cập nhật bản có khóa chat. Script tạo `CHAT_ENCRYPTION_KEY` ngẫu nhiên trong `backend/.env` nếu chưa có, chuyển tin nhắn/tên tệp cũ sang mã hóa và tạo bản tệp `.enc`. Bản `.bin` cũ chỉ được xóa sau khi bản mã hóa và dữ liệu trong DB đã lưu thành công. Script kiểm tra khóa trên dữ liệu đã mã hóa, không tự thay khóa nếu có dữ liệu mã hóa mà thiếu khóa.
+
+Giữ một bản sao an toàn của **CHAT_ENCRYPTION_KEY** cùng bản sao lưu database và thư mục uploads khi chuyển máy. Dùng đúng khóa cũ trên máy nhận, không tạo khóa mới cho database đã mã hóa; mất khóa sẽ không giải mã được lịch sử. `.env` và uploads đã được Git bỏ qua.
+
+- Mỗi tài khoản mở khóa bằng mật khẩu đăng nhập hoặc mã cá nhân 6–12 chữ số. Tạo/đổi/quên mã đều cần xác nhận mật khẩu tài khoản; mã được băm bằng bcrypt.
+- Phiên mở khóa gắn với tài khoản và phiên đăng nhập, lưu trong sessionStorage của tab; F5 vẫn giữ phiên trong ngày, đăng xuất xóa phiên mở khóa. Tab mới cần mở khóa riêng. Hết hạn lúc 00:00 theo `Asia/Ho_Chi_Minh` hoặc sớm hơn nếu phiên đăng nhập hết hạn. Các API chat đều bắt buộc phiên mở khóa hợp lệ. Đổi mã thu hồi các phiên mở khóa cũ.
+- Nhập sai 5 lần tạm khóa xác thực chat 15 phút. Bộ đếm dùng chung cho PIN và mật khẩu của nhân viên, lưu trên DB nên đổi tab không bỏ qua giới hạn.
+- Nội dung tin nhắn, tên tệp, nháp và dữ liệu tệp lưu bằng AES-256-GCM với IV ngẫu nhiên và thẻ xác thực 16 byte. Nháp mới lưu trên server; các nháp chat cũ trên trình duyệt được chuyển lên server sau khi mở khóa thành công. Tên nhóm, thành viên, thời gian và kích thước tệp là metadata chưa mã hóa.
+- Đây là mã hóa dữ liệu khi lưu trên server; server giữ khóa và giải mã sau khi kiểm tra quyền. Chưa có mã hóa đầu cuối. Khi triển khai ngoài localhost cần HTTPS để bảo vệ mật khẩu và nội dung trên đường truyền.
+
+API mở khóa: `GET /api/chat/security`, `POST /api/chat/security/unlock` với `{ method: "pin" | "password", credential }`, `PUT /api/chat/security/pin` với `{ method: "password", credential, pin }`. Token nhận được gửi qua `X-Chat-Unlock` ở các API chat. Hết phiên trả HTTP 423 / `CHAT_LOCKED`, không đăng xuất tài khoản miniERP.
+
+Tham chiếu: [Node.js Crypto](https://nodejs.org/api/crypto.html), [OWASP Authentication](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html).
+
+API `/api/chat` yêu cầu đăng nhập và hồ sơ nhân viên đang làm việc. Chat riêng giữa hai người được dùng lại; nhóm có tối đa 50 thành viên, người tạo nhóm được thêm người. Chỉ thành viên được đọc/gửi tin và tải tệp, Admin cũng phải là thành viên. Thành viên mới xem được toàn bộ lịch sử nhóm. Tin nhắn tối đa 4.000 ký tự; ảnh, PDF, DOCX, XLSX, PPTX, TXT, CSV và ZIP tối đa 10 MB/tệp.
+
+Giao diện có nút Nhắn tin cạnh hòm thông báo, lấy tin mới mỗi 4 giây khi đang mở cuộc trò chuyện và cập nhật số chưa đọc mỗi 10 giây khi website hiển thị. Chat hiện chưa gửi Web Push khi website đã đóng.
+
+Kiểm tra API và quyền truy cập bằng `node --test scripts/check-chat-contract.mjs`. Kiểm tra dùng PostgreSQL đã cấu hình, tạo ba tài khoản tạm riêng rồi dọn chúng, tin nhắn và tệp kiểm thử; không gửi tin cho tài khoản thật.
+
 ## Lịch sử công và giải trình chấm bù
 
 Sau khi nhận phiên bản này, tại thư mục `backend` chạy:

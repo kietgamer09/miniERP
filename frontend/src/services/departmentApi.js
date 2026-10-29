@@ -6,15 +6,15 @@ function listDepartments() {
 }
 
 function createDepartment(data) {
-  return request('/api/departments', { method: 'POST', body: data });
+  return request('/api/departments/department-create', { method: 'POST', body: data });
 }
 
 function updateDepartment(id, data) {
-  return request(`/api/departments/${id}`, { method: 'PUT', body: data });
+  return request(`/api/departments/department-update/${id}`, { method: 'PUT', body: data });
 }
 
 function deleteDepartment(id) {
-  return request(`/api/departments/${id}`, { method: 'DELETE' });
+  return request(`/api/departments/department-delete/${id}`, { method: 'DELETE' });
 }
 
 export { listDepartments, createDepartment, updateDepartment, deleteDepartment };

@@ -15,3 +15,7 @@ export function createEmployee(data) {
 export function updateEmployee(id, data) {
   return request(`/api/users/employee-update/${id}`, { method: 'PUT', body: data });
 }
+
+export function updateEmployeesDepartment(data) {
+  return request('/api/users/update-department', { method: 'PUT', body: data });
+}

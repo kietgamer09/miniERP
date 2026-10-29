@@ -72,6 +72,22 @@ body { background: var(--page-bg); color: var(--text); }
   overflow-wrap: anywhere;
 }
 .notification-item.is-unread { background: var(--blue-bg); border-color: var(--blue-text); }
+.company-documents-page { display: grid; gap: 20px; }
+.company-documents-header { display: flex; align-items: end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.company-documents-header .ant-typography { margin: 0; }
+.company-documents-header > div { display: grid; gap: 6px; }
+.company-documents-header > .ant-input-affix-wrapper { width: min(100%, 320px); }
+.company-documents-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 16px; align-items: stretch; }
+.company-document-card { height: 100%; cursor: default; }
+.company-document-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; color: var(--brand); background: var(--brand-soft); font-size: 20px; }
+.company-document-body { width: 100%; margin-top: 14px; }
+.company-document-body .ant-typography-secondary { line-height: 1.55; }
+.company-document-updated { font-size: 12px; }
+.company-document-content { max-height: min(60vh, 520px); overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--subtle-bg); color: var(--text); font: inherit; line-height: 1.65; }
+@media (max-width: 600px) {
+  .company-documents-header > .ant-input-affix-wrapper { width: 100%; }
+  .company-documents-grid { grid-template-columns: minmax(0, 1fr); }
+}
 
 button:not(:disabled),
 a[href],

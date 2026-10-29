@@ -46,12 +46,32 @@ export function removeDraft(key) {
   if (key) { window.localStorage.removeItem(key); changed(); }
 }
 
+export function markDraftInterrupted(key) {
+  if (!key) return;
+  try {
+    const record = JSON.parse(window.localStorage.getItem(key) || 'null');
+    if (!valid(record) || record.interrupted) return;
+    window.localStorage.setItem(key, JSON.stringify({ ...record, interrupted: true }));
+    changed();
+  } catch { /* Không chặn điều hướng khi trình duyệt không cho cập nhật trạng thái nháp. */ }
+}
+
+export function markDraftActive(key) {
+  if (!key) return;
+  try {
+    const record = JSON.parse(window.localStorage.getItem(key) || 'null');
+    if (!valid(record) || !record.interrupted) return;
+    window.localStorage.setItem(key, JSON.stringify({ ...record, interrupted: false }));
+    changed();
+  } catch { /* Nội dung nháp vẫn được giữ lại nếu không cập nhật được trạng thái. */ }
+}
+
 export function writeDraft(key, values) {
   if (!key) return;
   const meaningful = Object.values(values).some(value => Array.isArray(value) ? value.length > 0
     : value != null && String(value).trim() !== '');
   if (!meaningful) { removeDraft(key); return; }
-  const serialized = JSON.stringify({ updatedAt: Date.now(), values });
+  const serialized = JSON.stringify({ updatedAt: Date.now(), values, interrupted: false });
   if (serialized.length > MAX_SIZE) throw new Error('Bản nháp quá lớn để lưu trên máy này.');
   const storage = window.localStorage;
   prune(storage);

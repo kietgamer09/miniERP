@@ -8,6 +8,7 @@ import { verifyToken } from '../middlewares/authMiddleware.js';
 import { attachEmployee } from '../middlewares/employeeMiddleware.js';
 import { parseId } from '../utils/validators.js';
 import { canAccessTaskProject } from '../utils/taskAccess.js';
+import { canViewOvertime, overtimeActor, overtimeRecord } from '../services/overtime.js';
 
 const router = express.Router();
 const root = fileURLToPath(new URL('../../uploads/attachments/', import.meta.url));
@@ -36,6 +37,11 @@ router.use('/:type/:targetId', handle(async (req, res, next) => {
     if (!target) fail(404, 'Không tìm thấy đơn nghỉ phép');
     allowed = target.employee_send_id === employeeId || ['admin', 'manager'].includes(req.user.role);
     writable = target.employee_send_id === employeeId && target.status === 'cho_xac_thuc';
+  } else if (type === 'overtime') {
+    target = await overtimeRecord(id);
+    if (!target) fail(404, 'Không tìm thấy đơn làm thêm');
+    allowed = canViewOvertime(await overtimeActor(req), target);
+    writable = target.employee_id === employeeId && target.status === 'pending';
   } else fail(404, 'Loại đính kèm không hợp lệ');
   if (!allowed) fail(403, 'Bạn không có quyền truy cập tệp này');
   req.attachments = { directory: path.join(root, type, String(id)), writable };

@@ -21,6 +21,7 @@ const Attendance = lazy(() => import('./pages/Attendance'));
 const AttendanceApprovals = lazy(() => import('./pages/AttendanceApprovals'));
 const CompanyAttendance = lazy(() => import('./components/CompanyAttendance'));
 const LeaveManagement = lazy(() => import('./pages/LeaveManagement'));
+const CompanyDocuments = lazy(() => import('./pages/CompanyDocuments'));
 import { getAllPaths, fullMenuItems } from './config/menu';
 
 // Lấy toàn bộ đường dẫn từ cây menu
@@ -40,6 +41,7 @@ const pages = {
   '/quan-ly-phong-ban': Departments,
   '/cham-cong/bang-cong-cong-ty': CompanyAttendance,
   '/cham-cong/nghi-phep': LeaveManagement,
+  '/tai-lieu': CompanyDocuments,
 };
 
 function App() {
