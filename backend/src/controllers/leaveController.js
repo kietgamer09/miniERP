@@ -56,6 +56,8 @@ function validateRequestedDates(input) {
     return { error: 'Mỗi đơn nghỉ phép chỉ áp dụng trong một năm.' };
   }
 
+  // Cơ sở dữ liệu hiện lưu mỗi đơn dưới dạng một khoảng ngày; buộc các ngày
+  // đã chọn liền nhau theo ngày làm việc để số phép không bị tính sai.
   const representedDates = workingDatesBetween(dates[0], dates.at(-1));
   if (representedDates.length !== dates.length || representedDates.some((date, index) => date !== dates[index])) {
     return { error: 'Hãy chọn một khoảng ngày làm việc liên tiếp cho mỗi đơn nghỉ phép.' };
@@ -73,7 +75,6 @@ function currentVietnamYear() {
   return Number(new Intl.DateTimeFormat('en', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric' }).format(new Date()));
 }
 
-// 1. TẠO ĐƠN XIN NGHỈ (GỬI ĐÚNG CHO TRƯỞNG PHÒNG HOẶC ADMIN)
 export const createLeaveRequest = async (req, res) => {
   const { dates: inputDates, reason } = req.body || {};
   const { dates, error: datesError } = validateRequestedDates(inputDates);
@@ -89,12 +90,6 @@ export const createLeaveRequest = async (req, res) => {
 
   try {
     const result = await prisma.$transaction(async tx => {
-      // Kiểm tra thông tin nhân viên gửi đơn & phòng ban
-      const sender = await tx.employees.findUnique({
-        where: { employee_id: employeeId },
-        select: { department_id: true, users: { select: { role: true } } }
-      });
-
       const existingRequests = await tx.Day_off_requests.findMany({
         where: { employee_send_id: employeeId, status: { in: ACTIVE_LEAVE_STATUSES } },
         select: { start_date: true, end_date: true },
@@ -108,37 +103,18 @@ export const createLeaveRequest = async (req, res) => {
         return { status: 400, error: `Bạn đã dùng/đăng ký ${reservedDates.size} ngày phép trong năm ${year}; chỉ còn ${Math.max(0, MAX_LEAVE_DAYS - reservedDates.size)} ngày.` };
       }
 
-      let recipientId = null;
-
-      // Tìm Quản lý (Trưởng phòng) cùng phòng ban (khác người gửi)
-      const managerInDept = await tx.employees.findFirst({
+      const adminEmployee = await tx.employees.findFirst({
         where: {
-          department_id: sender.department_id,
           employee_id: { not: employeeId },
           status: 'dang_lam_viec',
-          users: { role: { equals: 'MANAGER', mode: 'insensitive' } }
+          users: { role: { equals: 'ADMIN', mode: 'insensitive' } },
         },
-        select: { employee_id: true }
+        select: { employee_id: true },
+        orderBy: { employee_id: 'asc' },
       });
-
-      if (managerInDept) {
-        recipientId = managerInDept.employee_id;
-      } else {
-        // Nếu người gửi chính là Trưởng phòng hoặc phòng chưa có Manager -> Gửi đến Admin
-        const adminEmployee = await tx.employees.findFirst({
-          where: {
-            employee_id: { not: employeeId },
-            status: 'dang_lam_viec',
-            users: { role: { equals: 'ADMIN', mode: 'insensitive' } },
-          },
-          select: { employee_id: true },
-          orderBy: { employee_id: 'asc' },
-        });
-        recipientId = adminEmployee?.employee_id;
-      }
-
-      if (!recipientId) {
-        return { status: 409, error: 'Không tìm thấy người duyệt phù hợp (Trưởng phòng / Admin).' };
+      const recipientId = adminEmployee?.employee_id;
+      if (!recipientId || recipientId === employeeId) {
+        return { status: 409, error: 'Chưa có người duyệt khác người gửi. Hãy liên hệ quản trị viên.' };
       }
 
       const request = await tx.Day_off_requests.create({
@@ -182,44 +158,23 @@ export const getMyLeaveSummary = async (req, res) => {
   }
 };
 
-// 2. LẤY DANH SÁCH ĐƠN NGHỈ (PHÂN QUYỀN CHUẨN THEO PHÒNG BAN)
 export const getLeaveRequests = async (req, res) => {
   try {
     const role = String(req.user.role || '').toLowerCase();
     const { status } = req.query;
     if (status && !LEAVE_STATUSES.includes(status)) return res.status(400).json({ error: 'Trạng thái đơn nghỉ không hợp lệ.' });
-
-    const where = {};
-    if (status) where.status = status;
-
+    const where = status ? { status } : {};
     if (role === 'admin') {
-      // ADMIN: Được quyền xem tất cả đơn của toàn bộ các phòng ban
-    } else if (role === 'manager') {
-      // MANAGER: Chỉ xem được đơn gửi đến mình HOẶC đơn của nhân viên thuộc cùng phòng ban
-      where.OR = [
-        { employee_receive_id: req.employee.employee_id },
-        {
-          employees_Day_off_requests_employee_send_idToemployees: {
-            department_id: req.employee.department_id
-          }
-        }
-      ];
+      // Admin được xem toàn bộ đơn.
+    } else if (role === 'manager' && status) {
+      where.employee_receive_id = req.employee.employee_id;
     } else {
-      // EMPLOYEE: Chỉ xem đơn do chính mình gửi đi
       where.employee_send_id = req.employee.employee_id;
     }
-
     const requests = await prisma.Day_off_requests.findMany({
       where,
       include: {
-        employees_Day_off_requests_employee_send_idToemployees: {
-          select: {
-            fullname: true,
-            email: true,
-            department_id: true,
-            departments: { select: { department_name: true } }
-          }
-        },
+        employees_Day_off_requests_employee_send_idToemployees: { select: { fullname: true, email: true } },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -245,47 +200,28 @@ export const cancelLeaveRequest = async (req, res) => {
   }
 };
 
-// 3. DUYỆT ĐƠN NGHỈ (CHỈ MANAGER CÙNG PHÒNG HOẶC ADMIN)
 export const reviewLeaveRequest = async (req, res) => {
   try {
     const role = String(req.user.role || '').toLowerCase();
     if (!['admin', 'manager'].includes(role)) return res.status(403).json({ error: 'Chỉ quản lý hoặc Admin được duyệt đơn nghỉ phép.' });
-
     const { status } = req.body || {};
     if (!['da_duoc_duyet', 'bi_tu_choi'].includes(status)) return res.status(400).json({ error: 'Trạng thái duyệt không hợp lệ.' });
 
     const id = Number(req.params.id);
-    const leaveReq = await prisma.Day_off_requests.findUnique({
-      where: { Day_off_id: id },
-      include: {
-        employees_Day_off_requests_employee_send_idToemployees: { select: { department_id: true } }
-      }
-    });
-
+    const leaveReq = await prisma.Day_off_requests.findUnique({ where: { Day_off_id: id } });
     if (!leaveReq) return res.status(404).json({ error: 'Không tìm thấy đơn xin nghỉ.' });
-    if (leaveReq.employee_send_id === req.employee.employee_id) {
-      return res.status(403).json({ error: 'Bạn không thể duyệt hoặc từ chối đơn nghỉ của chính mình.' });
+    if (leaveReq.employee_send_id === req.employee.employee_id) return res.status(403).json({ error: 'Bạn không thể duyệt hoặc từ chối đơn nghỉ của chính mình.' });
+    if (role !== 'admin' && leaveReq.employee_receive_id !== req.employee.employee_id) {
+      return res.status(403).json({ error: 'Đơn này không được gửi đến bạn để duyệt.' });
     }
-
-    // Kiểm tra quyền duyệt: Admin được duyệt tất cả; Manager chỉ duyệt nếu đơn gửi tới họ HOẶC cùng phòng ban
-    const senderDeptId = leaveReq.employees_Day_off_requests_employee_send_idToemployees?.department_id;
-    const isDirectRecipient = leaveReq.employee_receive_id === req.employee.employee_id;
-    const isSameDepartmentManager = role === 'manager' && senderDeptId === req.employee.department_id;
-
-    if (role !== 'admin' && !isDirectRecipient && !isSameDepartmentManager) {
-      return res.status(403).json({ error: 'Bạn không có quyền duyệt đơn nghỉ của phòng ban khác.' });
-    }
-
     if (leaveReq.status !== 'cho_xac_thuc') return res.status(409).json({ error: 'Đơn này đã được xử lý.' });
 
     const changed = await prisma.Day_off_requests.updateMany({
       where: { Day_off_id: id, status: 'cho_xac_thuc', employee_send_id: { not: req.employee.employee_id } },
       data: { status },
     });
-
     if (!changed.count) return res.status(409).json({ error: 'Đơn đã được xử lý hoặc không thể tự duyệt.' });
     const updated = await prisma.Day_off_requests.findUnique({ where: { Day_off_id: id } });
-
     return res.json({
       success: true,
       message: status === 'da_duoc_duyet' ? 'Đã duyệt đơn nghỉ phép.' : 'Đã từ chối đơn nghỉ phép.',

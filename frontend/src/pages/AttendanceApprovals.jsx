@@ -1,6 +1,7 @@
 import { Alert, Tabs, Typography } from 'antd';
 import { useRole } from '../hooks/useAuth';
 import LeaveApprovals from '../components/LeaveApprovals'; // Component duyệt nghỉ phép
+import Overtime from './Overtime';
 
 // Tab giải trình chấm công tạm ẩn / cô lập để tránh lỗi bảng chưa tồn tại
 function AttendanceExplanationsTab() {
@@ -35,7 +36,8 @@ export default function AttendanceApprovals() {
             key: '2', 
             label: 'Duyệt đơn nghỉ phép', 
             children: <LeaveApprovals /> 
-          }
+          },
+          { key: 'overtime', label: 'Duyệt làm thêm', children: <Overtime approvalsOnly /> }
         ]} 
       />
     </div>

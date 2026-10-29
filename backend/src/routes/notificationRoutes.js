@@ -23,7 +23,7 @@ export async function commentNotificationFeed(employeeId, db = prisma) {
       p.manager_id = ${employeeId} OR EXISTS (
         SELECT 1 FROM project_members m WHERE m.project_id = p.id AND m.employee_id = ${employeeId}
       )
-    ) ORDER BY c.created_at DESC, c.kind, c.comment_id DESC LIMIT 100`;
+    ) ORDER BY r.comment_id IS NOT NULL, c.created_at DESC, c.kind, c.comment_id DESC LIMIT 100`;
 }
 const handle = fn => async (req, res) => {
   try { await fn(req, res); }

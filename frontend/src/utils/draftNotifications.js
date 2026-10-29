@@ -21,6 +21,8 @@ export function draftNotification(draft) {
     path = `/cham-cong/bang-cong?date=${match[1]}`; label = `Giải trình chấm công · ${match[1].split('-').reverse().join('/')}`;
   } else if (scope === 'leave:new') {
     path = '/cham-cong/nghi-phep'; label = 'Đơn xin nghỉ phép';
+  } else if (scope === 'overtime:new') {
+    path = '/lam-them'; label = 'Đơn làm thêm';
   } else return null;
   return { id: `draft:${scope}:${updatedAt}`, type: 'draft', draftScope: scope, path,
     title: 'Bạn có việc đang dở', description: `${label}. Bấm để tiếp tục bản nháp.`, time: new Date(updatedAt).toISOString() };
