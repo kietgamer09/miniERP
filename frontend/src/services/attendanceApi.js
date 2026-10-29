@@ -19,17 +19,28 @@ export function getTodayAttendance() {
 export function getMyAttendances(month) {
   return request('/api/attendances/me', { params: { month } });
 }
-
 export function createAttendanceExplanation(body) {
-  return request('/api/attendances/explanations', { method: 'POST', body });
+  return request('/api/attendances/create-explanations', { method: 'POST', body });
 }
 
-export function listAttendanceExplanations(status) {
-  return request('/api/attendances/explanations', { params: { status } });
+// Lấy danh sách đơn giải trình (cho Admin / Manager)
+export function getAttendanceExplanations(status) {
+  const query = status ? `?status=${status}` : '';
+  return request(`/api/attendances/explanations-lists${query}`);
 }
 
+// Duyệt hoặc từ chối giải trình
 export function reviewAttendanceExplanation(id, body) {
-  return request(`/api/attendances/explanations/${id}/review`, { method: 'PUT', body });
+  return request(`/api/attendances/review-explanations/${id}/review`, {
+    method: 'PUT',
+    body
+  });
+}
+
+export async function cancelAttendanceExplanation(id) {
+  return request(`/api/attendances/cancel-explanations/${id}`, {
+    method: 'DELETE'
+  });
 }
 
 // --- BỔ SUNG MỚI CHO BẢNG CÔNG CÔNG TY & XEM CHI TIẾT NHÂN VIÊN ---
