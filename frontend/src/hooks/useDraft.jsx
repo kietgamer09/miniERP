@@ -2,7 +2,7 @@ import { useContext, useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { Alert, Button, Space, Typography } from 'antd';
 import dayjs from 'dayjs';
 import { useAuth } from './useAuth';
-import { draftKey, readDraft, removeDraft, writeDraft } from '../utils/draftStorage';
+import { draftKey, markDraftActive, markDraftInterrupted, readDraft, removeDraft, writeDraft } from '../utils/draftStorage';
 import { DraftResumeContext } from '../context/draftResumeContext';
 
 export default function useDraft(scope, { fields, dateFields = [], enabled = true, onRestore }) {
@@ -35,6 +35,7 @@ export default function useDraft(scope, { fields, dateFields = [], enabled = tru
   function restore() {
     const record = readDraft(key);
     if (!record) { clear(); return; }
+    markDraftActive(key);
     const values = pick(record.values);
     for (const field of dateFields) {
       if (values[field]) values[field] = dayjs(values[field]).isValid() ? dayjs(values[field]) : null;
@@ -49,6 +50,16 @@ export default function useDraft(scope, { fields, dateFields = [], enabled = tru
     const timer = setTimeout(() => resume(), 0);
     return () => clearTimeout(timer);
   }, [key, scope, resumeScope]);
+
+  useEffect(() => {
+    if (!key) return undefined;
+    const interrupt = () => markDraftInterrupted(key);
+    window.addEventListener('pagehide', interrupt);
+    return () => {
+      window.removeEventListener('pagehide', interrupt);
+      markDraftInterrupted(key);
+    };
+  }, [key]);
 
   const notice = !key ? null : current?.error ? <Alert type="warning" showIcon title={current.error} style={{ marginBottom: 12 }} />
     : pending ? <Alert type="info" showIcon title="Có bản nháp chưa gửi trên máy này"

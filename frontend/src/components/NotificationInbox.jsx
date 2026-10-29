@@ -11,6 +11,10 @@ import WebPushSettings from './WebPushSettings';
 import { DRAFT_CHANGED, listDrafts } from '../utils/draftStorage';
 import { draftNotification } from '../utils/draftNotifications';
 
+function loadDraftNotifications(userId) {
+  return listDrafts(userId).filter(draft => draft.interrupted === true).map(draftNotification).filter(Boolean);
+}
+
 function readSettings(key) {
   try {
     const saved = JSON.parse(localStorage.getItem(key) || '{}');
@@ -26,7 +30,7 @@ export default function NotificationInbox() {
 function Inbox({ storageKey }) {
   const { user } = useAuth();
   const userId = user.id ?? user.username;
-  const [draftItems, setDraftItems] = useState(() => listDrafts(userId).map(draftNotification).filter(Boolean));
+  const [draftItems, setDraftItems] = useState(() => loadDraftNotifications(userId));
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState(() => readSettings(storageKey));
   const [now, setNow] = useState(() => new Date());
@@ -38,7 +42,7 @@ function Inbox({ storageKey }) {
   const [revision, setRevision] = useState(0);
   const [marking, setMarking] = useState(false);
   useEffect(() => {
-    const refresh = () => setDraftItems(listDrafts(userId).map(draftNotification).filter(Boolean));
+    const refresh = () => setDraftItems(loadDraftNotifications(userId));
     window.addEventListener(DRAFT_CHANGED, refresh);
     window.addEventListener('storage', refresh);
     const timer = setInterval(refresh, 30000);
