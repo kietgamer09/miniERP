@@ -121,16 +121,16 @@
   .home-page {
     height: 100%;
     min-height: 0;
-    grid-template-rows: minmax(0, 304px) minmax(0, 1fr);
+    grid-template-rows: 304px minmax(220px, 1fr);
     gap: 12px;
   }
 
   .home-page:has(> .home-summary) {
-    grid-template-rows: auto minmax(0, 304px) minmax(0, 1fr);
+    grid-template-rows: auto 304px minmax(220px, 1fr);
     min-height: 0;
   }
 
-  .app-content:has(> .home-page) { overflow: hidden; }
+  .app-content:has(> .home-page) { overflow: auto; }
 
   .employees-desktop-table { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; }
 

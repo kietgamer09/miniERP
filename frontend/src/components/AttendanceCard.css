@@ -1,0 +1,40 @@
+.attendance-card .attendance-live-clock {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-text);
+  color: var(--blue-text);
+  font-variant-numeric: tabular-nums;
+}
+.attendance-card .attendance-live-clock .ant-typography { color: inherit; }
+.attendance-result-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.attendance-result-badge--blue { color: var(--blue-text); background: var(--blue-bg); }
+.attendance-result-badge--green { color: var(--green-text); background: var(--green-bg); }
+.attendance-card .attendance-status--blue { background: var(--blue-bg) !important; border-color: var(--blue-text) !important; }
+.attendance-card .attendance-status--blue .attendance-status-label { color: var(--blue-text); }
+.attendance-card .attendance-punch-times { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px !important; }
+.attendance-card .attendance-time-box {
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+.attendance-card .attendance-time-box .ant-typography-secondary { color: var(--muted); font-size: 12px; }
+.attendance-card .attendance-time-box h4 { font-size: 22px; line-height: 1.4; letter-spacing: .3px; }
+.attendance-card .attendance-action:focus-visible { outline: 2px solid var(--blue-text); outline-offset: 3px; }
+@media (max-width: 480px) {
+  .attendance-card .attendance-time-box { padding: 8px; }
+  .attendance-card .attendance-time-box h4 { font-size: 19px; }
+}

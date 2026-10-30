@@ -21,7 +21,7 @@ export function ThemeProvider({ children }) {
       token: { colorPrimary: mode === 'dark' ? '#8fa2ca' : '#315de8', borderRadius: 8, controlHeight: 40,
         fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         colorText: mode === 'dark' ? '#e0e3e6' : '#242b38',
-        colorTextSecondary: mode === 'dark' ? '#a6adb5' : '#788397',
+        colorTextSecondary: mode === 'dark' ? '#a6adb5' : '#626e80',
         colorBorder: mode === 'dark' ? '#383d43' : '#dce1ea' },
       components: {
         Menu: { itemSelectedBg: mode === 'dark' ? '#293142' : '#eef1ff',

@@ -1,0 +1,38 @@
+.attendance-explanation-modal .ant-form-item {
+  margin-bottom: 18px;
+}
+
+.explanation-character-count {
+  padding-top: 4px;
+  text-align: right;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--muted);
+}
+
+.explanation-time-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.explanation-time-grid .ant-form-item,
+.attendance-explanation-modal .ant-form-item:last-child {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.explanation-time-grid:last-child {
+  margin-bottom: 0;
+}
+
+.attendance-explanation-modal .ant-modal-footer {
+  padding-top: 12px;
+}
+
+@media (max-width: 480px) {
+  .explanation-time-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
