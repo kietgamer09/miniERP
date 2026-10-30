@@ -23,6 +23,7 @@ const CompanyAttendance = lazy(() => import('./components/CompanyAttendance'));
 const LeaveManagement = lazy(() => import('./pages/LeaveManagement'));
 const CompanyDocuments = lazy(() => import('./pages/CompanyDocuments'));
 const Overtime = lazy(() => import('./pages/Overtime'));
+const Payroll = lazy(() => import('./pages/Payroll'));
 import { getAllPaths, fullMenuItems } from './config/menu';
 
 const allPaths = getAllPaths(fullMenuItems);
@@ -43,6 +44,8 @@ const pages = {
   '/cham-cong/nghi-phep': LeaveManagement,
   '/tai-lieu': CompanyDocuments,
   '/lam-them': Overtime,
+  '/tien-luong':Payroll,
+  
 };
 
 function App() {
