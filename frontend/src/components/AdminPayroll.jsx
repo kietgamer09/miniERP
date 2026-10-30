@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Tag, DatePicker, Select, Button, message as antMessage } from 'antd';
+import { Alert, Card, Table, Tag, DatePicker, Select, Button, message as antMessage } from 'antd';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import { TeamOutlined, FileExcelOutlined } from '@ant-design/icons';
@@ -11,6 +11,8 @@ export default function AdminPayrollPage() {
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [companyPayrollList, setCompanyPayrollList] = useState([]);
+  const [error, setError] = useState('');
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -18,13 +20,13 @@ export default function AdminPayrollPage() {
       if (!active) return;
       if (!res.success) throw new Error(res.message || 'Không tải được bảng lương');
       setCompanyPayrollList([...(res.data || [])].sort((a, b) => (b.employee_id || 0) - (a.employee_id || 0)));
-    }).catch(() => {
+    }).catch(error => {
       if (!active) return;
       setCompanyPayrollList([]);
-      antMessage.error('Không thể tải bảng lương toàn công ty.');
+      setError(error.message || 'Không thể tải bảng lương toàn công ty.');
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [selectedMonth]);
+  }, [selectedMonth, reload]);
 
   const formatMoney = (val) => {
     const num = Math.round(Number(val || 0) / 1000) * 1000;
@@ -206,7 +208,8 @@ export default function AdminPayrollPage() {
       </div>
 
       {/* Dùng flex chuẩn cùng style inline thuần để ép thẳng hàng ngang tuyệt đối không bao giờ rớt dòng */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '16px' }}>
+      {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 16 }} />}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '16px' }}>
         <div>
           <Select
             value={selectedDepartment}
@@ -218,7 +221,8 @@ export default function AdminPayrollPage() {
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
+          <Button loading={loading} onClick={() => { setError(''); setLoading(true); setReload(value => value + 1); }}>Tải lại</Button>
           <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl shadow-sm">
             <span className="text-slate-300 text-sm font-medium"></span>
             <DatePicker
@@ -228,6 +232,7 @@ export default function AdminPayrollPage() {
                 if (date) {
                   if (date.format('YYYY-MM') === selectedMonth) return;
                   setLoading(true);
+                  setError('');
                   setCompanyPayrollList([]);
                   setSelectedMonth(date.format('YYYY-MM'));
                 }
@@ -257,6 +262,8 @@ export default function AdminPayrollPage() {
           dataSource={filteredCompanyPayrolls} 
           columns={adminColumns} 
           loading={loading}
+          scroll={{ x: 1020 }}
+          locale={{ emptyText: error ? 'Không tải được dữ liệu. Hãy thử tải lại.' : 'Chưa có bảng lương phù hợp tháng và phòng ban đã chọn.' }}
           rowKey={(record) => record.payroll_id || record.employee_id}
           pagination={{ pageSize: 8, showSizeChanger: false }}
           className="dark-theme-table"

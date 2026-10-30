@@ -76,41 +76,15 @@ Tạo file tên .env nằm ngay tại thư mục gốc của backend/.
 Nhập nội dung cấu hình sau vào file .env:
 PORT=5000
 DATABASE_URL="postgresql://postgres:<MAT_KHAU_POSTGRES_CUA_BAN>@localhost:5432/miniERP?schema=public"
-JWT_SECRET="mini_erp_super_secret_key_2026"
+JWT_SECRET="<CHUOI_BI_MAT_RIENG_CUA_HE_THONG>"
 
-## Bước 4: Đồng Bộ Schema & Tạo Bảng Dữ Liệu
-Chạy lệnh Prisma để tạo các bảng dữ liệu tự động vào PostgreSQL:
-npx prisma db push
+## Chuẩn bị database và chạy server
 
-## Bước 5: Thêm Dữ Liệu Mẫu (Seed Data) Qua pgAdmin 4
-Sau khi các bảng đã được tạo thành công ở Bước 4, bạn tiến hành thêm dữ liệu tài khoản mẫu vào bảng users:
+Database mới rỗng: npm install, npx prisma db push, npx prisma generate. Database đang dùng: chạy setup tương ứng trong [README gốc](../README.md); không reset hoặc tự đồng bộ toàn bộ schema khi có dữ liệu cần giữ.
 
-Trong pgAdmin 4, nhấp chuột phải vào database miniERP -> Chọn Query Tool.
-Dán đoạn mã SQL dưới đây vào cửa sổ soạn thảo query:
+Chạy npm run dev trong backend. GET /api/health kiểm tra kết nối DB. Sau khi generate Prisma Client cần khởi động lại backend.
 
-INSERT INTO "users" ("username", "password", "role")
-
-VALUES
- 
-  ('admin', '$2a$12$LJXbz26R6D7ZJpbYbbvcZuGxJ7i8LlDLYRKeplVVUs0u2ClQtosNS', 'admin'),  
-  
-  ('quan_ly', '$2a$12$LJXbz26R6D7ZJpbYbbvcZuGxJ7i8LlDLYRKeplVVUs0u2ClQtosNS', 'manager'), 
-  
-  ('nhan_vien', '$2a$12$LJXbz26R6D7ZJpbYbbvcZuGxJ7i8LlDLYRKeplVVUs0u2ClQtosNS', 'member');
-
-Bấm phím F5 (hoặc nhấn nút Execute/Play ▶️ màu xanh trên thanh công cụ) để chạy câu lệnh.
-Thông báo INSERT 0 3 hiện lên ở mục Messages nghĩa là bạn đã tạo thành công 3 tài khoản mẫu
-
-
-
-# Hướng Dẫn Chạy Server Backend
-Cài đặt các gói thư viện phụ thuộc:
-npm install
-
-Khởi động server ở chế độ phát triển (Development):
-npm run dev
-
-Server sẽ chạy tại địa chỉ mặc định: http://localhost:5000
+Tài khoản phải có hồ sơ employees liên kết và trạng thái đang làm việc. Không dùng SQL mẫu chỉ chèn users rồi kỳ vọng mọi chức năng hoạt động. Xin dữ liệu nhân sự từ người phụ trách hoặc khôi phục bản sao lưu.
 
 ## Nhắn tin nội bộ
 
@@ -145,8 +119,6 @@ Giao diện có nút Nhắn tin cạnh hòm thông báo, lấy tin mới mỗi 4
 
 Kiểm tra API và quyền truy cập bằng `node --test scripts/check-chat-contract.mjs`. Kiểm tra dùng PostgreSQL đã cấu hình, tạo ba tài khoản tạm riêng rồi dọn chúng, tin nhắn và tệp kiểm thử; không gửi tin cho tài khoản thật.
 
-## Lịch sử công và giải trình chấm bù
-
 ## Bảng lương
 
 Sau khi pull phiên bản có bảng lương, chạy một lần trong thư mục `backend`:
@@ -157,6 +129,8 @@ npx prisma generate
 ```
 
 Script tạo `public.payrolls` nếu chưa có; chạy lại được và giữ nguyên dữ liệu bảng hiện có. Khởi động lại backend sau khi chạy.
+
+## Lịch sử công và giải trình chấm bù
 
 Sau khi nhận phiên bản này, tại thư mục `backend` chạy:
 
@@ -178,10 +152,10 @@ Phần tách loại đơn cũng cần chạy lại `npm run setup:attendance` v�
 
 - `GET /api/attendances/today`: công hôm nay của tài khoản đăng nhập, màu/trạng thái và yêu cầu đã gửi.
 - `GET /api/attendances/me?month=YYYY-MM`: bảng công tháng của chính người gọi.
-- `POST /api/attendances/explanations`: `{ date, reason, makeup_date? }`, chỉ gửi cho ngày cần giải trình, một yêu cầu/ngày; lý do 1–2000 ký tự. `makeup_date` không bắt buộc, phải là ngày làm việc từ hôm nay trở đi.
+- `POST /api/attendances/explanations`: gửi ngày, lý do, loại đề nghị và giờ đề nghị. Loại correction không có ngày làm bù; loại makeup bắt buộc ngày từ hôm nay trở đi, cho phép cuối tuần.
 - `GET /api/attendances/explanations?status=pending|approved|rejected`: chỉ Admin, tối đa 500 yêu cầu gần nhất.
-- `PUT /api/attendances/explanations/:id/review`: chỉ Admin, `{ decision: "approved" | "rejected", review_note? }`; từ chối bắt buộc lý do, không tự duyệt, không duyệt lại. Giờ chấm công gốc không thay đổi.
+- `PUT /api/attendances/explanations/:id/review`: chỉ Admin, `{ decision: "approved" | "rejected", review_note? }`; từ chối bắt buộc lý do, không tự duyệt, không duyệt lại. Loại correction cập nhật giờ công và lưu dấu vết; loại makeup không tự cộng công.
 
 Mọi API yêu cầu Bearer token. Ca tính theo Asia/Ho_Chi_Minh, mốc vào 08:00:00, ra 17:00:00; SQL TIME không được cộng thêm 7 giờ khi hiển thị. Khóa transaction theo nhân viên/ngày ngăn hai trình duyệt tạo bản ghi vào ca trùng nhau. Dữ liệu công trùng đã có từ trước được đánh dấu cần kiểm tra, không tự xóa/gộp.
 
-Màu: vàng nếu chỉ muộn hoặc sớm; đỏ nếu vừa muộn vừa sớm, vắng không phép sau khi hết ca hoặc thiếu/trùng công; xanh lá nếu đúng đủ ca. Ngày tương lai/cuối tuần/trước ngày bắt đầu làm việc không tính vắng; nghỉ phép đã duyệt đọc từ `Day_off_requests`. Duyệt giải trình giữ nguyên màu, gắn nhãn “Đã duyệt chấm bù”, chưa tự cộng giờ bù hay tính lương. Chưa có lịch nghỉ lễ/ca đặc thù; hồ sơ thiếu ngày bắt đầu được chú thích ở giao diện.
+Màu: vàng nếu chỉ muộn hoặc sớm; đỏ nếu vừa muộn vừa sớm, vắng không phép sau khi hết ca hoặc thiếu/trùng công; xanh lá nếu đúng đủ ca. Ngày tương lai/cuối tuần/trước ngày bắt đầu làm việc không tính vắng; nghỉ phép đã duyệt đọc từ `Day_off_requests`. Duyệt correction cập nhật giờ công nên màu được tính lại; duyệt makeup chỉ ghi nhận kế hoạch, chưa tự cộng công. Chưa có lịch nghỉ lễ/ca đặc thù; hồ sơ thiếu ngày bắt đầu được chú thích ở giao diện.
