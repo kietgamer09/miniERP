@@ -1,8 +1,95 @@
-# 🚀 MiniERP Backend Service
+# miniERP Backend
 
-Backend API service cho hệ thống **MiniERP** được xây dựng bằng Node.js, Express và Prisma ORM quản lý cơ sở dữ liệu PostgreSQL.
+API Express, Prisma 7 và PostgreSQL. Làm theo các bước dưới đây khi cài lần đầu; nếu đã có dữ liệu, xem mục cập nhật sau pull.
 
-## Đơn làm thêm / tăng ca
+## 1. Cấu hình và tạo database
+
+### Chuẩn bị PostgreSQL
+
+Cài PostgreSQL và pgAdmin, ghi nhớ tài khoản/mật khẩu PostgreSQL. Đảm bảo dịch vụ đang chạy; cổng mặc định là 5432.
+
+Trong pgAdmin, kết nối server → chuột phải **Databases → Create → Database** → nhập **miniERP** → **Save**.
+
+Nếu chuyển từ máy khác, khôi phục bản sao lưu vào database đích thay vì tạo dữ liệu mẫu mới. Pull Git không chuyển dữ liệu PostgreSQL.
+
+### Cấu hình backend/.env
+
+Tạo file .env trong thư mục backend:
+
+```env
+PORT=5000
+DATABASE_URL="postgresql://postgres:<MAT_KHAU_POSTGRES>@localhost:5432/miniERP?schema=public"
+JWT_SECRET="<CHUOI_BI_MAT_RIENG_CUA_HE_THONG>"
+```
+
+Thay các giá trị trong dấu <...> bằng cấu hình thật. Mật khẩu có ký tự đặc biệt cần được URL-encode trong DATABASE_URL. Không đưa .env vào Git.
+
+## 2. Cài thư viện và chuẩn bị bảng
+
+Từ thư mục gốc dự án:
+
+```bash
+cd backend
+npm install
+```
+
+**Chỉ với database mới, rỗng**, tạo các model Prisma:
+
+```bash
+npx prisma db push
+```
+
+Sau đó chạy các script chuẩn bị tính năng và tạo Prisma Client:
+
+```bash
+npm run setup:attendance
+npm run setup:notifications
+npm run setup:web-push
+npm run setup:chat
+npm run setup:overtime
+npm run setup:payroll
+npx prisma generate
+```
+
+Các script setup bổ sung bảng cho từng tính năng. Web Push và chat tạo khóa cần thiết trong .env nếu chưa có. Với database khôi phục từ máy khác, dùng đúng các khóa cũ trước khi chạy setup; giữ khóa chat cùng dữ liệu chat.
+
+**Database đang có dữ liệu:** dùng các script setup tương ứng thay đổi vừa nhận. Repo chưa có baseline Prisma Migrate; không dùng migrate reset hoặc migrate deploy cho quy trình này. Generate chỉ tạo client, không tạo bảng trong PostgreSQL.
+
+## 3. Chuẩn bị tài khoản và chạy ứng dụng
+
+Tài khoản cần có hồ sơ employees liên kết và trạng thái đang làm việc. Lấy dữ liệu nhân sự từ người phụ trách hoặc khôi phục bản sao lưu; chỉ thêm users chưa đủ để dùng các chức năng.
+
+Khởi động backend từ thư mục backend:
+
+```bash
+npm run dev
+```
+
+Mở http://localhost:5000/api/health để kiểm tra kết nối DB. Backend không có giao diện tại đường dẫn /, nên Cannot GET / ở cổng 5000 là bình thường.
+
+Mở terminal thứ hai, chạy frontend theo [hướng dẫn frontend](../frontend/README.md). Đăng nhập tại địa chỉ Vite in ra.
+
+## 4. Cập nhật sau pull hoặc chuyển máy
+
+- Chạy npm install trong thư mục có dependency thay đổi.
+- Chạy setup tương ứng tính năng mới; bảng lương cần npm run setup:payroll.
+- Khi schema Prisma đổi, chạy npx prisma generate và khởi động lại backend.
+- Khi chuyển máy, mang theo database, uploads và các khóa cấu hình. Không seed lại mỗi lần chạy server.
+
+## 5. Xử lý lỗi thường gặp
+
+| Hiện tượng | Cách xử lý |
+| --- | --- |
+| Không kết nối PostgreSQL | Kiểm tra dịch vụ, cổng và DATABASE_URL. |
+| prisma.payrolls undefined | Chạy npx prisma generate rồi khởi động lại backend. |
+| P2021: public.payrolls không tồn tại | Chạy npm run setup:payroll. |
+| P3005 hoặc No migration found | Dùng quy trình database mới hoặc setup từng tính năng ở mục 2. |
+| Thiếu token khi mở API trên thanh địa chỉ | Dùng frontend đã đăng nhập; API yêu cầu Authorization: Bearer. |
+| Bảng lương công ty trống | Tháng được chọn chưa có bản lương lưu; tạo bảng DB không tự tính lương. |
+
+## Chi tiết từng tính năng
+
+### Đơn làm thêm / tăng ca
 
 Sau khi nhận bản có chức năng làm thêm, chạy một lần trong `backend` rồi khởi động lại backend:
 
@@ -23,70 +110,8 @@ API: `GET/POST /api/overtime`, `GET /api/overtime/:id`, `POST /api/overtime/:id/
 
 Kiểm tra bằng `node --test scripts/check-overtime-contract.mjs`. Script cần quyền tạo database PostgreSQL tạm, dùng tài khoản riêng trong database đó, dùng bộ gửi push giả và tự dọn database kiểm thử; không gửi thông báo đến nhân viên thật. Kiểm tra thứ tự hòm thư từ `frontend`: `node --test src/utils/notificationOrder.test.js`.
 
----
 
-## 🛠️ Tech Stack
-* **Runtime:** Node.js
-* **Framework:** Express.js
-* **ORM:** Prisma
-* **Database:** PostgreSQL
-* **Authentication:** JSON Web Token (JWT)
-
----
-
-## 📂 Project Structure
-```text
-backend/
-├── prisma/               # Cấu hình database và Prisma schema
-├── src/
-│   ├── config/           # Các file cấu hình hệ thống (Prisma client,...)
-│   ├── controllers/      # Xử lý logic nghiệp vụ cho các API
-│   ├── middlewares/      # Middleware kiểm tra xác thực và phân quyền (Auth, Role)
-│   ├── routes/           # Định nghĩa các đường dẫn (endpoints) API
-│   └── server.js         # File khởi động ứng dụng Express
-├── .env                  # Biến môi trường (Local config)
-├── package.json          # Quản lý dependencies và scripts
-└── prisma7.config.ts     # Cấu hình mở rộng của Prisma
-```
----
-
-# Hướng Dẫn Cấu Hình & Tạo Database Từ A - Z
-
-## Bước 1: Cài đặt PostgreSQL
-Tải và cài đặt PostgreSQL từ trang chủ: postgresql.org/download (Khuyên dùng bản 15 hoặc 16).
-
-Ghi nhớ mật khẩu của tài khoản postgres trong quá trình cài đặt.
-
-Đảm bảo dịch vụ PostgreSQL đang chạy ở port mặc định 5432.
-
-## Bước 2: Tạo Cơ Sở Dữ Liệu (miniERP)
-Mở phần mềm pgAdmin 4 trên máy tính.
-
-Nhập mật khẩu tài khoản postgres để kết nối vào server.
-
-Ở cột bên trái, bấm chuột phải vào Databases -> Chọn Create -> Database...
-
-Nhập tên Database là: miniERP rồi bấm Save.
-
-## Bước 3: Cấu Hình Biến Môi Trường (.env)
-Di chuyển vào thư mục backend trong Terminal / VS Code:
-cd backend
-
-Tạo file tên .env nằm ngay tại thư mục gốc của backend/.
-Nhập nội dung cấu hình sau vào file .env:
-PORT=5000
-DATABASE_URL="postgresql://postgres:<MAT_KHAU_POSTGRES_CUA_BAN>@localhost:5432/miniERP?schema=public"
-JWT_SECRET="<CHUOI_BI_MAT_RIENG_CUA_HE_THONG>"
-
-## Chuẩn bị database và chạy server
-
-Database mới rỗng: npm install, npx prisma db push, npx prisma generate. Database đang dùng: chạy setup tương ứng trong [README gốc](../README.md); không reset hoặc tự đồng bộ toàn bộ schema khi có dữ liệu cần giữ.
-
-Chạy npm run dev trong backend. GET /api/health kiểm tra kết nối DB. Sau khi generate Prisma Client cần khởi động lại backend.
-
-Tài khoản phải có hồ sơ employees liên kết và trạng thái đang làm việc. Không dùng SQL mẫu chỉ chèn users rồi kỳ vọng mọi chức năng hoạt động. Xin dữ liệu nhân sự từ người phụ trách hoặc khôi phục bản sao lưu.
-
-## Nhắn tin nội bộ
+### Nhắn tin nội bộ
 
 Sau khi pull phiên bản có chat, chạy một lần trong `backend`:
 
@@ -97,7 +122,7 @@ npm run dev
 
 Lệnh tạo các bảng chat bằng SQL, chạy lại được và giữ dữ liệu hiện có. Không cần thư viện mới hoặc generate Prisma để dùng chat. Lịch sử và trạng thái đọc lưu trong PostgreSQL; tệp mã hóa lưu ở `backend/uploads/chat`, cần sao lưu thư mục này cùng database khi chuyển máy.
 
-### Mở khóa chat theo ngày và mã hóa dữ liệu
+#### Mở khóa chat theo ngày và mã hóa dữ liệu
 
 Chạy lại `npm run setup:chat` rồi khởi động lại backend để cập nhật bản có khóa chat. Script tạo `CHAT_ENCRYPTION_KEY` ngẫu nhiên trong `backend/.env` nếu chưa có, chuyển tin nhắn/tên tệp cũ sang mã hóa và tạo bản tệp `.enc`. Bản `.bin` cũ chỉ được xóa sau khi bản mã hóa và dữ liệu trong DB đã lưu thành công. Script kiểm tra khóa trên dữ liệu đã mã hóa, không tự thay khóa nếu có dữ liệu mã hóa mà thiếu khóa.
 
@@ -119,7 +144,7 @@ Giao diện có nút Nhắn tin cạnh hòm thông báo, lấy tin mới mỗi 4
 
 Kiểm tra API và quyền truy cập bằng `node --test scripts/check-chat-contract.mjs`. Kiểm tra dùng PostgreSQL đã cấu hình, tạo ba tài khoản tạm riêng rồi dọn chúng, tin nhắn và tệp kiểm thử; không gửi tin cho tài khoản thật.
 
-## Bảng lương
+### Bảng lương
 
 Sau khi pull phiên bản có bảng lương, chạy một lần trong thư mục `backend`:
 
@@ -130,7 +155,7 @@ npx prisma generate
 
 Script tạo `public.payrolls` nếu chưa có; chạy lại được và giữ nguyên dữ liệu bảng hiện có. Khởi động lại backend sau khi chạy.
 
-## Lịch sử công và giải trình chấm bù
+### Lịch sử công và giải trình chấm bù
 
 Sau khi nhận phiên bản này, tại thư mục `backend` chạy:
 
@@ -159,3 +184,19 @@ Phần tách loại đơn cũng cần chạy lại `npm run setup:attendance` v�
 Mọi API yêu cầu Bearer token. Ca tính theo Asia/Ho_Chi_Minh, mốc vào 08:00:00, ra 17:00:00; SQL TIME không được cộng thêm 7 giờ khi hiển thị. Khóa transaction theo nhân viên/ngày ngăn hai trình duyệt tạo bản ghi vào ca trùng nhau. Dữ liệu công trùng đã có từ trước được đánh dấu cần kiểm tra, không tự xóa/gộp.
 
 Màu: vàng nếu chỉ muộn hoặc sớm; đỏ nếu vừa muộn vừa sớm, vắng không phép sau khi hết ca hoặc thiếu/trùng công; xanh lá nếu đúng đủ ca. Ngày tương lai/cuối tuần/trước ngày bắt đầu làm việc không tính vắng; nghỉ phép đã duyệt đọc từ `Day_off_requests`. Duyệt correction cập nhật giờ công nên màu được tính lại; duyệt makeup chỉ ghi nhận kế hoạch, chưa tự cộng công. Chưa có lịch nghỉ lễ/ca đặc thù; hồ sơ thiếu ngày bắt đầu được chú thích ở giao diện.
+
+
+## Cấu trúc backend
+```text
+backend/
+├── prisma/               # Cấu hình database và Prisma schema
+├── src/
+│   ├── config/           # Các file cấu hình hệ thống (Prisma client,...)
+│   ├── controllers/      # Xử lý logic nghiệp vụ cho các API
+│   ├── middlewares/      # Middleware kiểm tra xác thực và phân quyền (Auth, Role)
+│   ├── routes/           # Định nghĩa các đường dẫn (endpoints) API
+│   └── server.js         # File khởi động ứng dụng Express
+├── .env                  # Biến môi trường (Local config)
+├── package.json          # Quản lý dependencies và scripts
+└── prisma7.config.ts     # Cấu hình mở rộng của Prisma
+```

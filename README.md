@@ -2,18 +2,11 @@
 
 Ứng dụng quản lý nhân sự và công việc: React/Vite/Ant Design ở frontend, Express/Prisma 7/PostgreSQL ở backend.
 
-## Cấu trúc
+## 1. Cấu hình và tạo database
 
-- frontend/src/pages, components: trang và thành phần giao diện.
-- frontend/src/services, context, hooks, utils: API, phiên đăng nhập, dữ liệu dùng chung và quy tắc giao diện.
-- backend/src/routes, controllers, middlewares: API và phân quyền.
-- backend/src/services, utils: xử lý nghiệp vụ, thông báo, chat và chấm công.
-- backend/prisma/schema.prisma: model Prisma; prisma/sql: SQL bổ sung tính năng.
-- backend/scripts: chuẩn bị database và kiểm thử.
-- docs: BRD, ERD, hợp đồng API, kịch bản demo. Xem [hợp đồng API](docs/quy-uoc-api.md).
-- backend/uploads: tệp người dùng tải lên, không nằm trong Git.
+Bắt đầu tại [hướng dẫn cấu hình PostgreSQL, tạo database và backend/.env](backend/README.md#1-cấu-hình-và-tạo-database). Hướng dẫn phân biệt database mới với database đã có dữ liệu.
 
-## Chạy trên máy
+## 2. Chạy ứng dụng
 
 1. Chuẩn bị PostgreSQL và backend/.env theo [hướng dẫn backend](backend/README.md).
 2. Trong backend: npm install, chuẩn bị database, chạy npx prisma generate rồi npm run dev.
@@ -22,7 +15,7 @@
 
 Pull Git không chuyển dữ liệu PostgreSQL, .env hay uploads sang máy khác. Khi chuyển máy cần sao lưu/khôi phục database, sao chép uploads và các khóa cấu hình tương ứng.
 
-## Sau khi pull
+## 3. Cập nhật sau pull
 
 Chạy npm install trong mỗi thư mục có dependency thay đổi. Khi schema Prisma đổi, chạy npx prisma generate trong backend và khởi động lại backend. Generate chỉ tạo client, không tạo bảng database.
 
@@ -39,7 +32,7 @@ Với database đang có dữ liệu, chạy setup tương ứng phần vừa nh
 
 Repo chưa có baseline Prisma Migrate để chạy migrate deploy. Không reset database đang dùng. Database mới hoàn toàn có thể khởi tạo model bằng npx prisma db push, sau đó chạy các setup SQL cho tính năng dùng bảng ngoài Prisma.
 
-## Chức năng
+## 4. Chức năng
 
 - Nhân viên, phòng ban, hồ sơ cá nhân; thao tác theo quyền backend.
 - Dự án, thành viên, task, bình luận, tệp đính kèm; công việc có Danh sách/Kanban/Lịch/Timeline.
@@ -50,13 +43,13 @@ Repo chưa có baseline Prisma Migrate để chạy migrate deploy. Không reset
 - Chat trực tiếp/nhóm, ảnh/tệp, khóa truy cập theo ngày; cần giữ CHAT_ENCRYPTION_KEY khi chuyển dữ liệu.
 - Nền sáng/tối, lịch sử điều hướng và nháp theo tài khoản trên trình duyệt. Nháp không đồng bộ máy khác và không giữ file chưa tải lên.
 
-## Dữ liệu mẫu và giới hạn
+## 5. Dữ liệu mẫu và giới hạn
 
 Seed công việc: npm run seed:cong-viec trong backend. Cần dữ liệu nhân sự trước; seed có thể thay các dự án MAU-* nên không chạy lại nếu muốn giữ thay đổi ở các dự án mẫu. Không seed mỗi lần mở server.
 
 Chưa có lịch nghỉ lễ/ca tùy chỉnh. Phần lương còn dùng mức mặc định 10.000.000 khi chưa có bản lương lưu; chưa có màn hình cấu hình mức lương từng nhân viên. Không dùng bản xem thử làm chứng từ trả lương.
 
-## Kiểm tra và lỗi thường gặp
+## 6. Kiểm tra và lỗi thường gặp
 
 Frontend: npm run build và npm run lint. Backend có các script check-* trong scripts; một số dùng database tạm hoặc dữ liệu kiểm thử, đọc script trước khi chạy.
 
@@ -67,3 +60,14 @@ Frontend: npm run build và npm run lint. Backend có các script check-* trong 
 - P3005/No migration found: không dùng migrate deploy cho repo chưa có baseline; theo quy trình database mới hoặc setup tính năng bên trên.
 
 Git: không đưa .env, node_modules, dist, uploads vào commit. PR vào nhánh phát triển đã thống nhất; người dùng tự pull/push. Thay đổi file dùng chung cần phối hợp trước.
+
+## 7. Cấu trúc dự án
+
+- frontend/src/pages, components: trang và thành phần giao diện.
+- frontend/src/services, context, hooks, utils: API, phiên đăng nhập, dữ liệu dùng chung và quy tắc giao diện.
+- backend/src/routes, controllers, middlewares: API và phân quyền.
+- backend/src/services, utils: xử lý nghiệp vụ, thông báo, chat và chấm công.
+- backend/prisma/schema.prisma: model Prisma; prisma/sql: SQL bổ sung tính năng.
+- backend/scripts: chuẩn bị database và kiểm thử.
+- docs: BRD, ERD, hợp đồng API, kịch bản demo. Xem [hợp đồng API](docs/quy-uoc-api.md).
+- backend/uploads: tệp người dùng tải lên, không nằm trong Git.
