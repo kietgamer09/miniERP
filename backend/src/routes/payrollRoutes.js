@@ -3,7 +3,7 @@ import {
   getMyPayroll,
   getCompanyPayrolls,
   calculateCompanyPayroll
-} from '../controllers/payrollController.js';
+} from '../controllers/PayrollController.js';
 import { verifyToken, authorizeRoles } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
