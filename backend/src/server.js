@@ -14,6 +14,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import pushRoutes from './routes/pushRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import overtimeRoutes from './routes/overtimeRoutes.js';
+import payrollsRoutes from './routes/payrollRoutes.js';
 import { startPushWorker } from './services/webPush.js';
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/notifications/comments', notificationRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/overtime', overtimeRoutes);
+app.use('/api/payrolls', payrollsRoutes);
 
 const server = app.listen(PORT);
 server.once('listening', () => {
