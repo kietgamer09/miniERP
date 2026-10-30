@@ -147,6 +147,17 @@ Kiểm tra API và quyền truy cập bằng `node --test scripts/check-chat-con
 
 ## Lịch sử công và giải trình chấm bù
 
+## Bảng lương
+
+Sau khi pull phiên bản có bảng lương, chạy một lần trong thư mục `backend`:
+
+```bash
+npm run setup:payroll
+npx prisma generate
+```
+
+Script tạo `public.payrolls` nếu chưa có; chạy lại được và giữ nguyên dữ liệu bảng hiện có. Khởi động lại backend sau khi chạy.
+
 Sau khi nhận phiên bản này, tại thư mục `backend` chạy:
 
 ```bash
