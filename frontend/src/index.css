@@ -8,7 +8,7 @@
   --subtle-bg: #f5f6f8;
   --border: #e8ecf2;
   --text: #242b38;
-  --muted: #788397;
+  --muted: #626e80;
   --blue-bg: #eef1ff;
   --blue-text: #315de8;
   --red-bg: #fff1f0;
@@ -16,7 +16,7 @@
   --gold-bg: #fffbe6;
   --gold-text: #ad6800;
   --green-bg: #f6ffed;
-  --green-text: #389e0d;
+  --green-text: #2d7015;
 }
 
 :root[data-theme='dark'] {

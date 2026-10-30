@@ -3,6 +3,7 @@ import { Card, Button, Typography, Space, Divider, message, Alert, Modal } from 
 import { ClockCircleOutlined, CalendarOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { formatDateVN, formatFullDateVN, parseDateOnly } from '../utils/dates';
 import { useAttendance } from '../hooks/useAttendance';
+import './AttendanceCard.css';
 
 const { Text, Title } = Typography;
 
@@ -96,11 +97,11 @@ function AttendanceCard() {
   }
 
   const checkInColor = !onLeave && checkInTime !== '--:--:--'
-    ? (checkInTime > '08:00:00' ? '#faad14' : '#52c41a')
-    : 'inherit';
+    ? (checkInTime > '08:00:00' ? 'var(--gold-text)' : 'var(--green-text)')
+    : 'var(--text)';
   const checkOutColor = !onLeave && checkOutTime !== '--:--:--'
-    ? (checkOutTime < '17:00:00' ? '#faad14' : '#52c41a')
-    : 'inherit';
+    ? (checkOutTime < '17:00:00' ? 'var(--gold-text)' : 'var(--green-text)')
+    : 'var(--text)';
 
   return (
     <Card title="Chấm công" className="attendance-card" style={{ height: '100%' }} styles={{ body: { padding: 0 } }}>
@@ -118,7 +119,7 @@ function AttendanceCard() {
         }}
       >
         <Space size="large" className="attendance-time-info">
-          <Space>
+          <Space className="attendance-live-clock">
             <ClockCircleOutlined />
             <Text strong>{timeStr}</Text>
           </Space>
@@ -128,7 +129,9 @@ function AttendanceCard() {
           </Space>
         </Space>
 
-        <Button
+        {!loading && !error && (onLeave || weekend || isCompleted) ? <span className={`attendance-result-badge attendance-result-badge--${onLeave ? 'blue' : isCompleted ? 'green' : 'default'}`}>
+          <CheckCircleOutlined /> {onLeave ? 'Không cần chấm công' : weekend ? 'Ngày nghỉ cuối tuần' : 'Đã chấm đủ lượt'}
+        </span> : <Button
           type={isCompleted || weekend || onLeave ? 'default' : 'primary'}
           className="attendance-action"
           icon={btnIcon}
@@ -139,19 +142,19 @@ function AttendanceCard() {
             minWidth: 140,
             backgroundColor: btnBg,
             borderColor: btnBg,
-            color: isCompleted || weekend || onLeave ? 'var(--text)' : '#fff',
+            color: btnBg === '#faad14' ? '#352400' : '#fff',
             borderRadius: 6,
             fontWeight: 500,
           }}
         >
           {btnText}
-        </Button>
+        </Button>}
       </div>
 
       <div style={{ padding: 16 }}>
         {error && <Alert type="warning" showIcon title={error} style={{ marginBottom: 12 }} />}
         <div
-          className={`attendance-status--${dayInfo?.color || 'default'}`}
+          className={`attendance-status-panel attendance-status--${dayInfo?.color || 'default'}`}
           style={{
             background: 'var(--subtle-bg)',
             border: '1px solid var(--border)',
@@ -163,7 +166,7 @@ function AttendanceCard() {
             <Text type="secondary" style={{ background: 'var(--border)', padding: '2px 8px', borderRadius: 4 }}>
               Hôm nay
             </Text>
-            {dayInfo?.label && <Text type="secondary">{dayInfo.label}</Text>}
+            {dayInfo?.label && <Text strong className="attendance-status-label">{dayInfo.label}</Text>}
           </div>
           <div style={{ marginTop: 8 }}>
             <Text strong>{dayDate ? formatFullDateVN(dayDate) : formatFullDateVN(now)}</Text>
@@ -172,7 +175,7 @@ function AttendanceCard() {
           <Divider style={{ margin: '12px 0' }} />
 
           <div className="attendance-punch-times" style={{ display: 'flex', gap: 40 }}>
-            <div>
+            <div className="attendance-time-box">
               <Text type="secondary">Giờ vào</Text>
               <div>
                 <Title level={4} style={{ margin: 0, color: checkInColor }}>
@@ -180,8 +183,7 @@ function AttendanceCard() {
                 </Title>
               </div>
             </div>
-            <div style={{ width: 1, background: 'var(--border)' }} />
-            <div>
+            <div className="attendance-time-box">
               <Text type="secondary">Giờ ra</Text>
               <div>
                 <Title level={4} style={{ margin: 0, color: checkOutColor }}>

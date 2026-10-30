@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react';
-import { Alert, Col, DatePicker, Form, Input, Modal, Row, Select, TimePicker } from 'antd';
+import { Alert, DatePicker, Form, Input, Modal, Select, TimePicker } from 'antd';
 import dayjs from 'dayjs';
 import { createAttendanceExplanation } from '../services/attendanceApi';
 import { attendanceDay } from '../utils/attendance';
 import { formatDateOnlyVN } from '../utils/dates';
 import { useFormDraft } from '../hooks/useDraft';
+import './AttendanceExplanationModal.css';
 
 export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
   const [form] = Form.useForm();
@@ -12,6 +13,7 @@ export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
   const [error, setError] = useState('');
   const pending = useRef(false);
   const requestType = Form.useWatch('request_type', form) || 'correction';
+  const reason = Form.useWatch('reason', form) || '';
 
   const draft = useFormDraft(form, `attendance-explanation:${day.date}`, {
     fields: ['request_type', 'reason', 'makeup_date', 'requested_check_in', 'requested_check_out'],
@@ -48,22 +50,19 @@ export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
     <Modal 
       open 
       forceRender 
+      width={600}
+      centered
+      className="attendance-explanation-modal"
       title={`Giải trình ngày ${formatDateOnlyVN(day.date)}`} 
       okText="Gửi đề nghị" 
       cancelText="Hủy"
       onOk={save} 
       onCancel={() => { if (!pending.current) onCancel(); }} 
       confirmLoading={saving}
-      styles={{ body: { maxHeight: '65vh', overflowY: 'auto', paddingRight: 4 } }}
+      styles={{ body: { maxHeight: '65vh', overflowY: 'auto', overflowX: 'hidden' } }}
       closable={!saving} 
       cancelButtonProps={{ disabled: saving }}
     >
-      <Alert 
-        type="info" 
-        showIcon 
-        title={`Bạn đang gửi giải trình cho ngày ${formatDateOnlyVN(day.date)}. Quản lý sẽ duyệt đề nghị này.`} 
-        style={{ marginBottom: 16 }} 
-      />
       {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />}
       {draft.notice}
       
@@ -85,22 +84,22 @@ export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
         <Form.Item 
           name="reason" 
           label="Lý do đề nghị"
+          extra={<div className="explanation-character-count">{reason.length} / 2000</div>}
           rules={[
             { required: true, whitespace: true, message: 'Vui lòng nhập lý do' },
             { max: 2000, message: 'Lý do tối đa 2000 ký tự' }
           ]}
         >
           <Input.TextArea 
-            rows={4} 
+            autoSize={{ minRows: 3, maxRows: 5 }}
             maxLength={2000} 
-            showCount 
             placeholder={requestType === 'correction' ? 'Ví dụ: Quên chấm công ra ca, thực tế kết thúc làm việc lúc 17:30' : 'Lý do cần làm bù và công việc dự kiến thực hiện'}
           />
         </Form.Item>
 
-        <Row gutter={16}>
-          {['requested_check_in', 'requested_check_out'].map((field, index) => <Col xs={24} sm={12} key={field}>
-            <Form.Item name={field} label={requestType === 'correction' ? (index === 0 ? 'Giờ vào thực tế đề nghị ghi nhận' : 'Giờ ra thực tế đề nghị ghi nhận') : (index === 0 ? 'Giờ bắt đầu làm bù' : 'Giờ kết thúc làm bù')}
+        <div className="explanation-time-grid">
+          {['requested_check_in', 'requested_check_out'].map((field, index) =>
+            <Form.Item key={field} name={field} label={requestType === 'correction' ? (index === 0 ? 'Giờ vào ghi nhận' : 'Giờ ra ghi nhận') : (index === 0 ? 'Giờ bắt đầu làm bù' : 'Giờ kết thúc làm bù')}
               dependencies={['request_type', index === 0 ? 'requested_check_out' : 'requested_check_in']}
               getValueProps={value => ({ value: value ? dayjs(`${day.date}T${value}:00`) : null })}
               getValueFromEvent={value => value?.format('HH:mm') || null}
@@ -113,8 +112,8 @@ export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
               } })]}>
               <TimePicker format="HH:mm" minuteStep={1} style={{ width: '100%' }} placeholder={index === 0 ? 'Chọn giờ vào' : 'Chọn giờ ra'} />
             </Form.Item>
-          </Col>)}
-        </Row>
+          )}
+        </div>
 
         {requestType === 'makeup' && <Form.Item name="makeup_date" label="Ngày làm bù dự kiến" rules={[{ required: true, message: 'Chọn ngày làm bù' }, {
           validator: (_, date) => {
