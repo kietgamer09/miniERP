@@ -7,15 +7,11 @@ import HomeSummary from '../components/HomeSummary';
 function Home() {
   return (
     <div className="home-page">
-      <HomeSummary />
-      <Row className="home-top" gutter={[12, 12]}>
-        <Col xs={24} lg={11}>
-          <AttendanceCard />
-        </Col>
-        <Col xs={24} lg={13}>
-          <TimesheetCard compact />
-        </Col>
-      </Row>
+      <div className="home-overview">
+        <HomeSummary />
+        <AttendanceCard />
+        <TimesheetCard compact />
+      </div>
       <Card className="home-tasks" styles={{ body: { padding: 16 } }}>
         <MyTasksBoard compact />
       </Card>

@@ -96,7 +96,7 @@ export default function TimesheetCard({ compact = false }) {
     }
   }
 
-  return <Card title="Bảng công" className={`timesheet-card${compact ? ' timesheet-card--compact' : ''}${data ? ' detail-clickable-card' : ''}`}
+  return <Card title={<Space size={8}><span>Bảng công</span><Typography.Text type="secondary" style={{ fontSize: 12 }}>Bấm vào khung để xem bảng công tháng</Typography.Text></Space>} className={`timesheet-card${compact ? ' timesheet-card--compact' : ''}${data ? ' detail-clickable-card' : ''}`}
     {...(data ? detailInteraction(() => setShowCalendar(true), 'Mở bảng công chi tiết tháng') : {})}
     style={{ height: '100%' }} extra={<Space size={6}>
     <DatePicker picker="month" allowClear={false} format="MM/YYYY" value={dayjs(`${month}-01`)} size="small"
@@ -136,7 +136,6 @@ export default function TimesheetCard({ compact = false }) {
       </ul> : <Typography.Paragraph type="secondary" className="timesheet-strip-empty">Không có ngày trong nhóm này.</Typography.Paragraph>}
       <div className="timesheet-summary-footer">
         {activeGroup !== 'attention' && <Button type="link" size="small" onClick={() => changeGroup('attention')}>Ngày cần chú ý</Button>}
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>Bấm vào khung để xem bảng công tháng</Typography.Text>
       </div>
     </>}
 
