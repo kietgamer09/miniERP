@@ -19,7 +19,7 @@ Tạo file .env trong thư mục backend:
 ```env
 PORT=5000
 DATABASE_URL="postgresql://postgres:<MAT_KHAU_POSTGRES>@localhost:5432/miniERP?schema=public"
-JWT_SECRET="<CHUOI_BI_MAT_RIENG_CUA_HE_THONG>"
+JWT_SECRET="mini_erp_super_secret_key_2026"
 ```
 
 Thay các giá trị trong dấu <...> bằng cấu hình thật. Mật khẩu có ký tự đặc biệt cần được URL-encode trong DATABASE_URL. Không đưa .env vào Git.
