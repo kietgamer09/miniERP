@@ -1,4 +1,4 @@
-import { Row, Col, Card } from 'antd';
+import { Card } from 'antd';
 import AttendanceCard from '../components/AttendanceCard';
 import TimesheetCard from '../components/TimesheetCard';
 import MyTasksBoard from '../components/MyTasksBoard';

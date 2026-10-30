@@ -45,7 +45,7 @@ async function request(path, { method = 'GET', body, params, file, download = fa
   }
 
   if (!response.ok) {
-    const error = new Error(payload?.error || 'Có lỗi xảy ra');
+    const error = new Error(payload?.error || payload?.message || `Yêu cầu thất bại (HTTP ${response.status})`);
     error.status = response.status;
     error.code = payload?.code;
     if (response.status === 401 && token && requestSession === sessionVersion) {

@@ -1,10 +1,11 @@
-export function attendanceReminders(now = new Date(), attendance = null) {
+export function attendanceReminders(now = new Date(), attendance = null, dayInfo = null) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
     weekday: 'short', hour: '2-digit', hourCycle: 'h23',
   }).formatToParts(now).map(part => [part.type, part.value]));
   if (['Sat', 'Sun'].includes(parts.weekday)) return [];
   const day = `${parts.year}-${parts.month}-${parts.day}`;
+  if (dayInfo?.date !== day || ['leave', 'weekend', 'not_employed', 'future'].includes(dayInfo.status)) return [];
   return [{ hour: 8, label: 'vào ca' }, { hour: 17, label: 'ra ca' }]
     .filter(item => Number(parts.hour) >= item.hour && !(attendance?.date === day
       && (item.hour === 8 ? attendance.check_in : attendance.check_out)))

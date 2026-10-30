@@ -36,7 +36,7 @@ function Inbox({ storageKey }) {
   const [settings, setSettings] = useState(() => readSettings(storageKey));
   const [now, setNow] = useState(() => new Date());
   const { tasks, loading, error, warning, reload } = useMyWork();
-  const { record } = useAttendance();
+  const { record, dayInfo, loading: attendanceLoading, error: attendanceError } = useAttendance();
   const navigate = useNavigate();
   const [commentItems, setCommentItems] = useState([]);
   const [commentError, setCommentError] = useState('');
@@ -91,7 +91,7 @@ function Inbox({ storageKey }) {
     return () => { active = false; clearInterval(timer); window.removeEventListener('focus', load); window.removeEventListener(OVERTIME_CHANGED, load); document.removeEventListener('visibilitychange', load); };
   }, [revision]);
   const isRead = item => ['comment', 'overtime'].includes(item.type) ? item.read : settings.read.includes(item.id);
-  const items = sortNotifications([...draftItems, ...commentItems, ...overtimeItems, ...taskNotifications(tasks), ...taskDueReminders(tasks, now), ...(settings.reminders ? attendanceReminders(now, record) : [])], isRead);
+  const items = sortNotifications([...draftItems, ...commentItems, ...overtimeItems, ...taskNotifications(tasks), ...taskDueReminders(tasks, now), ...(settings.reminders && !attendanceLoading && !attendanceError ? attendanceReminders(now, record, dayInfo) : [])], isRead);
   const unread = items.filter(item => !isRead(item)).length;
   function save(next) {
     setSettings(next);

@@ -9,7 +9,7 @@
 .home-page:has(> .home-overview) { grid-template-rows: auto minmax(300px, 1fr); align-content: start; }
 .home-page:has(> .home-overview) > .home-overview { min-height: 0; }
 .home-overview > .home-summary { grid-column: 1; display: flex; flex-wrap: nowrap; gap: 8px; margin: 0; }
-.home-overview > .home-summary > .ant-col { width: 50%; max-width: 50%; flex: 0 0 50%; padding-inline: 0 !important; }
+.home-overview > .home-summary > .ant-col { min-width: 0; width: auto; max-width: none; flex: 1 1 0; padding-inline: 0 !important; }
 .home-overview > .attendance-card { grid-column: 1; grid-row: 2; min-height: 0; height: auto !important; align-self: start; }
 .home-overview > .timesheet-card { grid-column: 2; grid-row: 1 / span 2; min-height: 0; height: auto !important; align-self: start; }
 .attachments { display: grid; gap: 8px; min-width: 0; margin-top: 16px; }
@@ -203,4 +203,18 @@
 
   .project-progress-panel .ant-collapse-header { padding-block: 8px !important; }
   .project-progress-panel .project-progress-bar { min-height: 26px; margin-block: 4px 2px; }
+}
+@media (max-width: 991px) {
+  .home-overview { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+  .home-overview > .home-summary,
+  .home-overview > .attendance-card,
+  .home-overview > .timesheet-card { grid-column: 1; grid-row: auto; }
+  .home-page:has(> .home-overview) { grid-template-rows: auto auto; }
+}
+@media (max-width: 480px) {
+  .home-overview > .home-summary { flex-wrap: wrap; }
+  .home-overview > .home-summary > .ant-col { flex-basis: 100%; }
+  .timesheet-card .ant-card-head-wrapper { flex-wrap: wrap; gap: 8px; padding-block: 8px; }
+  .timesheet-card .ant-card-head-title { white-space: normal; }
+  .timesheet-card .ant-card-head-title > .ant-space { flex-wrap: wrap; }
 }
