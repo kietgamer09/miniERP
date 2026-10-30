@@ -7,28 +7,23 @@ import * as XLSX from 'xlsx';
 import { fetchCompanyPayrollsApi } from '../services/payrollApi';
 
 export default function AdminPayrollPage() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(dayjs().format('YYYY-MM'));
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [companyPayrollList, setCompanyPayrollList] = useState([]);
 
-  const loadCompanyPayrolls = async (monthToGet) => {
-    setLoading(true);
-    try {
-      const res = await fetchCompanyPayrollsApi(monthToGet);
-      if (res.success) {
-        const sortedData = (res.data || []).sort((a, b) => (b.employee_id || 0) - (a.employee_id || 0));
-        setCompanyPayrollList(sortedData);
-      }
-    } catch (err) {
-      antMessage.error('Không thể tải bảng lương toàn công ty.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadCompanyPayrolls(selectedMonth);
+    let active = true;
+    fetchCompanyPayrollsApi(selectedMonth).then(res => {
+      if (!active) return;
+      if (!res.success) throw new Error(res.message || 'Không tải được bảng lương');
+      setCompanyPayrollList([...(res.data || [])].sort((a, b) => (b.employee_id || 0) - (a.employee_id || 0)));
+    }).catch(() => {
+      if (!active) return;
+      setCompanyPayrollList([]);
+      antMessage.error('Không thể tải bảng lương toàn công ty.');
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [selectedMonth]);
 
   const formatMoney = (val) => {
@@ -94,7 +89,7 @@ export default function AdminPayrollPage() {
         Number(item.deduction || 0),
         Number(item.extra || 0),
         Number(item.net_salary || 0),
-        item.computed_status === 'paid' || item.computed_status === 'da_thanh_toan' ? 'Đã thanh toán' : 'Chưa chốt'
+        ({ paid: 'Đã thanh toán', da_thanh_toan: 'Đã thanh toán', chua_thanh_toan: 'Chưa thanh toán', draft: 'Bản nháp' })[item.computed_status] || 'Chưa chốt'
       ]);
     });
 
@@ -218,7 +213,7 @@ export default function AdminPayrollPage() {
             onChange={(value) => setSelectedDepartment(value)}
             options={departmentOptions}
             className="w-48 bg-slate-900 border-slate-700 text-white"
-            dropdownStyle={{ backgroundColor: '#0f172a', color: '#fff' }}
+            styles={{ popup: { root: { background: 'var(--surface)' } } }}
             placeholder="Lọc phòng ban"
           />
         </div>
@@ -231,12 +226,15 @@ export default function AdminPayrollPage() {
               value={selectedMonth ? dayjs(selectedMonth, 'YYYY-MM') : dayjs()}
               onChange={(date) => {
                 if (date) {
+                  if (date.format('YYYY-MM') === selectedMonth) return;
+                  setLoading(true);
+                  setCompanyPayrollList([]);
                   setSelectedMonth(date.format('YYYY-MM'));
                 }
               }}
               format="MM/YYYY"
               allowClear={false}
-              bordered={false}
+              variant="borderless"
               className="text-white custom-dark-picker w-24"
               inputReadOnly
             />
@@ -246,6 +244,7 @@ export default function AdminPayrollPage() {
             type="primary"
             icon={<FileExcelOutlined />}
             onClick={handleExportExcel}
+            disabled={loading || !filteredCompanyPayrolls.length}
             className="bg-emerald-600 hover:bg-emerald-500 border-emerald-600 font-medium flex items-center h-10 rounded-xl shadow-md"
           >
             Xuất Excel
@@ -253,7 +252,7 @@ export default function AdminPayrollPage() {
         </div>
       </div>
 
-      <Card bordered={false} className="bg-slate-900 shadow-xl rounded-2xl overflow-hidden border border-slate-800/60">
+      <Card variant="borderless" className="bg-slate-900 shadow-xl rounded-2xl overflow-hidden border border-slate-800/60">
         <Table 
           dataSource={filteredCompanyPayrolls} 
           columns={adminColumns} 

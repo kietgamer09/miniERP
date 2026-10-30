@@ -6,42 +6,28 @@ import { UserOutlined, EyeOutlined, InfoCircleOutlined } from '@ant-design/icons
 import { fetchSelfPayrollApi } from '../services/payrollApi';
 
 export default function StaffPayrollPage() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [personalPayrollList, setPersonalPayrollList] = useState([]);
   const [modalType, setModalType] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  const loadPersonalPayrolls = async () => {
-    setLoading(true);
-    try {
-      const currentMonth = dayjs();
-      const monthsToFetch = [];
-      for (let i = 0; i < 6; i++) {
-        monthsToFetch.push(currentMonth.subtract(i, 'month').format('YYYY-MM'));
-      }
-
-      const promises = monthsToFetch.map(async (m) => {
-        try {
-          const res = await fetchSelfPayrollApi(m);
-          if (res.success && res.data) return res.data;
-        } catch (e) {}
-        return null;
-      });
-
-      const results = await Promise.all(promises);
-      const validData = results.filter(Boolean);
-      validData.sort((a, b) => dayjs(b.month).unix() - dayjs(a.month).unix());
-      setPersonalPayrollList(validData);
-    } catch (err) {
-      antMessage.error('Không thể tải lịch sử bảng lương cá nhân.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadPersonalPayrolls();
+    let active = true;
+    const months = Array.from({ length: 6 }, (_, i) => dayjs().subtract(i, 'month').format('YYYY-MM'));
+    Promise.allSettled(months.map(async month => {
+      const response = await fetchSelfPayrollApi(month);
+      if (!response.success || !response.data) throw new Error(response.message || 'Không tải được bảng lương');
+      return response.data;
+    })).then(results => {
+      if (!active) return;
+      const rows = results.filter(result => result.status === 'fulfilled').map(result => result.value);
+      setPersonalPayrollList(rows.sort((a, b) => b.month.localeCompare(a.month)));
+      const failed = results.filter(result => result.status === 'rejected').length;
+      if (failed) antMessage.error('Không tải được bảng lương của ' + failed + '/6 tháng. Vui lòng thử lại.');
+      setLoading(false);
+    });
+    return () => { active = false; };
   }, []);
 
   const formatMoney = (val) => {
