@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Tag, Modal, DatePicker, Select, message as antMessage } from 'antd';
+import { Card, Table, Tag, DatePicker, Select, Button, message as antMessage } from 'antd';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
-import { TeamOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { TeamOutlined, FileExcelOutlined } from '@ant-design/icons';
+import * as XLSX from 'xlsx';
 import { fetchCompanyPayrollsApi } from '../services/payrollApi';
 
 export default function AdminPayrollPage() {
@@ -16,7 +17,6 @@ export default function AdminPayrollPage() {
     try {
       const res = await fetchCompanyPayrollsApi(monthToGet);
       if (res.success) {
-        // Sắp xếp nhân sự mới nhất lên đầu (employee_id giảm dần)
         const sortedData = (res.data || []).sort((a, b) => (b.employee_id || 0) - (a.employee_id || 0));
         setCompanyPayrollList(sortedData);
       }
@@ -67,6 +67,70 @@ export default function AdminPayrollPage() {
     if (selectedDepartment === 'all') return true;
     return item.employee?.departments?.department_name === selectedDepartment;
   });
+
+  const handleExportExcel = () => {
+    if (!filteredCompanyPayrolls || filteredCompanyPayrolls.length === 0) {
+      antMessage.warning('Không có dữ liệu bảng lương để xuất Excel!');
+      return;
+    }
+
+    const formattedMonthName = dayjs(selectedMonth, 'YYYY-MM').format('MM-YYYY');
+
+    const rawData = [
+      [`BẢNG LƯƠNG TOÀN CÔNG TY - THÁNG ${formattedMonthName}`],
+      [`Phòng ban lọc: ${selectedDepartment === 'all' ? 'Tất cả phòng ban' : selectedDepartment}`],
+      [],
+      ['STT', 'Họ và tên', 'Phòng ban', 'Lương cố định (VNĐ)', 'Công chuẩn', 'Số ngày nghỉ', 'Khấu trừ (VNĐ)', 'Khoản thêm (VNĐ)', 'Thực lĩnh Net (VNĐ)', 'Trạng thái']
+    ];
+
+    filteredCompanyPayrolls.forEach((item, index) => {
+      rawData.push([
+        index + 1,
+        item.employee?.fullname || '---',
+        item.employee?.departments?.department_name || 'Chưa phân ban',
+        Number(item.base_salary || 0),
+        item.standard_days || 22,
+        item.off_days || 0,
+        Number(item.deduction || 0),
+        Number(item.extra || 0),
+        Number(item.net_salary || 0),
+        item.computed_status === 'paid' || item.computed_status === 'da_thanh_toan' ? 'Đã thanh toán' : 'Chưa chốt'
+      ]);
+    });
+
+    const worksheet = XLSX.utils.aoa_to_sheet(rawData);
+
+    if (!worksheet['!merges']) worksheet['!merges'] = [];
+    worksheet['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 9 } });
+    worksheet['!merges'].push({ s: { r: 1, c: 0 }, e: { r: 1, c: 9 } });
+
+    if (worksheet['A1']) {
+      worksheet['A1'].s = {
+        font: { name: 'Arial', sz: 16, bold: true, color: { rgb: "FFFFFF" } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        fill: { fgColor: { rgb: "1E293B" } }
+      };
+    }
+
+    if (worksheet['A2']) {
+      worksheet['A2'].s = {
+        font: { name: 'Arial', sz: 11, italic: true, color: { rgb: "CBD5E1" } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        fill: { fgColor: { rgb: "334155" } }
+      };
+    }
+
+    worksheet['!cols'] = [
+      { wch: 6 }, { wch: 22 }, { wch: 20 }, { wch: 18 }, 
+      { wch: 12 }, { wch: 12 }, { wch: 16 }, { wch: 16 }, 
+      { wch: 18 }, { wch: 16 }
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `BangLuong_T${formattedMonthName}`);
+    XLSX.writeFile(workbook, `Bang_Luong_T${formattedMonthName}.xlsx`);
+    antMessage.success(`Đã xuất thành công bảng lương tháng ${selectedMonth}!`);
+  };
 
   const adminColumns = [
     {
@@ -146,32 +210,46 @@ export default function AdminPayrollPage() {
         </p>
       </div>
 
-      <div className="flex justify-end items-center gap-3 mb-4">
-        <Select
-          value={selectedDepartment}
-          onChange={(value) => setSelectedDepartment(value)}
-          options={departmentOptions}
-          className="w-48 bg-slate-900 border-slate-700 text-white"
-          dropdownStyle={{ backgroundColor: '#0f172a', color: '#fff' }}
-          placeholder="Lọc phòng ban"
-        />
-
-        <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl shadow-sm">
-          <span className="text-slate-300 text-sm font-medium">Tháng:</span>
-          <DatePicker
-            picker="month"
-            value={selectedMonth ? dayjs(selectedMonth, 'YYYY-MM') : dayjs()}
-            onChange={(date) => {
-              if (date) {
-                setSelectedMonth(date.format('YYYY-MM'));
-              }
-            }}
-            format="MM/YYYY"
-            allowClear={false}
-            bordered={false}
-            className="text-white custom-dark-picker w-24"
-            inputReadOnly
+      {/* Dùng flex chuẩn cùng style inline thuần để ép thẳng hàng ngang tuyệt đối không bao giờ rớt dòng */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginBottom: '16px' }}>
+        <div>
+          <Select
+            value={selectedDepartment}
+            onChange={(value) => setSelectedDepartment(value)}
+            options={departmentOptions}
+            className="w-48 bg-slate-900 border-slate-700 text-white"
+            dropdownStyle={{ backgroundColor: '#0f172a', color: '#fff' }}
+            placeholder="Lọc phòng ban"
           />
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl shadow-sm">
+            <span className="text-slate-300 text-sm font-medium"></span>
+            <DatePicker
+              picker="month"
+              value={selectedMonth ? dayjs(selectedMonth, 'YYYY-MM') : dayjs()}
+              onChange={(date) => {
+                if (date) {
+                  setSelectedMonth(date.format('YYYY-MM'));
+                }
+              }}
+              format="MM/YYYY"
+              allowClear={false}
+              bordered={false}
+              className="text-white custom-dark-picker w-24"
+              inputReadOnly
+            />
+          </div>
+
+          <Button
+            type="primary"
+            icon={<FileExcelOutlined />}
+            onClick={handleExportExcel}
+            className="bg-emerald-600 hover:bg-emerald-500 border-emerald-600 font-medium flex items-center h-10 rounded-xl shadow-md"
+          >
+            Xuất Excel
+          </Button>
         </div>
       </div>
 
