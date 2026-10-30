@@ -155,6 +155,14 @@ npx prisma generate
 npm run dev
 ```
 
+Chạy lại hai lệnh đầu khi nhận phần chọn giờ giải trình để bổ sung `requested_check_in` và `requested_check_out`. Giờ đề nghị dùng định dạng `HH:mm`, mặc định `07:59` và `17:01`; có thể chỉ gửi một giờ bằng cách đặt giờ còn lại là `null`. Khi gửi đơn, giờ đề nghị được lưu riêng và chưa thay đổi giờ chấm công.
+
+Phần tách loại đơn cũng cần chạy lại `npm run setup:attendance` và `npx prisma generate` để thêm `request_type` và `original_attendance`:
+
+- `correction`: bổ sung/điều chỉnh giờ công, không có `makeup_date`. Sau khi duyệt, cập nhật giờ được đề nghị; giữ nguyên giờ không đề nghị sửa và lưu giờ cũ trong `original_attendance` cùng người/thời điểm duyệt.
+- `makeup`: đăng ký làm bù, bắt buộc ngày làm bù từ hôm nay trở đi (kể cả cuối tuần) và đủ giờ bắt đầu/kết thúc. Duyệt chỉ ghi nhận kế hoạch, không tự ghi đủ công.
+- Cả hai loại không trừ phép năm. Màu bảng công dựa trên giờ công đã ghi nhận; trạng thái đơn hiển thị riêng. Đơn cũ giữ loại `legacy`, không sửa dữ liệu đã duyệt; đơn cũ đang chờ cần hủy và gửi lại để chọn đúng loại.
+
 `setup:attendance` chạy SQL bổ sung ở `prisma/sql/attendance-explanations.sql` trong một transaction. Lệnh tạo bảng giải trình nếu chưa có, chạy lại được và không xóa/sửa bản ghi công. Dự án chưa có baseline Prisma Migrate nên phần bổ sung này không dùng `migrate reset` hoặc tự chạy `db push` trên dữ liệu hiện có.
 
 - `GET /api/attendances/today`: công hôm nay của tài khoản đăng nhập, màu/trạng thái và yêu cầu đã gửi.

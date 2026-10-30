@@ -30,4 +30,5 @@ export function normalizeAttendance(record) {
     check_in: checkIn, check_out: checkOut };
 }
 
-export const explanationLabels = { pending: 'Chờ Admin duyệt', approved: 'Đã duyệt chấm bù', rejected: 'Đã từ chối' };
+export const explanationLabels = { pending: 'Chờ duyệt', approved: 'Đã duyệt đề nghị', rejected: 'Đã từ chối' };
+export const explanationTypeLabels = { correction: 'Bổ sung / điều chỉnh giờ công', makeup: 'Đăng ký làm bù', legacy: 'Giải trình cũ' };

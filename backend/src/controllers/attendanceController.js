@@ -73,14 +73,14 @@ async function rangeData(employee, start, end, db = prisma) {
   const leaveModel = db.Day_off_requests || db.day_off_requests || db.dayOffRequest || db.DayOffRequest;
 
   const [records, leaves] = await Promise.all([
-    attendanceModel?.findMany ? attendanceModel.findMany({ where, orderBy: { attendances_id: 'asc' } }).catch(() => []) : Promise.resolve([]),
+    attendanceModel.findMany({ where, orderBy: { attendances_id: 'asc' } }),
     leaveModel?.findMany ? leaveModel.findMany({
       where: {
         employee_send_id: employee.employee_id,
         status: 'da_duoc_duyet',
         start_date: { lte: asDate(end) }
       }
-    }).catch(() => []) : Promise.resolve([]),
+    }) : Promise.reject(new Error('Không tìm thấy model nghỉ phép.')),
   ]);
 
   return { records, leaves, explanations: [] };
@@ -139,41 +139,7 @@ export const getMyAttendances = handler(async (req, res) => {
     explanationMap.set(dateKey, exp);
   });
 
-  // Gắn object giải trình và cập nhật màu sắc / nhãn cho từng ô ngày tương ứng
-  // Gắn object giải trình và cập nhật màu sắc / nhãn / trạng thái cho từng ô ngày tương ứng
-    days = days.map(dayItem => {
-      const foundExp = explanationMap.get(dayItem.date);
-      if (foundExp) {
-        let newColor = dayItem.color;
-        let newLabel = dayItem.label;
-        let newStatus = dayItem.status;
-
-        if (foundExp.status === 'pending') {
-          newColor = 'gold';
-          newLabel = 'Chờ duyệt giải trình';
-          newStatus = 'pending';
-        } else if (foundExp.status === 'rejected') {
-          newColor = 'red';
-          newLabel = 'Giải trình bị từ chối';
-          newStatus = 'rejected';
-        } else if (foundExp.status === 'approved') {
-          // Khớp hoàn toàn với quy chuẩn "Nghỉ phép đã duyệt / Đã duyệt" (màu xanh nước biển)
-          newColor = 'blue';
-          newLabel = 'Đã duyệt giải trình / Chấm bù';
-          newStatus = 'leave'; // Chuyển về trạng thái leave để biểu đồ ngoài tự động gom đúng vào nhóm Nghỉ có phép
-        }
-
-        return {
-          ...dayItem,
-          status: newStatus,
-          explanation: foundExp,
-          color: newColor,
-          label: newLabel
-        };
-      }
-      return dayItem;
-    });
-  // -----------------------------------------------------------------------------------
+  days = days.map(day => ({ ...day, explanation: explanationMap.get(day.date) || null }));
 
   res.json({ month, server_now: now.toISOString(), start_date: dateOnly(employee.start_date), days });
 });
@@ -194,7 +160,12 @@ function punch(action) {
       const attendanceModel = tx.attendances || tx.attendance || tx.Attendance;
       if (!attendanceModel) fail(500, 'Không tìm thấy model bảng chấm công trong Prisma.');
 
-      const rows = await attendanceModel.findMany({ where: { employee_id: employee.employee_id, date: asDate(clock.date) } });
+      const data = await rangeData(employee, clock.date, clock.date, tx);
+      if (data.leaves.some(leave => dateOnly(leave.start_date) <= clock.date && dateOnly(leave.end_date || leave.start_date) >= clock.date)) {
+        fail(409, 'Hôm nay bạn nghỉ phép đã được duyệt, không thể vào hoặc ra ca.');
+      }
+
+      const rows = data.records;
       if (rows.length > 1) fail(409, 'Ngày này có nhiều bản ghi công, cần quản trị viên kiểm tra.');
 
       const row = rows[0];
@@ -205,7 +176,7 @@ function punch(action) {
       const checkInStr = row?.check_in ? formatTimeVN(row.check_in) : '00:00:00';
       if (action === 'out' && actual.time < checkInStr) fail(409, 'Giờ ra ca không được trước giờ vào ca.');
 
-      if (action === 'out' && actual.time < '17:00:00' && !confirmedEarly) {
+      if (action === 'out' && actual.time < '17:00:00' && confirmedEarly !== true) {
         return { requireConfirmation: true, message: 'Hiện tại chưa đến 17:00 (chưa hết giờ làm). Bạn có chắc chắn muốn ra ca sớm không?' };
       }
 

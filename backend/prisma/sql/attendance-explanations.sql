@@ -13,3 +13,7 @@ CREATE TABLE IF NOT EXISTS attendance_explanations (
   CONSTRAINT attendance_explanations_employee_id_date_key UNIQUE (employee_id, date)
 );
 CREATE INDEX IF NOT EXISTS attendance_explanations_status_date_idx ON attendance_explanations(status, date);
+ALTER TABLE attendance_explanations ADD COLUMN IF NOT EXISTS requested_check_in VARCHAR(5);
+ALTER TABLE attendance_explanations ADD COLUMN IF NOT EXISTS requested_check_out VARCHAR(5);
+ALTER TABLE attendance_explanations ADD COLUMN IF NOT EXISTS request_type VARCHAR(20) NOT NULL DEFAULT 'legacy';
+ALTER TABLE attendance_explanations ADD COLUMN IF NOT EXISTS original_attendance JSONB;
