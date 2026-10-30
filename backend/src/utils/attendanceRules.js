@@ -13,17 +13,19 @@ export const dateOnly = value => value == null ? null : value.toISOString().slic
 export function classifyDay({ date, records = [], onLeave = false, startDate = null, clock = vietnamClock() }) {
   const base = { date, check_in: null, check_out: null, late: false, early: false, can_explain: false };
   const state = (status, color, label, extra = {}) => ({ ...base, status, color, label, ...extra });
-  if (date > clock.date) return state('future', 'default', 'Chưa đến ngày');
   if (startDate && date < startDate) return state('not_employed', 'default', 'Chưa bắt đầu làm việc');
   if (weekend(date)) return state('weekend', 'default', 'Cuối tuần');
+  if (onLeave) return state('leave', 'blue', 'Nghỉ phép đã duyệt', {
+    check_in: timeOnly(records[0]?.check_in), check_out: timeOnly(records[0]?.check_out),
+  });
+  if (date > clock.date) return state('future', 'default', 'Chưa đến ngày');
   if (records.length > 1) return state('conflict', 'red', 'Trùng bản ghi công, cần kiểm tra', { can_explain: true });
   const checkIn = timeOnly(records[0]?.check_in);
   const checkOut = timeOnly(records[0]?.check_out);
   const times = { check_in: checkIn, check_out: checkOut };
-  if (onLeave && !checkIn && !checkOut) return state('leave', 'blue', 'Nghỉ phép đã duyệt');
   const closed = date < clock.date || clock.time >= '17:00:00';
   if (!checkIn && !checkOut) return closed
-    ? state('absent', 'red', 'Không có công hoặc nghỉ phép đã duyệt', { can_explain: true })
+    ? state('absent', 'red', 'Không có công / vắng không phép', { can_explain: true })
     : state('waiting', 'default', 'Chưa vào ca, ngày làm việc chưa kết thúc');
   if (!checkIn || !checkOut) {
     if (closed || !checkIn) return state('missing', 'red', 'Thiếu lượt vào/ra ca', { ...times, can_explain: true });

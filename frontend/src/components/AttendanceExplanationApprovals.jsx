@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, App, Button, Form, Input, Modal, Select, Space, Table, Tag, Typography } from 'antd';
 import { getAttendanceExplanations, reviewAttendanceExplanation } from '../services/attendanceApi';
 import { useAuth } from '../hooks/useAuth';
+import { explanationTypeLabels } from '../utils/attendance';
 
 // Nhãn và màu sắc trạng thái giải trình chấm công
 const explanationStatusLabels = {
@@ -72,6 +73,7 @@ function ReviewExplanationModal({ item, onCancel, onSaved }) {
       <Typography.Paragraph>
         <strong>Ngày cần giải trình:</strong> {safeFormatDate(item.date || item.attendance_date)}
       </Typography.Paragraph>
+      <Typography.Paragraph><strong>Loại đề nghị:</strong> {explanationTypeLabels[item.request_type] || 'Giải trình cũ'}</Typography.Paragraph>
 
       {(item.makeup_date || item.compensatory_date) && (
         <Typography.Paragraph>
@@ -82,10 +84,13 @@ function ReviewExplanationModal({ item, onCancel, onSaved }) {
       <Typography.Paragraph style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
         <strong>Lý do giải trình:</strong> {item.reason}
       </Typography.Paragraph>
+      <Typography.Paragraph>
+        <strong>Giờ đề nghị:</strong> Vào {item.requested_check_in || '—'} · Ra {item.requested_check_out || '—'}
+      </Typography.Paragraph>
 
       <Alert 
         type="info" 
-        message="Quyết định duyệt hoặc từ chối giải trình sẽ được ghi nhận vào hệ thống chấm công." 
+        title={item.request_type === 'correction' ? 'Duyệt sẽ cập nhật giờ công và lưu giờ cũ để đối chiếu.' : 'Duyệt kế hoạch làm bù không tự ghi đủ công hoặc trừ phép năm.'}
         style={{ marginBottom: 12 }} 
       />
 
@@ -164,7 +169,7 @@ export default function AttendanceExplanationApprovals() {
         rowKey="id" 
         loading={loading} 
         dataSource={rows}
-        scroll={{ x: 850 }} 
+        scroll={{ x: 1230 }}
         pagination={{ pageSize: 10 }} 
         locale={{ emptyText: 'Không có đơn giải trình nào' }} 
         columns={[
@@ -175,6 +180,10 @@ export default function AttendanceExplanationApprovals() {
             render: text => text || 'Nhân viên'
           },
           { 
+            title: 'Loại đề nghị', key: 'request_type', width: 200,
+            render: (_, row) => explanationTypeLabels[row.request_type] || 'Giải trình cũ',
+          },
+          {
             title: 'Ngày giải trình', 
             render: (_, row) => safeFormatDate(row.date || row.attendance_date),
             width: 150 
@@ -188,6 +197,12 @@ export default function AttendanceExplanationApprovals() {
             width: 150 
           },
           { 
+            title: 'Giờ đề nghị',
+            key: 'requested_times',
+            width: 180,
+            render: (_, row) => <>Vào {row.requested_check_in || '—'}<br />Ra {row.requested_check_out || '—'}</>,
+          },
+          {
             title: 'Lý do giải trình', 
             dataIndex: 'reason', 
             width: 250, 

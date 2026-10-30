@@ -5,7 +5,7 @@ import { LeftOutlined, ReloadOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useAttendance } from '../hooks/useAttendance';
 import { getMyAttendances, cancelAttendanceExplanation } from '../services/attendanceApi';
-import { attendanceDay, explanationLabels, isAttendanceWeekend } from '../utils/attendance';
+import { attendanceDay, explanationLabels, explanationTypeLabels, isAttendanceWeekend } from '../utils/attendance';
 import { formatDateOnlyVN } from '../utils/dates';
 import AttendanceExplanationModal from './AttendanceExplanationModal';
 import AttendanceDonut from './AttendanceDonut';
@@ -60,13 +60,9 @@ export default function TimesheetCard({ compact = false }) {
 
   const stripDays = (data?.days || []).filter(item => {
     const expl = getExplanation(item);
-    const isApproved = expl?.status === 'approved';
     const isPending = expl?.status === 'pending';
     const isRejected = expl?.status === 'rejected';
 
-    if (isApproved) {
-      return activeGroup === 'leave'; 
-    }
     if (isPending || isRejected) {
       return activeGroup === 'attention';
     }
@@ -124,32 +120,13 @@ export default function TimesheetCard({ compact = false }) {
       {stripDays.length ? <ul ref={strip} className="timesheet-days-strip" aria-label={stripLabel}>
         {stripDays.map(item => {
           const expl = getExplanation(item);
-          const isApproved = expl?.status === 'approved';
-          const isPending = expl?.status === 'pending';
-          const isRejected = expl?.status === 'rejected';
-          
-          let chipColor = item.color;
-          let chipLabel = item.label;
-          let customStyle = {};
-
-          if (isApproved) {
-            chipColor = 'blue';
-            chipLabel = 'Đã duyệt giải trình';
-            customStyle = { borderColor: '#1890ff', backgroundColor: 'rgba(24, 144, 255, 0.15)', color: '#69c0ff' };
-          } else if (isPending) {
-            chipColor = 'gold';
-            chipLabel = 'Chờ duyệt giải trình';
-            customStyle = { borderColor: '#faad14', backgroundColor: 'rgba(250, 173, 20, 0.15)', color: '#ffd666' };
-          } else if (isRejected) {
-            chipColor = 'rejected-custom';
-            chipLabel = 'Giải trình bị từ chối';
-            customStyle = { borderColor: '#ff4d4f', backgroundColor: 'rgba(255, 77, 79, 0.2)', color: '#ff7875' };
-          }
+          const chipColor = item.color;
+          const chipLabel = `${item.label}${expl ? ` · ${explanationLabels[expl.status]}` : ''}`;
 
           return <li key={item.date}>
             <Tooltip title={`${formatDateOnlyVN(item.date)}: ${chipLabel}`}>
               <button className={`attendance-day timesheet-day-chip attendance-day--${chipColor}`}
-                onClick={() => setSelected(item.date)} style={customStyle} aria-label={`Ngày ${formatDateOnlyVN(item.date)}, ${chipLabel}`}>
+                onClick={() => setSelected(item.date)} aria-label={`Ngày ${formatDateOnlyVN(item.date)}, ${chipLabel}`}>
                 <strong>{getDayName(parseDateOnly(item.date))}</strong>
                 <span>{item.date.slice(8)}/{item.date.slice(5, 7)}</span>
               </button>
@@ -172,32 +149,13 @@ export default function TimesheetCard({ compact = false }) {
         {Array.from({ length: offset }, (_, i) => <div key={`empty-${i}`} />)}
         {data.days.map(item => {
           const expl = getExplanation(item);
-          const isApproved = expl?.status === 'approved';
-          const isPending = expl?.status === 'pending';
-          const isRejected = expl?.status === 'rejected';
-
-          let dayColor = item.color;
-          let dayLabel = item.label;
-          let customStyle = {};
-
-          if (isApproved) {
-            dayColor = 'blue';
-            dayLabel = 'Đã duyệt giải trình';
-            customStyle = { borderColor: '#1890ff', backgroundColor: 'rgba(24, 144, 255, 0.15)', color: '#69c0ff' };
-          } else if (isPending) {
-            dayColor = 'gold';
-            dayLabel = 'Chờ duyệt giải trình';
-            customStyle = { borderColor: '#faad14', backgroundColor: 'rgba(250, 173, 20, 0.15)', color: '#ffd666' };
-          } else if (isRejected) {
-            dayColor = 'rejected-custom';
-            dayLabel = 'Giải trình bị từ chối';
-            customStyle = { borderColor: '#ff4d4f', backgroundColor: 'rgba(255, 77, 79, 0.2)', color: '#ff7875' };
-          }
+          const dayColor = item.color;
+          const dayLabel = item.label;
 
           return (
             <Tooltip key={item.date} title={`${formatDateOnlyVN(item.date)}: ${dayLabel}${expl ? ` · ${explanationLabels[expl.status]}` : ''}`}>
               <button className={`attendance-day attendance-day--${dayColor}`} onClick={() => setSelected(item.date)}
-                style={customStyle} aria-label={`Ngày ${formatDateOnlyVN(item.date)}, ${dayLabel}`}>
+                aria-label={`Ngày ${formatDateOnlyVN(item.date)}, ${dayLabel}`}>
                 <strong>{Number(item.date.slice(-2))}</strong>
                 <span className="attendance-day-label">{dayLabel}</span>
               </button>
@@ -218,19 +176,8 @@ export default function TimesheetCard({ compact = false }) {
         const isPending = expl?.status === 'pending';
         const isRejected = expl?.status === 'rejected';
 
-        let tagColor = selectedDay.color;
-        let tagText = selectedDay.label;
-
-        if (isApproved) {
-          tagColor = 'blue';
-          tagText = 'Đã duyệt giải trình / Chấm bù';
-        } else if (isPending) {
-          tagColor = 'gold';
-          tagText = 'Chờ duyệt giải trình';
-        } else if (isRejected) {
-          tagColor = 'error';
-          tagText = 'Đơn giải trình bị từ chối';
-        }
+        const tagColor = selectedDay.color;
+        const tagText = selectedDay.label;
 
         return (
           <>
@@ -245,15 +192,23 @@ export default function TimesheetCard({ compact = false }) {
             {expl ? <>
               <div style={{ marginTop: 12 }}>
                 <Tag color={isApproved ? 'blue' : isPending ? 'gold' : 'error'}>
-                  {isApproved ? 'Đã duyệt chấm bù' : isPending ? 'Chờ duyệt' : 'Bị từ chối'}
+                  {explanationLabels[expl.status]}
                 </Tag>
               </div>
+
+              <Typography.Paragraph style={{ marginTop: 8 }}>{explanationTypeLabels[expl.request_type] || 'Giải trình cũ'}</Typography.Paragraph>
+              {expl.original_attendance && <Typography.Paragraph type="secondary">
+                Giờ trước điều chỉnh: Vào {expl.original_attendance.check_in?.slice(11, 19) || '—'} · Ra {expl.original_attendance.check_out?.slice(11, 19) || '—'}
+              </Typography.Paragraph>}
 
               <Typography.Paragraph style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', marginTop: 8 }}>
                 <strong>Lý do đã gửi:</strong> {expl.reason}
               </Typography.Paragraph>
 
               {expl.makeup_date && <Typography.Paragraph>Ngày đề nghị chấm bù: {formatDateOnlyVN(expl.makeup_date)}</Typography.Paragraph>}
+              {(expl.requested_check_in || expl.requested_check_out) && <Typography.Paragraph>
+                Giờ đề nghị: Vào {expl.requested_check_in || '—'} · Ra {expl.requested_check_out || '—'}
+              </Typography.Paragraph>}
 
               {expl.status === 'rejected' && expl.review_note && (
                 <Alert 

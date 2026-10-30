@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { Alert, DatePicker, Form, Input, Modal } from 'antd';
-import dayjs from 'dayjs'; // Đảm bảo đã import dayjs
+import { Alert, Col, DatePicker, Form, Input, Modal, Row, Select, TimePicker } from 'antd';
+import dayjs from 'dayjs';
 import { createAttendanceExplanation } from '../services/attendanceApi';
-import { isAttendanceWeekend } from '../utils/attendance';
+import { attendanceDay } from '../utils/attendance';
 import { formatDateOnlyVN } from '../utils/dates';
 import { useFormDraft } from '../hooks/useDraft';
 
@@ -11,10 +11,12 @@ export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
+  const requestType = Form.useWatch('request_type', form) || 'correction';
 
   const draft = useFormDraft(form, `attendance-explanation:${day.date}`, {
-    fields: ['reason', 'makeup_date'], 
+    fields: ['request_type', 'reason', 'makeup_date', 'requested_check_in', 'requested_check_out'],
     dateFields: ['makeup_date'],
+    onRestore: values => form.setFieldValue('request_type', values.request_type || (values.makeup_date ? 'makeup' : 'correction')),
   });
 
   async function save() {
@@ -26,8 +28,11 @@ export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
       setError('');
       await createAttendanceExplanation({ 
         date: day.date, 
+        request_type: values.request_type,
         reason: values.reason.trim(), 
-        makeup_date: values.makeup_date?.format('YYYY-MM-DD') || null 
+        makeup_date: values.request_type === 'makeup' ? values.makeup_date?.format('YYYY-MM-DD') || null : null,
+        requested_check_in: values.requested_check_in || null,
+        requested_check_out: values.requested_check_out || null,
       });
       draft.clear();
       onSaved();
@@ -49,6 +54,7 @@ export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
       onOk={save} 
       onCancel={() => { if (!pending.current) onCancel(); }} 
       confirmLoading={saving}
+      styles={{ body: { maxHeight: '65vh', overflowY: 'auto', paddingRight: 4 } }}
       closable={!saving} 
       cancelButtonProps={{ disabled: saving }}
     >
@@ -61,19 +67,24 @@ export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
       {error && <Alert type="error" title={error} showIcon style={{ marginBottom: 12 }} />}
       {draft.notice}
       
-      {/* Thêm initialValues để tự động điền sẵn ngày được chọn vào ô chấm bù */}
       <Form 
         form={form} 
         layout="vertical" 
         disabled={saving} 
         initialValues={{
-          makeup_date: dayjs(day.date)
+          request_type: 'correction', makeup_date: null, requested_check_in: '07:59', requested_check_out: '17:01',
         }}
         onValuesChange={draft.onValuesChange}
       >
+        <Form.Item name="request_type" label="Loại đề nghị" rules={[{ required: true }]}>
+          <Select options={[
+            { value: 'correction', label: 'Bổ sung / điều chỉnh giờ công' },
+            { value: 'makeup', label: 'Đăng ký làm bù' },
+          ]} />
+        </Form.Item>
         <Form.Item 
           name="reason" 
-          label="Lý do và đề nghị chấm bù" 
+          label="Lý do đề nghị"
           rules={[
             { required: true, whitespace: true, message: 'Vui lòng nhập lý do' },
             { max: 2000, message: 'Lý do tối đa 2000 ký tự' }
@@ -83,20 +94,45 @@ export default function AttendanceExplanationModal({ day, onCancel, onSaved }) {
             rows={4} 
             maxLength={2000} 
             showCount 
-            placeholder="Giải thích lý do vào muộn/ra sớm hoặc thiếu công, và phương án chấm bù" 
+            placeholder={requestType === 'correction' ? 'Ví dụ: Quên chấm công ra ca, thực tế kết thúc làm việc lúc 17:30' : 'Lý do cần làm bù và công việc dự kiến thực hiện'}
           />
         </Form.Item>
 
-        <Form.Item name="makeup_date" label="Ngày đề nghị chấm bù (không bắt buộc)">
+        <Row gutter={16}>
+          {['requested_check_in', 'requested_check_out'].map((field, index) => <Col xs={24} sm={12} key={field}>
+            <Form.Item name={field} label={requestType === 'correction' ? (index === 0 ? 'Giờ vào thực tế đề nghị ghi nhận' : 'Giờ ra thực tế đề nghị ghi nhận') : (index === 0 ? 'Giờ bắt đầu làm bù' : 'Giờ kết thúc làm bù')}
+              dependencies={['request_type', index === 0 ? 'requested_check_out' : 'requested_check_in']}
+              getValueProps={value => ({ value: value ? dayjs(`${day.date}T${value}:00`) : null })}
+              getValueFromEvent={value => value?.format('HH:mm') || null}
+              rules={[({ getFieldValue }) => ({ validator: () => {
+                const start = getFieldValue('requested_check_in'), end = getFieldValue('requested_check_out');
+                if (getFieldValue('request_type') === 'makeup' && (!start || !end)) return Promise.reject(new Error('Chọn đủ giờ bắt đầu và kết thúc làm bù'));
+                if (!start && !end) return Promise.reject(new Error('Chọn ít nhất giờ vào hoặc giờ ra'));
+                if (start && end && end <= start) return Promise.reject(new Error('Giờ ra phải sau giờ vào'));
+                return Promise.resolve();
+              } })]}>
+              <TimePicker format="HH:mm" minuteStep={1} style={{ width: '100%' }} placeholder={index === 0 ? 'Chọn giờ vào' : 'Chọn giờ ra'} />
+            </Form.Item>
+          </Col>)}
+        </Row>
+
+        {requestType === 'makeup' && <Form.Item name="makeup_date" label="Ngày làm bù dự kiến" rules={[{ required: true, message: 'Chọn ngày làm bù' }, {
+          validator: (_, date) => {
+            if (!date) return Promise.resolve();
+            const value = date.format('YYYY-MM-DD');
+            return date.isValid() && value >= attendanceDay() && value >= day.date
+              ? Promise.resolve() : Promise.reject(new Error('Chọn ngày từ hôm nay trở đi và không trước ngày cần giải trình'));
+          },
+        }]}>
           <DatePicker 
             format="DD/MM/YYYY" 
             style={{ width: '100%' }} 
             disabledDate={date => {
               const value = date.format('YYYY-MM-DD');
-              return isAttendanceWeekend(value);
+              return value < attendanceDay() || value < day.date;
             }} 
           />
-        </Form.Item>
+        </Form.Item>}
       </Form>
     </Modal>
   );

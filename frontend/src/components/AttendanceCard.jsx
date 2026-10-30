@@ -22,6 +22,7 @@ function AttendanceCard() {
   const record = attendance?.record;
   const day = attendance?.day;
   const dayInfo = attendance?.dayInfo;
+  const onLeave = dayInfo?.status === 'leave';
   const weekend = attendance?.weekend;
   const busy = attendance?.busy;
   const loading = attendance?.loading;
@@ -42,7 +43,7 @@ function AttendanceCard() {
   const punching = busy === 'in' || busy === 'out';
 
   const handleAttendanceClick = async (confirmedEarly = false) => {
-    if (!attendance?.submitAttendance) return;
+    if (onLeave || !attendance?.submitAttendance) return;
     try {
       const action = record?.check_in ? 'out' : 'in';
       const res = await attendance.submitAttendance(action, confirmedEarly);
@@ -67,7 +68,12 @@ function AttendanceCard() {
   let btnIcon = <HandIcon />;
   let isDisabled = weekend || loading || Boolean(error) || punching || !attendance?.submitAttendance;
 
-  if (weekend) {
+  if (onLeave) {
+    btnText = 'Nghỉ phép đã duyệt';
+    btnBg = 'var(--subtle-bg)';
+    isDisabled = true;
+    btnIcon = <CheckCircleOutlined />;
+  } else if (weekend) {
     btnText = 'Cuối tuần không chấm công';
     btnBg = '#d9d9d9';
     isDisabled = true;
@@ -89,10 +95,10 @@ function AttendanceCard() {
     btnIcon = <CheckCircleOutlined />;
   }
 
-  const checkInColor = checkInTime !== '--:--:--'
+  const checkInColor = !onLeave && checkInTime !== '--:--:--'
     ? (checkInTime > '08:00:00' ? '#faad14' : '#52c41a')
     : 'inherit';
-  const checkOutColor = checkOutTime !== '--:--:--'
+  const checkOutColor = !onLeave && checkOutTime !== '--:--:--'
     ? (checkOutTime < '17:00:00' ? '#faad14' : '#52c41a')
     : 'inherit';
 
@@ -123,7 +129,7 @@ function AttendanceCard() {
         </Space>
 
         <Button
-          type={isCompleted || weekend ? 'default' : 'primary'}
+          type={isCompleted || weekend || onLeave ? 'default' : 'primary'}
           className="attendance-action"
           icon={btnIcon}
           loading={punching || loading}
@@ -133,7 +139,7 @@ function AttendanceCard() {
             minWidth: 140,
             backgroundColor: btnBg,
             borderColor: btnBg,
-            color: isCompleted || weekend ? 'rgba(0, 0, 0, 0.45)' : '#fff',
+            color: isCompleted || weekend || onLeave ? 'var(--text)' : '#fff',
             borderRadius: 6,
             fontWeight: 500,
           }}
