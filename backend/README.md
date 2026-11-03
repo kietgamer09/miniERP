@@ -89,6 +89,30 @@ Mở terminal thứ hai, chạy frontend theo [hướng dẫn frontend](../front
 
 ## Chi tiết từng tính năng
 
+### Dự án, bình luận và tệp đính kèm
+
+Integration test của module này dùng PostgreSQL in-memory (PGlite), tạo database mới cho mỗi lần chạy và không đọc/ghi database trong `.env`:
+
+```bash
+npm test
+```
+
+- Xóa dự án chưa có task sẽ xóa bản ghi và các bình luận trong DB; thư mục `uploads/attachments/projects/<id>` được xóa sau khi transaction DB thành công. Nếu xóa thư mục lỗi, backend ghi log và có thể dọn lại bằng lệnh dưới đây.
+- Có thể quét thư mục mồ côi ở chế độ xem trước (mặc định, không xóa):
+
+  ```bash
+  npm run cleanup:orphan-project-attachments
+  ```
+
+  Chỉ sau khi kiểm tra danh sách, thêm `-- --apply` để xóa các thư mục có ID dự án không còn trong DB:
+
+  ```bash
+  npm run cleanup:orphan-project-attachments -- --apply
+  ```
+
+- Bình luận dự án và task vẫn được phép sau khi dự án hoàn thành để lưu trao đổi/lịch sử. Tạo hoặc sửa task và tải tệp lên vẫn tuân theo write policy hiện có, bị chặn khi dự án hoàn thành.
+- Tạo bình luận task/dự án kiểm tra quyền truy cập và ghi bình luận trong cùng transaction; nếu quyền thành viên thay đổi đồng thời, request xung đột sẽ nhận `409`.
+
 ### Đơn làm thêm / tăng ca
 
 Sau khi nhận bản có chức năng làm thêm, chạy một lần trong `backend` rồi khởi động lại backend:

@@ -1,6 +1,5 @@
 import express from 'express';
 import { mkdir, readdir, readFile, writeFile, unlink } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import prisma from '../config/prisma.js';
@@ -9,9 +8,10 @@ import { attachEmployee } from '../middlewares/employeeMiddleware.js';
 import { parseId } from '../utils/validators.js';
 import { canAccessTaskProject } from '../utils/taskAccess.js';
 import { canViewOvertime, overtimeActor, overtimeRecord } from '../services/overtime.js';
+import { getAttachmentsRoot } from '../utils/projectAttachments.js';
 
 const router = express.Router();
-const root = fileURLToPath(new URL('../../uploads/attachments/', import.meta.url));
+const root = getAttachmentsRoot();
 const maxSize = 10 * 1024 * 1024;
 const extensions = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.docx', '.xlsx', '.pptx', '.txt', '.csv']);
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
