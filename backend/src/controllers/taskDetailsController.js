@@ -1,4 +1,4 @@
-import prisma from '../config/prisma.js';
+﻿import prisma from '../config/prisma.js';
 import { formatTask, taskFields, validateTask } from './taskController.js';
 import { parseId, toDateOnly } from '../utils/validators.js';
 
@@ -64,7 +64,11 @@ export const updateTaskDetails = async (req, res) => {
         }
       }
 
+      const projectStartDate = toDateOnly(task.projects.start_date);
       const projectEndDate = toDateOnly(task.projects.end_date);
+      if (body.due_date < projectStartDate) {
+        return errorResult(400, `Hạn chót không được trước ngày bắt đầu dự án (${projectStartDate})`);
+      }
       if (body.due_date > projectEndDate) {
         return errorResult(400, `Hạn chót không được sau ngày kết thúc dự án (${projectEndDate})`);
       }

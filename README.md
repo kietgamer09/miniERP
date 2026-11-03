@@ -249,12 +249,17 @@ Trên máy đích, khôi phục database và uploads, cấu hình `DATABASE_URL`
 Chạy từ thư mục tương ứng:
 
 ```powershell
+# backend
+cd backend
+npm test
+
 # frontend
+cd ..\frontend
 npm run lint
 npm run build
 ```
 
-Backend có một số script kiểm tra trong `backend/scripts/check-*.mjs`; xem đầu file trước khi chạy vì một số script cần PostgreSQL và tạo dữ liệu kiểm thử tạm.
+`npm test` chạy integration tests cho API task/dự án. Cần PostgreSQL đang chạy và `backend/.env` trỏ đến database có quyền `CREATEDB`; test tự tạo database tạm có tên riêng và xóa sau khi chạy, không sửa database `miniERP`. Các script `backend/scripts/check-*.mjs` khác cũng có thể cần PostgreSQL; đọc đầu script trước khi chạy.
 
 ## Cấu trúc thư mục
 

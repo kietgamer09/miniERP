@@ -87,6 +87,18 @@ Mở terminal thứ hai, chạy frontend theo [hướng dẫn frontend](../front
 | Thiếu token khi mở API trên thanh địa chỉ | Dùng frontend đã đăng nhập; API yêu cầu Authorization: Bearer. |
 | Bảng lương công ty trống | Tháng được chọn chưa có bản lương lưu; tạo bảng DB không tự tính lương. |
 
+## Kiểm thử tích hợp API task/dự án
+
+Trong `backend`, chạy:
+
+```bash
+npm test
+```
+
+Test dùng `node:test`, HTTP server tạm và PostgreSQL đã cấu hình trong `.env`. Tài khoản DB cần quyền `CREATEDB`; bộ test tạo database có tên ngẫu nhiên, nạp dữ liệu giả riêng, rồi tự đóng kết nối và xóa database đó. Nó không ghi vào database `miniERP` đang dùng. Không chạy đồng thời với thao tác xóa database thử nghiệm thủ công.
+
+Bộ test kiểm tra hạn task nằm trong khoảng ngày dự án, quyền tạo/sửa/xóa dự án, không hoàn thành dự án còn task dở, chặn sửa/tạo task khi dự án hoàn tất và xử lý hai yêu cầu đổi trạng thái cạnh tranh.
+
 ## Chi tiết từng tính năng
 
 ### Đơn làm thêm / tăng ca
