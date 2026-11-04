@@ -134,7 +134,7 @@ beforeEach(async () => {
 });
 
 after(async () => {
-  await new Promise((resolve) => httpServer?.close(resolve));
+  if (httpServer) await new Promise((resolve) => httpServer.close(resolve));
   await prisma?.$disconnect();
   await pool?.end();
   await databaseServer?.stop();

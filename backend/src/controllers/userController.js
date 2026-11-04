@@ -174,7 +174,8 @@ export const createUser = async (req, res) => {
       return res.status(409).json({ error: `Tên đăng nhập ${autoUsername} đã được sử dụng. Hãy phân biệt tên nhân viên trước khi tạo tài khoản.` });
     }
 
-    const defaultPassword = '12345';
+    const defaultPassword = createTemporaryPassword();
+    const passwordExpiresAt = temporaryPasswordExpiry();
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 
     const result = await prisma.$transaction(async (prismaClient) => {
@@ -234,6 +235,49 @@ export const createUser = async (req, res) => {
     }
     console.error('Error creating employee:', error);
     return res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
+  }
+};
+
+export const resetTemporaryPassword = async (req, res) => {
+  const employeeId = parseId(req.params.id);
+  if (!employeeId) {
+    return res.status(400).json({ error: 'ID nhân viên phải là số nguyên dương hợp lệ.' });
+  }
+
+  try {
+    const temporaryPassword = createTemporaryPassword();
+    const passwordExpiresAt = temporaryPasswordExpiry();
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+    const result = await prisma.$transaction(async (tx) => {
+      const employee = await tx.employees.findUnique({
+        where: { employee_id: employeeId },
+        select: { user_id: true },
+      });
+      if (!employee) return { status: 404, error: 'Không tìm thấy nhân viên.' };
+
+      const user = await tx.users.update({
+        where: { user_id: employee.user_id },
+        data: {
+          password: hashedPassword,
+          must_change_password: true,
+          temp_password_expires_at: passwordExpiresAt,
+          temp_password_used_at: null,
+        },
+        select: { username: true },
+      });
+      return { username: user.username };
+    });
+
+    if (result.error) return res.status(result.status).json({ error: result.error });
+    return res.status(200).json({
+      username: result.username,
+      temporary_password: temporaryPassword,
+      expires_at: passwordExpiresAt.toISOString(),
+      must_change_password: true,
+    });
+  } catch (error) {
+    console.error('Không thể cấp lại mật khẩu tạm:', error.code || error.name);
+    return res.status(500).json({ error: 'Không cấp lại được mật khẩu tạm.' });
   }
 };
 

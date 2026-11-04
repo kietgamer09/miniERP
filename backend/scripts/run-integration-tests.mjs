@@ -1,28 +1,35 @@
 import { randomBytes } from 'node:crypto';
-import { execFile as execFileCallback } from 'node:child_process';
-import { promisify } from 'node:util';
+import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { createTestDatabase } from './lib/testDatabase.mjs';
 
-const execFile = promisify(execFileCallback);
 const backendDir = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const prismaCli = path.join(backendDir, 'node_modules', 'prisma', 'build', 'index.js');
 const jwtSecret = process.env.JWT_SECRET || randomBytes(48).toString('hex');
 const chatKey = randomBytes(32).toString('base64');
+const commandTimeoutMs = 10 * 60 * 1000;
 
 async function runCommand(label, executable, args, env) {
   console.log(`\n> ${label}`);
-  try {
-    const result = await execFile(executable, args, { cwd: backendDir, env, maxBuffer: 8 * 1024 * 1024 });
-    if (result.stdout) process.stdout.write(result.stdout);
-    if (result.stderr) process.stderr.write(result.stderr);
-  } catch (error) {
-    if (error.stdout) process.stdout.write(error.stdout);
-    if (error.stderr) process.stderr.write(error.stderr);
-    throw error;
-  }
+  await new Promise((resolve, reject) => {
+    const child = spawn(executable, args, { cwd: backendDir, env, stdio: 'inherit', windowsHide: true });
+    const timeout = setTimeout(() => {
+      child.kill();
+      reject(new Error(`Timeout sau 10 phút: ${label}`));
+    }, commandTimeoutMs);
+
+    child.once('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once('close', (code, signal) => {
+      clearTimeout(timeout);
+      if (code === 0) resolve();
+      else reject(new Error(`${label} thất bại (exit ${code ?? signal}).`));
+    });
+  });
 }
 
 async function prepareSchemaSuite(prefix, suiteEnv = {}) {
