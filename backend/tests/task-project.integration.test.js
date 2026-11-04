@@ -228,6 +228,17 @@ describe('task/project integration invariants', () => {
     assert.equal(unchanged.rows[0].due_date, original.rows[0].due_date);
   });
 
+  it('rejects moving project start past an existing task deadline without updating the project', async () => {
+    const original = await fixturePool.query('SELECT start_date::text AS start_date FROM projects WHERE id = 1');
+    const response = await callApi(2, '/api/projects/1', 'PUT', {
+      name: 'Dự án A', start_date: '2026-11-21', end_date: '2026-12-31',
+    });
+    assert.equal(response.status, 409);
+    assert.match((await responseBody(response)).error, /trước ngày bắt đầu mới/);
+    const unchanged = await fixturePool.query('SELECT start_date::text AS start_date FROM projects WHERE id = 1');
+    assert.equal(unchanged.rows[0].start_date, original.rows[0].start_date);
+  });
+
   it('enforces project creation and ownership permissions', async () => {
     const projectBody = {
       code: 'TEST-NEW',

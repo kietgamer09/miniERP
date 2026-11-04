@@ -66,7 +66,7 @@ Body sửa (gửi đủ name, start_date, end_date):
 {"name":"Dự án đã sửa","description":"Mô tả mới","start_date":"2026-10-27","end_date":"2026-12-31"}
 ```
 
-Không đổi được code. Không gửi description khi sửa thì giữ mô tả cũ; gửi null hoặc chuỗi rỗng để xóa. Các trường ngoài hợp đồng không được ghi vào database. Ngày kết thúc bằng ngày bắt đầu hợp lệ. Khi tạo dự án, ngày kết thúc không được trước ngày hiện tại theo múi giờ `Asia/Ho_Chi_Minh`; ngày bắt đầu có thể ở quá khứ. Khi sửa, ngày kết thúc không được trước ngày bắt đầu hoặc hạn chót lớn nhất của task.
+Không đổi được code. Không gửi description khi sửa thì giữ mô tả cũ; gửi null hoặc chuỗi rỗng để xóa. Các trường ngoài hợp đồng không được ghi vào database. Ngày kết thúc bằng ngày bắt đầu hợp lệ. Khi tạo dự án, ngày kết thúc không được trước ngày hiện tại theo múi giờ `Asia/Ho_Chi_Minh`; ngày bắt đầu có thể ở quá khứ. Khi sửa, ngày kết thúc không được trước ngày bắt đầu hoặc hạn chót lớn nhất của task; ngày bắt đầu mới không được sau hạn chót nhỏ nhất của task. Vi phạm khoảng task hiện có trả 409 và không cập nhật dự án.
 
 Danh sách và chi tiết dự án trả thêm `can_manage` (boolean), do backend tính: `true` khi người gọi là admin hoặc có `employee_id` trùng `manager_id` của dự án; trường hợp khác là `false`. Frontend dùng trường này để hiện các thao tác quản lý.
 
@@ -243,7 +243,7 @@ ID người làm là `employee_id`, không phải `user_id`. Sau khi kiểm tra 
 3. Ưu tiên ngoài `thap`, `trung_binh`, `cao`, ngày không có thật/sai dạng YYYY-MM-DD, hoặc ID người làm sai → 400.
 4. Không thuộc dự án → 400 `Người làm task phải là thành viên của dự án`.
 5. Đã nghỉ việc → 400 `Nhân viên đã nghỉ việc`.
-6. Hạn sau ngày kết thúc → 400 `Hạn chót không được sau ngày kết thúc dự án (YYYY-MM-DD)`, với ngày kết thúc thật. Trùng ngày hợp lệ; hạn chót ở quá khứ được phép trong phạm vi yêu cầu này.
+6. Hạn trước ngày bắt đầu → 400 `Hạn chót không được trước ngày bắt đầu dự án (YYYY-MM-DD)`; hạn sau ngày kết thúc → 400 `Hạn chót không được sau ngày kết thúc dự án (YYYY-MM-DD)`. Hai ngày biên hợp lệ; hạn chót ở quá khứ được phép nếu vẫn nằm trong khoảng ngày dự án.
 
 Mô tả có thể là chuỗi hoặc null; bỏ qua/chuỗi rỗng lưu null, kiểu khác trả 400. Backend luôn đặt `status = can_lam`, `created_by = req.employee.employee_id`; không nhận các trường này từ body.
 
@@ -273,17 +273,18 @@ Dùng dự án kiểm tra riêng vì POST thành công ghi dữ liệu thật. K
 | 2 | Thành viên thường POST cùng body | 403 |
 | 3 | Quản lý/admin POST vào dự án hoàn thành | 409, yêu cầu mở lại dự án |
 | 4 | Người làm đang làm việc nhưng không thuộc dự án | 400, lỗi thành viên |
-| 5 | Người làm hợp lệ, hạn chót sau ngày kết thúc một ngày | 400, thông điệp có ngày kết thúc |
-| 6 | Hạn chót đúng bằng ngày kết thúc | 201 |
-| 7 | Tiêu đề chỉ có khoảng trắng; hoặc priority bằng urgent | 400 với lỗi tương ứng |
-| 8 | Người làm đã nghỉ việc nhưng còn liên kết thành viên | 400 `Nhân viên đã nghỉ việc` |
-| 9 | Thành viên GET `/api/projects/{{project_id}}/tasks` | 200, đúng thứ tự hạn chót rồi ID, có assignee_name |
-| 10 | Người ngoài dự án GET danh sách task | 403 `Bạn không thuộc dự án này` |
-| 11 | Admin GET task của dự án bất kỳ | 200 |
+| 5 | Người làm hợp lệ, hạn chót trước ngày bắt đầu một ngày | 400, thông điệp có ngày bắt đầu |
+| 6 | Hạn chót sau ngày kết thúc một ngày | 400, thông điệp có ngày kết thúc |
+| 7 | Hạn chót đúng bằng ngày bắt đầu hoặc ngày kết thúc | 201 |
+| 8 | Tiêu đề chỉ có khoảng trắng; hoặc priority bằng urgent | 400 với lỗi tương ứng |
+| 9 | Người làm đã nghỉ việc nhưng còn liên kết thành viên | 400 `Nhân viên đã nghỉ việc` |
+| 10 | Thành viên GET `/api/projects/{{project_id}}/tasks` | 200, đúng thứ tự hạn chót rồi ID, có assignee_name |
+| 11 | Người ngoài dự án GET danh sách task | 403 `Bạn không thuộc dự án này` |
+| 12 | Admin GET task của dự án bất kỳ | 200 |
 
-Kiểm tra thêm token thiếu/sai/hết hạn → 401; ID dự án sai → 400; dự án không tồn tại → 404; ngày 30/02, ID người làm sai hoặc tiêu đề quá 200 ký tự → 400. Dự án hoàn thành và body thiếu trường phải báo 409 trước; người làm ngoài dự án và hạn vượt ngày kết thúc phải báo lỗi thành viên trước. Gửi thêm status xong/created_by của người khác không làm thay đổi các giá trị backend tự đặt.
+Kiểm tra thêm token thiếu/sai/hết hạn → 401; ID dự án sai → 400; dự án không tồn tại → 404; ngày 30/02, ID người làm sai hoặc tiêu đề quá 200 ký tự → 400. Dự án hoàn thành và body thiếu trường phải báo 409 trước; người làm ngoài dự án phải báo lỗi thành viên trước kiểm tra hạn. Gửi thêm status xong/created_by của người khác không làm thay đổi các giá trị backend tự đặt.
 
-Giao diện `/du-an/:id` có bảng task và form tạo task; chỉ can_manage có nút tạo. Dự án hoàn thành khóa nút với tooltip `Mở lại dự án để tạo task`. Tạo xong tải lại chi tiết, tiến độ và bảng task. Hàng quá hạn đỏ, sắp hạn 0–3 ngày vàng và có nhãn chữ; task xong không nhận cảnh báo hạn. Bảng chuyển due_date/xong sang định dạng của getDueState tại một nơi, không thay quy tắc hiện có.
+Giao diện `/du-an/:id` có bảng task và form tạo/sửa task; chỉ can_manage có nút tạo/sửa. Bộ chọn hạn chót vô hiệu hóa ngày ngoài khoảng dự án và validator hiển thị cùng lỗi ngày bắt đầu/kết thúc như API; backend vẫn là nguồn quyết định. Dự án hoàn thành khóa nút với tooltip `Mở lại dự án để tạo task`. Tạo xong tải lại chi tiết, tiến độ và bảng task. Hàng quá hạn đỏ, sắp hạn 0–3 ngày vàng và có nhãn chữ; task xong không nhận cảnh báo hạn. Bảng chuyển due_date/xong sang định dạng của getDueState tại một nơi, không thay quy tắc hiện có.
 
 ## 9. API Kanban và task của tôi (tuần 5, lượt 1)
 
@@ -430,9 +431,9 @@ Hai endpoint cần Bearer token và hồ sơ nhân viên đang làm việc. `GET
 }
 ```
 
-Chỉ Quản lý dự án hoặc Admin được sửa. Trạng thái, người tạo và thời điểm hoàn thành không nhận từ body, nên không đổi khi cập nhật. Dự án hoàn thành trả 409. Tiêu đề, người làm, hạn chót và ưu tiên bắt buộc, dùng cùng quy tắc kiểm tra khi tạo task. Mô tả có thể bỏ trống hoặc là `null`; khi bỏ khỏi body, mô tả cũ được giữ. Nếu đổi người làm thì người mới phải là thành viên đang làm việc; người làm cũ đã nghỉ việc vẫn được giữ nếu không đổi. Hạn chót phải không sau ngày kết thúc dự án, có thể trùng ngày kết thúc.
+Chỉ Quản lý dự án hoặc Admin được sửa. Trạng thái, người tạo và thời điểm hoàn thành không nhận từ body, nên không đổi khi cập nhật. Dự án hoàn thành trả 409. Tiêu đề, người làm, hạn chót và ưu tiên bắt buộc, dùng cùng quy tắc kiểm tra khi tạo task. Mô tả có thể bỏ trống hoặc là `null`; khi bỏ khỏi body, mô tả cũ được giữ. Nếu đổi người làm thì người mới phải là thành viên đang làm việc; người làm cũ đã nghỉ việc vẫn được giữ nếu không đổi. Hạn chót phải nằm trong khoảng ngày bắt đầu–kết thúc dự án, hai ngày biên hợp lệ.
 
-Thứ tự kiểm tra PUT: task tồn tại → quyền quản lý → dự án chưa hoàn thành → dữ liệu bắt buộc/hợp lệ → thành viên và trạng thái nhân viên (chỉ khi đổi người làm) → hạn chót dự án. Thành công trả task đã cập nhật với `200`; lỗi trả `{ "error": "..." }` bằng thông điệp tiếng Việt, không trả thông tin Prisma.
+Thứ tự kiểm tra PUT: task tồn tại → quyền quản lý → dự án chưa hoàn thành → dữ liệu bắt buộc/hợp lệ → thành viên và trạng thái nhân viên (chỉ khi đổi người làm) → hạn chót nằm trong khoảng ngày dự án. Hạn trước ngày bắt đầu và sau ngày kết thúc đều trả 400 kèm ngày biên; lỗi không làm thay đổi task. Thành công trả task đã cập nhật với `200`; lỗi trả `{ "error": "..." }` bằng thông điệp tiếng Việt, không trả thông tin Prisma.
 
 ### 10.3. Postman: chi tiết và sửa task
 
