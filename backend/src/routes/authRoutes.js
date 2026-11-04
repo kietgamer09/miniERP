@@ -1,10 +1,11 @@
 import express from 'express';
 import { login } from '../controllers/authController.js';
 import { verifyToken, authorizeRoles } from '../middlewares/authMiddleware.js';
+import { loginAccountRateLimit, loginIpRateLimit } from '../middlewares/loginRateLimit.js';
 
 const router = express.Router();
 
-router.post('/login', login);
+router.post('/login', loginIpRateLimit, loginAccountRateLimit, login);
 
 router.get('/admin-dashboard', verifyToken, authorizeRoles('admin','manager'), (req, res) => {
   res.json({

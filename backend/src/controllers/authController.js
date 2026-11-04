@@ -1,8 +1,7 @@
 import prisma from '../config/prisma.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'mini_erp_super_secret_key_2026';
+import { JWT_SECRET } from '../config/env.js';
 
 export const login = async (req, res) => {
   try {
@@ -18,24 +17,36 @@ export const login = async (req, res) => {
       include: { employees: { select: { employee_id: true, status: true } } },
       take: 2,
     });
-    if (users.length > 1) {
-      return res.status(409).json({ error: 'Tên đăng nhập bị trùng trong hệ thống. Vui lòng liên hệ quản trị viên để xử lý.' });
-    }
+    if (users.length > 1) return res.status(401).json({ error: 'Tài khoản hoặc mật khẩu không đúng' });
     const user = users[0];
 
-    if (!user) {
-      return res.status(401).json({ error: 'Tài khoản không tồn tại trong hệ thống!' });
+    const isPasswordValid = user && typeof user.password === 'string' && await bcrypt.compare(password, user.password);
+    if (!user || !isPasswordValid || user.employees?.status === 'da_nghi_viec') {
+      return res.status(401).json({ error: 'Tài khoản hoặc mật khẩu không đúng' });
     }
 
-    if (user.employees && user.employees.status === 'da_nghi_viec') {
-          return res.status(403).json({
-            error: 'Tài khoản này đã bị vô hiệu hóa do nhân viên đã nghỉ việc!'
-          });
-        }
+    const mustChangePassword = Boolean(user.must_change_password);
+    if (mustChangePassword
+      && (!user.temp_password_expires_at || user.temp_password_expires_at <= new Date())) {
+      return res.status(403).json({
+        code: 'TEMP_PASSWORD_EXPIRED',
+        error: 'Mật khẩu tạm đã hết hạn. Vui lòng liên hệ quản trị viên để cấp lại.',
+      });
+    }
 
-    const isPasswordValid = typeof user.password === 'string' && await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Mật khẩu không chính xác!' });
+    if (mustChangePassword) {
+      const activation = await prisma.users.updateMany({
+        where: {
+          user_id: user.user_id,
+          must_change_password: true,
+          temp_password_used_at: null,
+          temp_password_expires_at: { gt: new Date() },
+        },
+        data: { temp_password_used_at: new Date() },
+      });
+      if (activation.count !== 1) {
+        return res.status(401).json({ error: 'Tài khoản hoặc mật khẩu không đúng' });
+      }
     }
 
     const token = jwt.sign(
@@ -51,12 +62,14 @@ export const login = async (req, res) => {
         user_id: user.user_id,
         employee_id: user.employees?.employee_id ?? null,
         username: user.username,
-        role: user.role
+        role: String(user.role || '').trim().toLowerCase(),
+        must_change_password: mustChangePassword,
+        temp_password_expires_at: user.temp_password_expires_at,
       }
     });
 
   } catch (error) {
-    console.error('Lỗi đăng nhập:', error);
+    console.error('Lỗi đăng nhập:', error.code || error.name);
     res.status(500).json({ error: 'Lỗi máy chủ khi đăng nhập' });
   }
 };

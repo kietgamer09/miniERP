@@ -117,7 +117,7 @@ export default function DraftRecovery({ children }) {
     replace: true, state: { ...location.state, resumeDraft: null },
   });
   function saved(result) {
-    if (result?.login_info?.username && result.login_info.default_password) setLoginInfo(result.login_info);
+    if (result?.login_info?.username && result.login_info.default_password) setLoginInfo({ ...result.login_info, action: 'created' });
     reload(); refresh();
     navigate(`${location.pathname}${location.search}${location.hash}`, {
       replace: true, state: { ...location.state, resumeDraft: null, draftSavedAt: Date.now() },
@@ -132,8 +132,9 @@ export default function DraftRecovery({ children }) {
     {loginInfo && <Modal open title="Tài khoản nhân viên vừa tạo" onCancel={() => setLoginInfo(null)}
       footer={<Button type="primary" onClick={() => setLoginInfo(null)}>Đã lưu thông tin</Button>}>
       <Typography.Paragraph>Tài khoản: <Typography.Text copyable>{loginInfo.username}</Typography.Text></Typography.Paragraph>
-      <Typography.Paragraph>Mật khẩu ban đầu:</Typography.Paragraph>
+      <Typography.Paragraph>Mật khẩu tạm (chỉ đăng nhập một lần trong 24 giờ, sau đó phải đổi ngay):</Typography.Paragraph>
       <Input.Password readOnly value={loginInfo.default_password} aria-label="Mật khẩu ban đầu" autoComplete="off" />
+      {loginInfo.expires_at && <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>Hết hạn: {new Date(loginInfo.expires_at).toLocaleString('vi-VN')}</Typography.Paragraph>}
     </Modal>}
   </>;
 }
