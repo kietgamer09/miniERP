@@ -38,7 +38,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/attendances', attendancesRoutes);
-app.use('/api/leaves',leaveRoutes);
+app.use('/api/leaves', leaveRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/attachments', attachmentRoutes);
 app.use('/api/notifications/comments', notificationRoutes);
@@ -47,14 +47,20 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/overtime', overtimeRoutes);
 app.use('/api/payrolls', payrollsRoutes);
 
-const server = app.listen(PORT);
-server.once('listening', () => {
-  startPushWorker();
-  console.log(`Server đang chạy tại http://localhost:${PORT}`);
-});
-server.once('error', error => {
-  console.error(error.code === 'EADDRINUSE'
-    ? `Không thể khởi động: cổng ${PORT} đang được sử dụng.`
-    : `Không thể mở cổng ${PORT}: ${error.code || error.name}`);
-  process.exit(1);
-});
+let server;
+
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT);
+  server.once('listening', () => {
+    startPushWorker();
+    console.log(`Server đang chạy tại http://localhost:${PORT}`);
+  });
+  server.once('error', error => {
+    console.error(error.code === 'EADDRINUSE'
+      ? `Không thể khởi động: cổng ${PORT} đang được sử dụng.`
+      : `Không thể mở cổng ${PORT}: ${error.code || error.name}`);
+    process.exit(1);
+  });
+}
+
+export default app;
