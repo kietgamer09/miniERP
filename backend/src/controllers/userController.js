@@ -248,6 +248,7 @@ export const resetTemporaryPassword = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const employeeId = Number(id);
     const {
       fullname,
       email,
@@ -259,7 +260,7 @@ export const updateUser = async (req, res) => {
     } = req.body;
 
     const employeeExist = await prisma.employees.findUnique({
-      where: { employee_id: Number(id) },
+      where: { employee_id: employeeId },
     });
 
     if (!employeeExist) {
@@ -276,9 +277,29 @@ export const updateUser = async (req, res) => {
 
     const updatedEmployee = await prisma.$transaction(async (prismaClient) => {
       const emp = await prismaClient.employees.update({
-        where: { employee_id: Number(id) },
+        where: { employee_id: employeeId },
         data: updateEmployeeData,
       });
+
+      if (status === 'da_nghi_viec') {
+        await prismaClient.departments.updateMany({
+          where: { managment: String(employeeId) },
+          data: { managment: null },
+        });
+
+        if (emp.user_id) {
+          const userRecord = await prismaClient.users.findUnique({
+            where: { user_id: emp.user_id },
+          });
+
+          if (userRecord && userRecord.role === 'manager') {
+            await prismaClient.users.update({
+              where: { user_id: emp.user_id },
+              data: { role: 'employee' },
+            });
+          }
+        }
+      }
 
       if (role && emp.user_id) {
         await prismaClient.users.update({
@@ -288,7 +309,7 @@ export const updateUser = async (req, res) => {
       }
 
       return await prismaClient.employees.findUnique({
-        where: { employee_id: Number(id) },
+        where: { employee_id: employeeId },
         include: {
           users: { select: { username: true, role: true } },
           departments: { select: { department_name: true } }
