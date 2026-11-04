@@ -36,18 +36,22 @@ export const updateDepartment = async (req, res) => {
     const oldManagerId = existingDept.managment ? Number(existingDept.managment) : null;
 
     if (newManagerId !== oldManagerId) {
-      if (newManagerId) {
-        const employee = await prisma.employees.findUnique({
-          where: { employee_id: newManagerId }
-        });
+          if (newManagerId) {
+            const employee = await prisma.employees.findUnique({
+              where: { employee_id: newManagerId }
+            });
 
-        if (employee && employee.user_id) {
-          await prisma.users.update({
-            where: { user_id: employee.user_id },
-            data: { role: 'manager' }
-          });
-        }
-      }
+            if (!employee) {
+              return res.status(400).json({ error: `Không thể chỉ định quản lý: Nhân viên với ID [${newManagerId}] không tồn tại trong hệ thống.` });
+            }
+
+            if (employee.user_id) {
+              await prisma.users.update({
+                where: { user_id: employee.user_id },
+                data: { role: 'manager' }
+              });
+            }
+          }
 
       if (oldManagerId && oldManagerId !== newManagerId) {
         const otherDeptAsManager = await prisma.departments.findFirst({
@@ -64,7 +68,7 @@ export const updateDepartment = async (req, res) => {
           if (oldEmployee && oldEmployee.user_id) {
             await prisma.users.update({
               where: { user_id: oldEmployee.user_id },
-              data: { role: 'member' }
+              data: { role: 'employee' }
             });
           }
         }
@@ -142,18 +146,23 @@ export const createDepartment = async (req, res) => {
     }
 
     if (managment) {
-      const newManagerId = Number(managment);
-      const employee = await prisma.employees.findUnique({
-        where: { employee_id: newManagerId }
-      });
+          const newManagerId = Number(managment);
 
-      if (employee && employee.user_id) {
-        await prisma.users.update({
-          where: { user_id: employee.user_id },
-          data: { role: 'manager' }
-        });
-      }
-    }
+          const employee = await prisma.employees.findUnique({
+            where: { employee_id: newManagerId }
+          });
+
+          if (!employee) {
+            return res.status(400).json({ error: `Không thể chỉ định quản lý: Nhân viên với ID [${newManagerId}] không tồn tại trong hệ thống.` });
+          }
+
+          if (employee.user_id) {
+            await prisma.users.update({
+              where: { user_id: employee.user_id },
+              data: { role: 'manager' }
+            });
+          }
+        }
 
     const newDepartment = await prisma.departments.create({
       data: {
