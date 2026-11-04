@@ -43,110 +43,78 @@ export const updateDepartment = async (req, res) => {
 
     const { id } = req.params;
     const departmentId = Number(id);
-
-    const existingDept = await prisma.departments.findUnique({
-      where: { department_id: departmentId }
-    });
-
-    if (!existingDept) {
-      return res.status(404).json({ error: 'Không tìm thấy phòng ban.' });
+    if (!Number.isSafeInteger(departmentId) || departmentId <= 0) {
+      return res.status(400).json({ error: 'Mã phòng ban không hợp lệ.' });
     }
 
-    const hasManagementField = req.body.hasOwnProperty('managment');
-    const { department_name, category, managment } = req.body;
+    const body = req.body ?? {};
+    const hasManagementField = Object.prototype.hasOwnProperty.call(body, 'managment');
+    const { department_name, category, managment } = body;
+    const result = await prisma.$transaction(async (tx) => {
+      const existingDept = await tx.departments.findUnique({
+        where: { department_id: departmentId }
+      });
+      if (!existingDept) return { status: 404, error: 'Không tìm thấy phòng ban.' };
 
-    if (newManagerId !== oldManagerId) {
-          if (newManagerId) {
-            const employee = await prisma.employees.findUnique({
-              where: { employee_id: newManagerId }
-            });
+      const oldManagerId = existingDept.managment ? Number(existingDept.managment) : null;
+      const newManagerId = hasManagementField && managment !== '' && managment !== null && managment !== undefined
+        ? Number(managment)
+        : hasManagementField ? null : oldManagerId;
 
-            if (!employee) {
-              return res.status(400).json({ error: `Không thể chỉ định quản lý: Nhân viên với ID [${newManagerId}] không tồn tại trong hệ thống.` });
-            }
+      if (newManagerId !== null && (!Number.isSafeInteger(newManagerId) || newManagerId <= 0)) {
+        return { status: 400, error: 'Mã quản lý phòng ban không hợp lệ.' };
+      }
 
-            if (employee.user_id) {
-              await prisma.users.update({
-                where: { user_id: employee.user_id },
-                data: { role: 'manager' }
-              });
-            }
-          }
-
-        if (newManagerId !== oldManagerId) {
-          if (newManagerId !== null) {
-            const employee = await tx.employees.findUnique({
-              where: { employee_id: newManagerId }
-            });
-
-            if (!employee) {
-              throw { status: 400, message: 'Manager ID không tồn tại trong hệ thống.' };
-            }
-            if (employee.status === 'da_nghi_viec') {
-              throw { status: 400, message: 'Không thể chỉ định nhân viên đã nghỉ việc làm quản lý phòng ban.' };
-            }
-
-            if (employee.user_id) {
-              const userRecord = await tx.users.findUnique({
-                where: { user_id: employee.user_id }
-              });
-
-              if (userRecord && userRecord.role === 'employee') {
-                await tx.users.update({
-                  where: { user_id: employee.user_id },
-                  data: { role: 'manager' }
-                });
-              }
-            }
-          }
-
-        if (!otherDeptAsManager) {
-          const oldEmployee = await prisma.employees.findUnique({
-            where: { employee_id: oldManagerId }
+      if (hasManagementField && newManagerId !== oldManagerId) {
+        if (newManagerId !== null) {
+          const employee = await tx.employees.findUnique({
+            where: { employee_id: newManagerId }
           });
-          if (oldEmployee && oldEmployee.user_id) {
-            await prisma.users.update({
-              where: { user_id: oldEmployee.user_id },
-              data: { role: 'employee' }
-            });
+          if (!employee) return { status: 400, error: 'Manager ID không tồn tại trong hệ thống.' };
+          if (employee.status === 'da_nghi_viec') {
+            return { status: 400, error: 'Không thể chỉ định nhân viên đã nghỉ việc làm quản lý phòng ban.' };
+          }
 
-            if (!otherDeptAsManager) {
-              const oldEmployee = await tx.employees.findUnique({
-                where: { employee_id: oldManagerId }
-              });
+          const user = await tx.users.findUnique({ where: { user_id: employee.user_id } });
+          if (user?.role === 'employee') {
+            await tx.users.update({ where: { user_id: employee.user_id }, data: { role: 'manager' } });
+          }
+        }
 
-              if (oldEmployee && oldEmployee.user_id) {
-                const oldUserRecord = await tx.users.findUnique({
-                  where: { user_id: oldEmployee.user_id }
-                });
-
-                if (oldUserRecord && oldUserRecord.role === 'manager') {
-                  await tx.users.update({
-                    where: { user_id: oldEmployee.user_id },
-                    data: { role: 'employee' }
-                  });
-                }
+        if (oldManagerId !== null) {
+          const otherDeptAsManager = await tx.departments.findFirst({
+            where: {
+              managment: String(oldManagerId),
+              department_id: { not: departmentId }
+            }
+          });
+          if (!otherDeptAsManager) {
+            const oldEmployee = await tx.employees.findUnique({ where: { employee_id: oldManagerId } });
+            if (oldEmployee?.user_id) {
+              const oldUser = await tx.users.findUnique({ where: { user_id: oldEmployee.user_id } });
+              if (oldUser?.role === 'manager') {
+                await tx.users.update({ where: { user_id: oldEmployee.user_id }, data: { role: 'employee' } });
               }
             }
           }
         }
       }
 
-      return await tx.departments.update({
+      const updatedDepartment = await tx.departments.update({
         where: { department_id: departmentId },
         data: {
           department_name: department_name !== undefined ? department_name : existingDept.department_name,
           category: category !== undefined ? category : existingDept.category,
-          managment: hasManagementField
-            ? (managment ? String(managment) : null)
-            : existingDept.managment
+          managment: hasManagementField ? (newManagerId === null ? null : String(newManagerId)) : existingDept.managment
         }
       });
+      return { department: updatedDepartment };
     });
 
+    if (result.error) return res.status(result.status).json({ error: result.error });
     return res.status(200).json({
       message: 'Cập nhật phòng ban thành công!',
-      department: updatedDepartment
+      department: result.department
     });
   } catch (error) {
     console.error('Lỗi cập nhật phòng ban:', error);
