@@ -9,7 +9,7 @@ export const taskFields = {
   status: true, completed_at: true, created_at: true, updated_at: true,
   employees_tasks_assignee_idToemployees: { select: { fullname: true } },
   employees_tasks_created_byToemployees: { select: { fullname: true } },
-  projects: { select: { name: true, status: true, manager_id: true, end_date: true } },
+  projects: { select: { name: true, status: true, manager_id: true, start_date: true, end_date: true } },
 };
 
 export function formatTask(task, caller) {
@@ -84,7 +84,11 @@ export const createTask = async (req, res) => {
       if (member.employees.status !== 'dang_lam_viec') {
         return { status: 400, error: 'Nhân viên đã nghỉ việc' };
       }
+      const startDate = toDateOnly(project.start_date);
       const endDate = toDateOnly(project.end_date);
+      if (body.due_date < startDate) {
+        return { status: 400, error: `Hạn chót không được trước ngày bắt đầu dự án (${startDate})` };
+      }
       if (body.due_date > endDate) {
         return { status: 400, error: `Hạn chót không được sau ngày kết thúc dự án (${endDate})` };
       }

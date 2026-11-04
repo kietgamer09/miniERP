@@ -1,5 +1,17 @@
 import bcrypt from 'bcrypt';
+import { randomBytes } from 'node:crypto';
 import prisma from '../config/prisma.js';
+import { parseId } from '../utils/validators.js';
+
+const temporaryPasswordLifetimeMs = 24 * 60 * 60 * 1000;
+
+function createTemporaryPassword() {
+  return randomBytes(24).toString('base64url');
+}
+
+function temporaryPasswordExpiry() {
+  return new Date(Date.now() + temporaryPasswordLifetimeMs);
+}
 
 // Danh sách Allowlist chuẩn khớp với hệ thống Enum/Schema hiện tại
 const VALID_ROLES = ['admin', 'manager', 'employee', 'ADMIN', 'MANAGER', 'EMPLOYEE'];
@@ -19,36 +31,41 @@ function makeEmployeeUsername(fullname) {
 export const changePassword = async (req, res) => {
   try {
     const userId = req.user.user_id;
-    const { oldPassword, newPassword } = req.body;
+    const { oldPassword, newPassword } = req.body ?? {};
 
-    if (!oldPassword || !newPassword) {
+    if (typeof oldPassword !== 'string' || typeof newPassword !== 'string' || !oldPassword || !newPassword) {
       return res.status(400).json({ error: 'Vui lòng nhập đầy đủ mật khẩu cũ và mật khẩu mới!' });
     }
-
-    const user = await prisma.users.findUnique({
-      where: { user_id: Number(userId) },
-      select: { password: true }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'Không tìm thấy người dùng!' });
-    }
-
-    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
-    if (!isPasswordValid) {
-      return res.status(400).json({ error: 'Mật khẩu cũ không chính xác!' });
+    if (newPassword.length < 8 || Buffer.byteLength(newPassword, 'utf8') > 72) {
+      return res.status(400).json({ error: 'Mật khẩu mới phải có ít nhất 8 ký tự và tối đa 72 byte UTF-8.' });
     }
 
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-    await prisma.users.update({
-      where: { user_id: Number(userId) },
-      data: { password: hashedNewPassword }
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.users.findUnique({
+        where: { user_id: Number(userId) },
+        select: { password: true },
+      });
+      if (!user) return { status: 404, error: 'Không tìm thấy người dùng!' };
+      if (typeof user.password !== 'string' || !await bcrypt.compare(oldPassword, user.password)) {
+        return { status: 400, error: 'Mật khẩu hiện tại không chính xác!' };
+      }
+      await tx.users.update({
+        where: { user_id: Number(userId) },
+        data: {
+          password: hashedNewPassword,
+          must_change_password: false,
+          temp_password_expires_at: null,
+          temp_password_used_at: null,
+        },
+      });
+      return { changed: true };
     });
+    if (result.error) return res.status(result.status).json({ error: result.error });
 
-    return res.status(200).json({ message: 'Đổi mật khẩu thành công!' });
+    return res.status(200).json({ message: 'Đổi mật khẩu thành công!', must_change_password: false });
   } catch (error) {
-    console.error('Lỗi đổi mật khẩu:', error);
+    console.error('Lỗi đổi mật khẩu:', error.code || error.name);
     return res.status(500).json({ error: 'Lỗi server khi đổi mật khẩu!' });
   }
 };
@@ -166,6 +183,8 @@ export const createUser = async (req, res) => {
           username: autoUsername,
           password: hashedPassword,
           role: role || 'employee',
+          must_change_password: true,
+          temp_password_expires_at: passwordExpiresAt,
         },
       });
 
@@ -203,7 +222,8 @@ export const createUser = async (req, res) => {
       data: result,
       login_info: {
         username: autoUsername,
-        default_password: '12345'
+        default_password: defaultPassword,
+        expires_at: passwordExpiresAt.toISOString(),
       }
     });
 
@@ -220,6 +240,7 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const employeeId = Number(id);
     const {
       fullname,
       email,
@@ -240,7 +261,7 @@ export const updateUser = async (req, res) => {
     }
 
     const employeeExist = await prisma.employees.findUnique({
-      where: { employee_id: Number(id) },
+      where: { employee_id: employeeId },
     });
 
     if (!employeeExist) {
@@ -258,9 +279,29 @@ export const updateUser = async (req, res) => {
 
     const updatedEmployee = await prisma.$transaction(async (prismaClient) => {
       const emp = await prismaClient.employees.update({
-        where: { employee_id: Number(id) },
+        where: { employee_id: employeeId },
         data: updateEmployeeData,
       });
+
+      if (status === 'da_nghi_viec') {
+        await prismaClient.departments.updateMany({
+          where: { managment: String(employeeId) },
+          data: { managment: null },
+        });
+
+        if (emp.user_id) {
+          const userRecord = await prismaClient.users.findUnique({
+            where: { user_id: emp.user_id },
+          });
+
+          if (userRecord && userRecord.role === 'manager') {
+            await prismaClient.users.update({
+              where: { user_id: emp.user_id },
+              data: { role: 'employee' },
+            });
+          }
+        }
+      }
 
       if (role && emp.user_id) {
         await prismaClient.users.update({
@@ -270,7 +311,7 @@ export const updateUser = async (req, res) => {
       }
 
       return await prismaClient.employees.findUnique({
-        where: { employee_id: Number(id) },
+        where: { employee_id: employeeId },
         include: {
           users: { select: { username: true, role: true } },
           departments: { select: { department_name: true } }

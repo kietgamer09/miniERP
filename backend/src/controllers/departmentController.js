@@ -1,11 +1,26 @@
 import prisma from '../config/prisma.js';
 
+const checkEmployeeActive = async (userId) => {
+  if (!userId) return true;
+  const employee = await prisma.employees.findFirst({
+    where: { user_id: Number(userId) }
+  });
+  return !(employee && employee.status === 'da_nghi_viec');
+};
+
 export const listDepartments = async (req, res) => {
   try {
+    if (req.user?.user_id) {
+      const isActive = await checkEmployeeActive(req.user.user_id);
+      if (!isActive) {
+        return res.status(403).json({ error: 'Tài khoản của bạn đã ở trạng thái đã nghỉ việc, không thể thực hiện thao tác.' });
+      }
+    }
+
     const departments = await prisma.departments.findMany({
       include: {
         employees: {
-          select: { employee_id: true, fullname: true, position: true }
+          select: { employee_id: true, fullname: true, position: true, status: true }
         }
       },
       orderBy: { department_id: 'asc' }
@@ -19,9 +34,14 @@ export const listDepartments = async (req, res) => {
 
 export const updateDepartment = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { department_name, category, managment } = req.body; // managment ở đây là employee_id của quản lý mới
+    if (req.user?.user_id) {
+      const isActive = await checkEmployeeActive(req.user.user_id);
+      if (!isActive) {
+        return res.status(403).json({ error: 'Tài khoản của bạn đã ở trạng thái đã nghỉ việc, không thể thực hiện thao tác.' });
+      }
+    }
 
+    const { id } = req.params;
     const departmentId = Number(id);
 
     const existingDept = await prisma.departments.findUnique({
@@ -32,8 +52,8 @@ export const updateDepartment = async (req, res) => {
       return res.status(404).json({ error: 'Không tìm thấy phòng ban.' });
     }
 
-    const newManagerId = managment !== undefined && managment !== '' && managment !== null ? Number(managment) : null;
-    const oldManagerId = existingDept.managment ? Number(existingDept.managment) : null;
+    const hasManagementField = req.body.hasOwnProperty('managment');
+    const { department_name, category, managment } = req.body;
 
     if (newManagerId !== oldManagerId) {
           if (newManagerId) {
@@ -53,13 +73,32 @@ export const updateDepartment = async (req, res) => {
             }
           }
 
-      if (oldManagerId && oldManagerId !== newManagerId) {
-        const otherDeptAsManager = await prisma.departments.findFirst({
-          where: {
-            managment: String(oldManagerId),
-            department_id: { not: departmentId }
+        if (newManagerId !== oldManagerId) {
+          if (newManagerId !== null) {
+            const employee = await tx.employees.findUnique({
+              where: { employee_id: newManagerId }
+            });
+
+            if (!employee) {
+              throw { status: 400, message: 'Manager ID không tồn tại trong hệ thống.' };
+            }
+            if (employee.status === 'da_nghi_viec') {
+              throw { status: 400, message: 'Không thể chỉ định nhân viên đã nghỉ việc làm quản lý phòng ban.' };
+            }
+
+            if (employee.user_id) {
+              const userRecord = await tx.users.findUnique({
+                where: { user_id: employee.user_id }
+              });
+
+              if (userRecord && userRecord.role === 'employee') {
+                await tx.users.update({
+                  where: { user_id: employee.user_id },
+                  data: { role: 'manager' }
+                });
+              }
+            }
           }
-        });
 
         if (!otherDeptAsManager) {
           const oldEmployee = await prisma.employees.findUnique({
@@ -70,18 +109,39 @@ export const updateDepartment = async (req, res) => {
               where: { user_id: oldEmployee.user_id },
               data: { role: 'employee' }
             });
+
+            if (!otherDeptAsManager) {
+              const oldEmployee = await tx.employees.findUnique({
+                where: { employee_id: oldManagerId }
+              });
+
+              if (oldEmployee && oldEmployee.user_id) {
+                const oldUserRecord = await tx.users.findUnique({
+                  where: { user_id: oldEmployee.user_id }
+                });
+
+                if (oldUserRecord && oldUserRecord.role === 'manager') {
+                  await tx.users.update({
+                    where: { user_id: oldEmployee.user_id },
+                    data: { role: 'employee' }
+                  });
+                }
+              }
+            }
           }
         }
       }
-    }
 
-    const updatedDepartment = await prisma.departments.update({
-      where: { department_id: departmentId },
-      data: {
-        department_name: department_name !== undefined ? department_name : existingDept.department_name,
-        category: category !== undefined ? category : existingDept.category,
-        managment: managment !== undefined ? (managment ? String(managment) : null) : existingDept.managment
-      }
+      return await tx.departments.update({
+        where: { department_id: departmentId },
+        data: {
+          department_name: department_name !== undefined ? department_name : existingDept.department_name,
+          category: category !== undefined ? category : existingDept.category,
+          managment: hasManagementField
+            ? (managment ? String(managment) : null)
+            : existingDept.managment
+        }
+      });
     });
 
     return res.status(200).json({
@@ -90,12 +150,22 @@ export const updateDepartment = async (req, res) => {
     });
   } catch (error) {
     console.error('Lỗi cập nhật phòng ban:', error);
+    if (error.status) {
+      return res.status(error.status).json({ error: error.message });
+    }
     return res.status(500).json({ error: 'Lỗi máy chủ nội bộ khi cập nhật phòng ban.' });
   }
 };
 
 export const deleteDepartment = async (req, res) => {
   try {
+    if (req.user?.user_id) {
+      const isActive = await checkEmployeeActive(req.user.user_id);
+      if (!isActive) {
+        return res.status(403).json({ error: 'Tài khoản của bạn đã ở trạng thái đã nghỉ việc, không thể thực hiện thao tác.' });
+      }
+    }
+
     const { id } = req.params;
     const departmentId = Number(id);
 
@@ -129,6 +199,13 @@ export const deleteDepartment = async (req, res) => {
 
 export const createDepartment = async (req, res) => {
   try {
+    if (req.user?.user_id) {
+      const isActive = await checkEmployeeActive(req.user.user_id);
+      if (!isActive) {
+        return res.status(403).json({ error: 'Tài khoản của bạn đã ở trạng thái đã nghỉ việc, không thể thực hiện thao tác.' });
+      }
+    }
+
     const { department_id, department_name, category, managment } = req.body;
 
     if (!department_id || !department_name) {
