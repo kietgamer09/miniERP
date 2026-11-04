@@ -45,6 +45,17 @@ function AuthProvider({ children }) {
     return nextSession;
   }
 
+  function updatePasswordState(mustChangePassword) {
+    setSession(current => current.user ? {
+      ...current,
+      user: {
+        ...current.user,
+        must_change_password: mustChangePassword,
+        temp_password_expires_at: mustChangePassword ? current.user.temp_password_expires_at : null,
+      },
+    } : current);
+  }
+
   function logout() {
     clearChatSession();
     stopBrowserPush().catch(() => {});
@@ -63,11 +74,25 @@ function AuthProvider({ children }) {
     }
 
     window.addEventListener('auth:unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    const handlePasswordChangeRequired = () => updatePasswordState(true);
+    window.addEventListener('auth:password-change-required', handlePasswordChangeRequired);
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+      window.removeEventListener('auth:password-change-required', handlePasswordChangeRequired);
+    };
   }, []);
 
+  useEffect(() => {
+    try {
+      if (session.user && session.token) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      else window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Phiên vẫn hoạt động trong bộ nhớ nếu localStorage không truy cập được.
+    }
+  }, [session]);
+
   return (
-    <AuthContext.Provider value={{ ...session, login, logout }}>
+    <AuthContext.Provider value={{ ...session, login, logout, markPasswordChanged: () => updatePasswordState(false) }}>
       {children}
     </AuthContext.Provider>
   );

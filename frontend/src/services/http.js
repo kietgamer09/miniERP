@@ -48,6 +48,9 @@ async function request(path, { method = 'GET', body, params, file, download = fa
     const error = new Error(payload?.error || payload?.message || `Yêu cầu thất bại (HTTP ${response.status})`);
     error.status = response.status;
     error.code = payload?.code;
+    if (error.code === 'PASSWORD_CHANGE_REQUIRED') {
+      window.dispatchEvent(new Event('auth:password-change-required'));
+    }
     if (response.status === 401 && token && requestSession === sessionVersion) {
       window.dispatchEvent(new Event('auth:unauthorized'));
     }

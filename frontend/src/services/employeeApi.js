@@ -20,6 +20,10 @@ export function updateEmployee(id, data) {
   return request(`/api/users/employee-update/${id}`, { method: 'PUT', body: data });
 }
 
+export function resetEmployeePassword(id) {
+  return request(`/api/users/${id}/reset-password`, { method: 'POST' });
+}
+
 export function updateEmployeesDepartment(data) {
   return request('/api/users/update-department', { method: 'PUT', body: data });
 }

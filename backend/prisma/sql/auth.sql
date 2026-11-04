@@ -1,0 +1,4 @@
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS temp_password_expires_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS temp_password_used_at TIMESTAMPTZ;
