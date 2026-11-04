@@ -95,3 +95,4 @@
 - **Definion sửa:** 
   - *Mức nghiệp vụ:* Thiết lập chính sách bảo mật thông tin cá nhân và dữ liệu nội bộ doanh nghiệp.
   - *Hướng kỹ thuật:* Viết hàm middleware/utility dùng chung để lọc bỏ các trường nhạy cảm (`password`, `token`) trước khi ghi log lỗi hệ thống.
+  

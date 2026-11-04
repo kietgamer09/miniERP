@@ -120,3 +120,4 @@ sequenceDiagram
 - `backend/src/controllers/projectController.js`, `memberController.js`, `taskController.js` — dự án, thành viên, phân công task.
 - `backend/src/controllers/authController.js`, `middlewares/authMiddleware.js` — đăng nhập và xác thực token.
 - `backend/src/routes/overtimeRoutes.js`, `backend/src/controllers/leaveController.js` — người nhận và trạng thái yêu cầu HR.
+
