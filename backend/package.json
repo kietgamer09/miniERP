@@ -4,9 +4,10 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "npm run test:unit && npm run test:contract",
+    "test": "npm run test:unit && npm run test:contract && npm run test:department",
     "test:unit": "node --test tests/attendance.test.js",
     "test:contract": "node --experimental-vm-modules scripts/check-attendance-contract.mjs && node --experimental-vm-modules scripts/check-payroll-contract.mjs && node --experimental-vm-modules scripts/check-explanation-times.mjs",
+    "test:department": "node --test tests/department.test.js",
     "test:integration": "node scripts/run-integration-tests.mjs",
     "lint": "node scripts/check-syntax.mjs",
     "build": "npm run prisma:generate",
