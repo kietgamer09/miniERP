@@ -183,13 +183,17 @@ function Employees() {
     {formOpen && <EmployeeFormModal open employee={selectedEmployee} departments={departments} readOnly={!isAdmin}
       onCancel={closeForm} onSaved={result => {
         closeForm(); reloadEmployees();
-        if (result?.login_info?.username && result.login_info.default_password) setLoginInfo(result.login_info);
+        if (result?.login_info?.username && result.login_info.default_password) setLoginInfo({ ...result.login_info, action: 'created' });
+      }} onPasswordReset={result => {
+        closeForm();
+        setLoginInfo({ username: result.username, default_password: result.temporary_password, expires_at: result.expires_at, action: 'reset' });
       }} />}
-    {isAdmin && loginInfo && <Modal open title="Tài khoản nhân viên vừa tạo" okText="Đã lưu thông tin"
+    {isAdmin && loginInfo && <Modal open title={loginInfo.action === 'reset' ? 'Mật khẩu tạm mới' : 'Tài khoản nhân viên vừa tạo'} okText="Đã lưu thông tin"
       cancelButtonProps={{ style: { display: 'none' } }} onOk={() => setLoginInfo(null)} onCancel={() => setLoginInfo(null)}>
       <Typography.Paragraph>Tài khoản: <Typography.Text copyable>{loginInfo.username}</Typography.Text></Typography.Paragraph>
-      <Typography.Paragraph>Mật khẩu ban đầu:</Typography.Paragraph>
+      <Typography.Paragraph>Mật khẩu tạm (chỉ đăng nhập một lần trong 24 giờ, sau đó phải đổi ngay):</Typography.Paragraph>
       <Input.Password readOnly value={loginInfo.default_password} aria-label="Mật khẩu ban đầu" autoComplete="off" />
+      {loginInfo.expires_at && <Typography.Paragraph type="secondary" style={{ marginTop: 8 }}>Hết hạn: {new Date(loginInfo.expires_at).toLocaleString('vi-VN')}</Typography.Paragraph>}
     </Modal>}
   </div>;
 }

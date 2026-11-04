@@ -1,5 +1,17 @@
 import bcrypt from 'bcrypt';
+import { randomBytes } from 'node:crypto';
 import prisma from '../config/prisma.js';
+import { parseId } from '../utils/validators.js';
+
+const temporaryPasswordLifetimeMs = 24 * 60 * 60 * 1000;
+
+function createTemporaryPassword() {
+  return randomBytes(24).toString('base64url');
+}
+
+function temporaryPasswordExpiry() {
+  return new Date(Date.now() + temporaryPasswordLifetimeMs);
+}
 
 function makeEmployeeUsername(fullname) {
   const nameParts = fullname.trim().split(/\s+/).filter(Boolean);
@@ -15,36 +27,41 @@ function makeEmployeeUsername(fullname) {
 export const changePassword = async (req, res) => {
   try {
     const userId = req.user.user_id;
-    const { oldPassword, newPassword } = req.body;
+    const { oldPassword, newPassword } = req.body ?? {};
 
-    if (!oldPassword || !newPassword) {
+    if (typeof oldPassword !== 'string' || typeof newPassword !== 'string' || !oldPassword || !newPassword) {
       return res.status(400).json({ error: 'Vui lòng nhập đầy đủ mật khẩu cũ và mật khẩu mới!' });
     }
-
-    const user = await prisma.users.findUnique({
-      where: { user_id: Number(userId) },
-      select: { password: true }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'Không tìm thấy người dùng!' });
-    }
-
-    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
-    if (!isPasswordValid) {
-      return res.status(400).json({ error: 'Mật khẩu cũ không chính xác!' });
+    if (newPassword.length < 8 || Buffer.byteLength(newPassword, 'utf8') > 72) {
+      return res.status(400).json({ error: 'Mật khẩu mới phải có ít nhất 8 ký tự và tối đa 72 byte UTF-8.' });
     }
 
     const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-
-    await prisma.users.update({
-      where: { user_id: Number(userId) },
-      data: { password: hashedNewPassword }
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.users.findUnique({
+        where: { user_id: Number(userId) },
+        select: { password: true },
+      });
+      if (!user) return { status: 404, error: 'Không tìm thấy người dùng!' };
+      if (typeof user.password !== 'string' || !await bcrypt.compare(oldPassword, user.password)) {
+        return { status: 400, error: 'Mật khẩu hiện tại không chính xác!' };
+      }
+      await tx.users.update({
+        where: { user_id: Number(userId) },
+        data: {
+          password: hashedNewPassword,
+          must_change_password: false,
+          temp_password_expires_at: null,
+          temp_password_used_at: null,
+        },
+      });
+      return { changed: true };
     });
+    if (result.error) return res.status(result.status).json({ error: result.error });
 
-    return res.status(200).json({ message: 'Đổi mật khẩu thành công!' });
+    return res.status(200).json({ message: 'Đổi mật khẩu thành công!', must_change_password: false });
   } catch (error) {
-    console.error('Lỗi đổi mật khẩu:', error);
+    console.error('Lỗi đổi mật khẩu:', error.code || error.name);
     return res.status(500).json({ error: 'Lỗi server khi đổi mật khẩu!' });
   }
 };
@@ -137,7 +154,8 @@ export const createUser = async (req, res) => {
     if (existingUser) {
       return res.status(409).json({ error: `Tên đăng nhập ${autoUsername} đã được sử dụng. Hãy phân biệt tên nhân viên trước khi tạo tài khoản.` });
     }
-    const defaultPassword = '12345';
+    const defaultPassword = createTemporaryPassword();
+    const passwordExpiresAt = temporaryPasswordExpiry();
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
     const result = await prisma.$transaction(async (prismaClient) => {
       const newUser = await prismaClient.users.create({
@@ -145,6 +163,8 @@ export const createUser = async (req, res) => {
           username: autoUsername,
           password: hashedPassword,
           role: role || 'employee',
+          must_change_password: true,
+          temp_password_expires_at: passwordExpiresAt,
         },
       });
       const newEmployee = await prismaClient.employees.create({
@@ -179,13 +199,50 @@ export const createUser = async (req, res) => {
       data: result,
       login_info: {
         username: autoUsername,
-        default_password: '12345'
+        default_password: defaultPassword,
+        expires_at: passwordExpiresAt.toISOString(),
       }
     });
 
   } catch (error) {
     console.error('Error creating employee:', error);
     return res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
+  }
+};
+
+export const resetTemporaryPassword = async (req, res) => {
+  const employeeId = parseId(req.params.id);
+  if (!employeeId) return res.status(400).json({ error: 'ID nhân viên không hợp lệ.' });
+
+  try {
+    const employee = await prisma.employees.findUnique({
+      where: { employee_id: employeeId },
+      select: { user_id: true, users: { select: { username: true } } },
+    });
+    if (!employee?.users) return res.status(404).json({ error: 'Nhân viên chưa có tài khoản.' });
+
+    const temporaryPassword = createTemporaryPassword();
+    const expiresAt = temporaryPasswordExpiry();
+    const password = await bcrypt.hash(temporaryPassword, 10);
+    await prisma.users.update({
+      where: { user_id: employee.user_id },
+      data: {
+        password,
+        must_change_password: true,
+        temp_password_expires_at: expiresAt,
+        temp_password_used_at: null,
+      },
+    });
+
+    return res.status(200).json({
+      username: employee.users.username,
+      temporary_password: temporaryPassword,
+      expires_at: expiresAt.toISOString(),
+      must_change_password: true,
+    });
+  } catch (error) {
+    console.error('Không thể cấp lại mật khẩu tạm:', error.code || error.name);
+    return res.status(500).json({ error: 'Không cấp lại được mật khẩu tạm.' });
   }
 };
 export const updateUser = async (req, res) => {

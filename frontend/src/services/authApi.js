@@ -42,6 +42,8 @@ async function login(username, password) {
     email: apiUser.email ?? apiUser.username,
     fullName: apiUser.fullName ?? apiUser.fullname ?? apiUser.username,
     role: normalizeRole(apiUser.role),
+    must_change_password: Boolean(apiUser.must_change_password),
+    temp_password_expires_at: apiUser.temp_password_expires_at ?? null,
   };
 
   if (!normalizedUser.role) {
