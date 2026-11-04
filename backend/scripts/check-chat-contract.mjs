@@ -14,11 +14,15 @@ import prisma from '../src/config/prisma.js';
 import chatRoutes from '../src/routes/chatRoutes.js';
 import { chatDay, validChatGrant } from '../src/routes/chatSecurityRoutes.js';
 import { chatSigningKey, decryptChatBytes, encryptChatBytes, encryptChatText } from '../src/services/chatCrypto.js';
+import { assertIsolatedTestDatabase } from './lib/testDatabase.mjs';
 
 test('chat stores messages/files and enforces conversation membership', async t => {
   const users = [], people = [];
   let server;
+  let safeTestDatabase = false;
   try {
+    await assertIsolatedTestDatabase(prisma);
+    safeTestDatabase = true;
     const department = await prisma.departments.findFirst({ select: { department_id: true } });
     assert.ok(department, 'Cần một phòng ban có sẵn để tạo hồ sơ kiểm thử tạm.');
     const password = 'Chat-test-only-12345';
@@ -199,7 +203,8 @@ test('chat stores messages/files and enforces conversation membership', async t 
     });
   } finally {
     if (server) await new Promise(resolve => server.close(resolve));
-    if (people.length) {
+    if (safeTestDatabase) await assertIsolatedTestDatabase(prisma);
+    if (safeTestDatabase && people.length) {
       const ids = Prisma.join(people);
       const files = await prisma.$queryRaw(Prisma.sql`SELECT file_id FROM work_chat_messages WHERE author_id IN (${ids}) AND file_id IS NOT NULL`);
       await prisma.$executeRaw(Prisma.sql`DELETE FROM work_chats WHERE owner_id IN (${ids})`);
@@ -209,7 +214,7 @@ test('chat stores messages/files and enforces conversation membership', async t 
       }
       await prisma.employees.deleteMany({ where: { employee_id: { in: people } } });
     }
-    if (users.length) await prisma.users.deleteMany({ where: { user_id: { in: users } } });
+    if (safeTestDatabase && users.length) await prisma.users.deleteMany({ where: { user_id: { in: users } } });
     await prisma.$disconnect();
   }
 });

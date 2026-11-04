@@ -1,13 +1,13 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../src/config/env.js';
 import pg from 'pg';
 import { overtimeMaxDate, overtimeToday, validateOvertime } from '../src/utils/overtimeRules.js';
+import { createTestDatabase } from './lib/testDatabase.mjs';
 
 test('overtime calendar rules use Vietnam dates and a clamped calendar month', () => {
   assert.equal(overtimeMaxDate('2026-01-31'), '2026-02-28');
@@ -23,17 +23,14 @@ test('overtime calendar rules use Vietnam dates and a clamped calendar month', (
 
 test('overtime workflow and push policy in an isolated disposable database', async t => {
   const originalUrl = process.env.DATABASE_URL;
-  assert.ok(originalUrl, 'Cần DATABASE_URL để kiểm tra.');
-  const admin = new pg.Pool({ connectionString: originalUrl });
-  const database = `minierp_ot_test_${randomUUID().replaceAll('-', '')}`;
-  assert.match(database, /^minierp_ot_test_[a-f0-9]{32}$/);
-  let created = false, prisma, server;
+  const testDb = await createTestDatabase('overtime');
+  let prisma, server;
   try {
-    await admin.query(`CREATE DATABASE "${database}"`); created = true;
-    const url = new URL(originalUrl); url.pathname = `/${database}`;
+    const url = new URL(testDb.url);
     process.env.DATABASE_URL = url.toString();
     const fixture = new pg.Pool({ connectionString: url.toString() });
     try {
+      await testDb.assertIsolated(fixture);
       await fixture.query(`
         CREATE TABLE users(user_id INT PRIMARY KEY, role TEXT, username TEXT, password TEXT);
         CREATE TABLE departments(department_id INT PRIMARY KEY, department_name TEXT);
@@ -54,7 +51,7 @@ test('overtime workflow and push policy in an isolated disposable database', asy
       await fixture.query(await readFile(new URL('../prisma/sql/overtime.sql', import.meta.url), 'utf8'));
     } finally { await fixture.end(); }
     prisma = (await import('../src/config/prisma.js')).default;
-    assert.equal((await prisma.$queryRaw`SELECT current_database() AS name`)[0].name, database);
+    await testDb.assertIsolated(prisma);
     const router = (await import('../src/routes/overtimeRoutes.js')).default;
     const attachmentRoutes = (await import('../src/routes/attachmentRoutes.js')).default;
     const { pendingOvertimePush, overtimePushPayload } = await import('../src/services/overtime.js');
@@ -163,14 +160,6 @@ test('overtime workflow and push policy in an isolated disposable database', asy
     if (server) await new Promise(resolve => server.close(resolve));
     if (prisma) await prisma.$disconnect();
     process.env.DATABASE_URL = originalUrl;
-    if (created) {
-      for (let attempt = 0; attempt < 60; attempt++) {
-        const result = await admin.query('SELECT count(*)::int AS total FROM pg_stat_activity WHERE datname = $1', [database]);
-        if (!result.rows[0].total) break;
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-      await admin.query(`DROP DATABASE "${database}" WITH (FORCE)`);
-    }
-    await admin.end();
+    await testDb.drop();
   }
 });
