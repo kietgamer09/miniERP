@@ -32,7 +32,15 @@ test('overtime workflow and push policy in an isolated disposable database', asy
     try {
       await testDb.assertIsolated(fixture);
       await fixture.query(`
-        CREATE TABLE users(user_id INT PRIMARY KEY, role TEXT, username TEXT, password TEXT);
+        CREATE TABLE users(
+          user_id INT PRIMARY KEY,
+          role TEXT,
+          username TEXT,
+          password TEXT,
+          must_change_password BOOLEAN NOT NULL DEFAULT false,
+          temp_password_expires_at TIMESTAMPTZ,
+          temp_password_used_at TIMESTAMPTZ
+        );
         CREATE TABLE departments(department_id INT PRIMARY KEY, department_name TEXT);
         CREATE TABLE employees(employee_id INT PRIMARY KEY, user_id INT UNIQUE REFERENCES users(user_id),
           department_id INT REFERENCES departments(department_id), fullname TEXT, status TEXT, start_date DATE);

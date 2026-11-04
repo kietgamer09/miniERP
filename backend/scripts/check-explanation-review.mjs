@@ -20,7 +20,16 @@ try {
     await fixture.query(`
       CREATE TYPE employee_status AS ENUM ('dang_lam_viec', 'da_nghi_viec');
       CREATE TYPE leave_status AS ENUM ('cho_xac_thuc', 'da_duoc_duyet', 'bi_tu_choi');
-      CREATE TABLE users(user_id INT PRIMARY KEY, role TEXT, username TEXT, password TEXT, created_at TIMESTAMP);
+      CREATE TABLE users(
+        user_id INT PRIMARY KEY,
+        role TEXT,
+        username TEXT,
+        password TEXT,
+        created_at TIMESTAMP,
+        must_change_password BOOLEAN NOT NULL DEFAULT false,
+        temp_password_expires_at TIMESTAMPTZ,
+        temp_password_used_at TIMESTAMPTZ
+      );
       CREATE TABLE departments(department_id INT PRIMARY KEY, department_name TEXT);
       CREATE TABLE employees(employee_id INT PRIMARY KEY, user_id INT UNIQUE REFERENCES users(user_id), department_id INT REFERENCES departments(department_id),
         fullname TEXT, email TEXT, phone_number TEXT, birthday TEXT, manage_by TEXT, position TEXT, start_date DATE, status employee_status, created_at TIMESTAMP);
