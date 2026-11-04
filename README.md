@@ -257,21 +257,14 @@ Chạy từ thư mục tương ứng:
 # backend
 cd backend
 npm test
-npm run lint
-npm run prisma:validate
-npm run prisma:generate
-
-# PostgreSQL test riêng: TEST_ADMIN_DATABASE_URL phải trỏ database postgres/template1.
-npm run test:integration
 
 # frontend
-cd ../frontend
-npm test
+cd ..\frontend
 npm run lint
 npm run build
 ```
 
-`npm test` không cần DB. Integration test chỉ tạo database tên `minierp_<suite>_test_<uuid>`, xác nhận tên hiện hành trước khi ghi/xóa và tự dọn đúng database đó. CI chạy trên pull request và push lên `develop`/`main`.
+`npm test` chạy integration tests cho API task/dự án. Cần PostgreSQL đang chạy và `backend/.env` trỏ đến database có quyền `CREATEDB`; test tự tạo database tạm có tên riêng và xóa sau khi chạy, không sửa database `miniERP`. Các script `backend/scripts/check-*.mjs` khác cũng có thể cần PostgreSQL; đọc đầu script trước khi chạy.
 
 ## Cấu trúc thư mục
 
