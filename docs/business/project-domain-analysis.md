@@ -2,6 +2,7 @@
 
 ## Phạm vi và thuật ngữ
 
+<<<<<<< Updated upstream
 - **Dự án** là phạm vi công việc có mã, tên, thời hạn, quản lý và thành viên.
 - **Quản lý dự án** là nhân viên tham chiếu bởi `projects.manager_id`; khác với vai trò tài khoản `manager`.
 - **Thành viên dự án** là bản ghi `project_members`; người được giao task phải là thành viên đang làm việc.
@@ -33,11 +34,44 @@ stateDiagram-v2
 ```
 
 `hoan_thanh` khóa tạo/sửa task và đổi trạng thái task. Xóa/mở lại dự án vẫn là thao tác riêng có quyền; cần giữ thống nhất nếu thay policy lưu lịch sử.
+=======
+- **Dự án** có mã, thời hạn, trạng thái, quản lý (employee) và danh sách thành viên.
+- **Quản lý dự án** là `projects.manager_id`; vai trò tài khoản `manager` là quyền hệ thống và không tự cấp quyền quản lý mọi project.
+- **Task** thuộc một project, có người thực hiện, người tạo, deadline, độ ưu tiên và trạng thái.
+
+## Invariants
+
+1. Ngày kết thúc project không trước ngày bắt đầu; project mới không có ngày kết thúc trước hôm nay.
+2. Một nhân viên chỉ có một membership trong cùng project; quản lý được thêm làm thành viên lúc tạo project.
+3. Người được giao task phải là thành viên project đang làm việc.
+4. `project.start_date <= task.due_date <= project.end_date`. Backend và frontend hiện kiểm tra hai đầu; đổi thời hạn project bị từ chối nếu deadline task nằm ngoài khoảng mới.
+5. Ghi project chỉ dành cho Admin hoặc tài khoản manager đang quản lý đúng project; quản lý thành viên/task theo cùng phạm vi.
+6. Nhân viên chỉ đọc project/task họ tham gia; quản lý được đọc project mình quản lý; Admin đọc toàn công ty.
+7. Thành viên chỉ đổi trạng thái task mình được giao theo các bước hợp lệ; quản lý dự án/Admin có quyền chuyển trạng thái kề cho task.
+8. Project chỉ hoàn tất khi có task và mọi task đều `xong`; project hoàn tất chặn tạo/sửa task và thay trạng thái task.
+9. Không thể bớt project manager khỏi membership hoặc bớt member còn task chưa xong được giao cho họ.
+10. Chỉ xóa project không có task hoặc comment; thao tác xóa DB xong mới dọn thư mục attachment của đúng project. Scanner orphan chạy dry-run mặc định.
+11. Comment được phép trên project hoàn tất; upload/delete attachment và ghi task thì không. Đây là policy hiện tại theo API.
+12. Tạo comment kiểm tra quyền trong transaction và khóa membership bằng `FOR SHARE`, tránh ghi sau khi quyền thành viên bị thu hồi.
+
+## State diagram: project
+
+```mermaid
+stateDiagram-v2
+    [*] --> dang_thuc_hien: tạo project
+    dang_thuc_hien --> hoan_thanh: có task và mọi task xong
+    hoan_thanh --> dang_thuc_hien: Admin/quản lý project mở lại
+    dang_thuc_hien --> [*]: xóa khi không có task/comment
+```
+
+Project hoàn tất cho phép comment và đọc attachment hiện có; khóa upload/delete attachment, sửa task và đổi trạng thái task.
+>>>>>>> Stashed changes
 
 ## State diagram: task
 
 ```mermaid
 stateDiagram-v2
+<<<<<<< Updated upstream
     [*] --> can_lam: tạo task trong dự án đang thực hiện
     can_lam --> dang_lam: người được giao hoặc quản lý/Admin
     dang_lam --> can_lam: người được giao hoặc quản lý/Admin
@@ -79,3 +113,41 @@ Vai trò `manager` không tự cấp quyền với mọi dự án. Admin đượ
 3. Ai được mở lại dự án đã hoàn thành, và có yêu cầu ghi lý do/mốc audit hay không?
 4. Có cho xóa dự án rỗng nhưng đã có bình luận/attachment không? Cần chính sách lưu trữ lịch sử trước khi quyết định xóa cứng.
 5. Task có được phép có deadline vào cuối tuần/ngày lễ, và khi đổi ngày dự án, deadline ngoài khoảng sẽ bị từ chối, yêu cầu sửa task, hay tự điều chỉnh?
+=======
+    [*] --> can_lam: tạo trong project đang thực hiện
+    can_lam --> dang_lam: người được giao hoặc quản lý/Admin
+    dang_lam --> can_lam: người được giao hoặc quản lý/Admin
+    dang_lam --> xong: người được giao hoặc quản lý/Admin
+    xong --> dang_lam: quản lý project/Admin
+    hoan_thanh_du_an: project hoàn tất, task bị khóa
+```
+
+Backend chỉ chấp nhận chuyển tới trạng thái liền kề. Nhân viên được giao không tự kéo task đã xong lùi lại.
+
+## Ma trận quyền hiện tại
+
+| Hành động | Nhân viên là member | Manager đúng `manager_id` | Admin | Ngoài project |
+|---|---:|---:|---:|---:|
+| Đọc project/task | Có | Có | Có | Không |
+| Đổi trạng thái task được giao | Có, theo bước | Có | Có | Không |
+| Đổi trạng thái task người khác | Không | Có, theo bước | Có, theo bước | Không |
+| Tạo/sửa task, quản lý member | Không | Có | Có | Không |
+| Sửa/xóa/hoàn tất/mở lại project | Không | Có | Có | Không |
+| Comment project/task | Có theo quyền truy cập | Có theo quyền truy cập | Có | Không |
+| Upload/delete attachment project hoàn tất | Không | Không | Không | Không |
+
+## Rủi ro và câu hỏi cần chủ nghiệp vụ quyết định
+
+1. **Ràng buộc assignee:** membership được kiểm tra trong controller nhưng DB FK chỉ đảm bảo nhân viên tồn tại; cần xác định có cần constraint/trigger để bảo vệ luồng import hoặc script hay không.
+2. **Lịch sử thành viên:** bớt member xóa membership. Có cần lưu `joined_at/left_at` để audit và tái dựng báo cáo lịch sử không?
+3. **Ngày project đổi:** code từ chối đổi khoảng thời gian nếu task nằm ngoài khoảng mới; nghiệp vụ có muốn cho phép quản lý sửa task trước, hay muốn workflow điều chỉnh đồng loạt?
+4. **Mở lại project:** ai được mở, có cần lý do và audit event không?
+5. **Project rỗng có comment:** API chặn xóa để bảo toàn lịch sử comment; chủ sản phẩm cần quyết định có quy trình archive/soft-delete không.
+6. **Hiệu suất:** thống kê hiện dựa vào completed_at/deadline và trạng thái; cần chuẩn hóa cách xử lý đổi deadline, chuyển assignee, task chưa đến hạn trước khi dùng đánh giá nhân sự.
+
+## Rủi ro dữ liệu cần kiểm tra
+
+- Attendance chưa có unique `(employee_id, date)` trong Prisma schema; code khóa advisory nhưng DB chưa là lớp bảo vệ cuối.
+- Task có FK riêng cho project/assignee nhưng không có khóa ngoại tổng hợp bắt assignee nằm trong membership của project.
+- Membership bị xóa khi rời project, làm mất lịch sử tham gia.
+>>>>>>> Stashed changes
