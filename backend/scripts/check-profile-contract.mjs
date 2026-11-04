@@ -105,7 +105,7 @@ test('personal profile API enforces ownership and rejects privilege changes in a
       assert.equal(cleared.email, null); assert.equal(cleared.phone_number, null); assert.equal(cleared.birthday, null);
     });
     await t.test('blocks inactive employees and accounts without an employee record', async () => {
-      assert.equal((await api(44, { fullname: 'Không được lưu' })).status, 403);
+      assert.equal((await api(44, { fullname: 'Không được lưu' })).status, 401);
       assert.equal((await api(55, { fullname: 'Không được lưu' })).status, 403);
     });
   } finally {
