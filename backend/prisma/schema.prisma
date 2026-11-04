@@ -164,8 +164,11 @@ model users {
   password                         String?                   @db.VarChar
   role                             String?                   @db.VarChar
   created_at                       DateTime?                 @db.Timestamp(6)
+  must_change_password             Boolean                   @default(false)
+  temp_password_expires_at         DateTime?                 @db.Timestamptz(6)
+  temp_password_used_at            DateTime?                 @db.Timestamptz(6)
   reviewed_attendance_explanations attendance_explanations[]
-  employees                        employees?
+  employees  employees?
 }
 
 model work_project_comments {

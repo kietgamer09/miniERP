@@ -28,7 +28,8 @@ CREATE TABLE departments (
   department_name varchar,
   managment varchar,
   category varchar,
-  created_at timestamp
+  created_at timestamp,
+  manager_id integer
 );
 CREATE TABLE employees (
   employee_id serial PRIMARY KEY,
