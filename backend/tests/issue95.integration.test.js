@@ -9,7 +9,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { PGlite } from '@electric-sql/pglite';
 import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
-import { projectAttachmentPath } from '../src/utils/projectAttachments.js';
+import { attachmentDir, projectAttachmentPath } from '../src/services/attachmentStorage.js';
 
 const schema = `
 CREATE TYPE employee_status AS ENUM ('dang_lam_viec', 'da_nghi_viec');
@@ -97,6 +97,9 @@ let deleteProject;
 let createTaskComment;
 let projectComments;
 let updateTaskDetails;
+let removeMember;
+let createTaskController;
+let changeTaskStatus;
 let baseUrl;
 const testAttachmentsRoot = path.join(tmpdir(), `miniERP-issue95-${randomUUID()}`);
 const jwtSecret = 'issue-95-integration-test-secret';
@@ -159,6 +162,9 @@ before(async () => {
   ({ createTaskComment } = await import('../src/controllers/commentController.js'));
   ({ projectComments } = await import('../src/controllers/projectCommentController.js'));
   ({ updateTaskDetails } = await import('../src/controllers/taskDetailsController.js'));
+  ({ removeMember } = await import('../src/controllers/memberController.js'));
+  ({ createTask: createTaskController } = await import('../src/controllers/taskController.js'));
+  ({ changeTaskStatus } = await import('../src/controllers/taskActionController.js'));
   const attachmentRoutes = (await import('../src/routes/attachmentRoutes.js')).default;
   const app = express();
   app.use(express.json());
@@ -200,13 +206,6 @@ test('deleteProject commits DB removal then deletes only that project attachment
   await mkdir(unrelatedDir, { recursive: true });
   await writeFile(`${projectDir}/evidence.txt`, 'test file');
   await writeFile(`${unrelatedDir}/keep.txt`, 'keep');
-  const comment = await prisma.work_project_comments.create({
-    data: { project_id: project.id, author_id: 2, content: 'Ghi chú kiểm thử' },
-  });
-  await prisma.work_comment_reads.create({
-    data: { employee_id: 1, kind: 'project', comment_id: comment.id },
-  });
-
   const res = await invoke(deleteProject, {
     params: { id: String(project.id) },
     user: { role: 'manager' },
@@ -215,11 +214,29 @@ test('deleteProject commits DB removal then deletes only that project attachment
 
   assert.equal(res.statusCode, 204);
   assert.equal(await prisma.projects.findUnique({ where: { id: project.id } }), null);
-  assert.equal(await prisma.work_project_comments.count({ where: { project_id: project.id } }), 0);
-  assert.equal(await prisma.work_comment_reads.count({ where: { comment_id: comment.id } }), 0);
   await assert.rejects(readFile(`${projectDir}/evidence.txt`), { code: 'ENOENT' });
   assert.equal(await readFile(`${unrelatedDir}/keep.txt`, 'utf8'), 'keep');
   await rm(unrelatedDir, { recursive: true, force: true });
+});
+
+test('project discussion is preserved and blocks project deletion', async () => {
+  const project = await createProject({ code: 'ISSUE95-COMMENT' });
+  const comment = await prisma.work_project_comments.create({
+    data: { project_id: project.id, author_id: 2, content: 'Lịch sử cần giữ lại' },
+  });
+  const projectDir = projectAttachmentPath(project.id);
+  await mkdir(projectDir, { recursive: true });
+  await writeFile(`${projectDir}/keep.txt`, 'keep files');
+
+  const res = await invoke(deleteProject, {
+    params: { id: String(project.id) }, user: { role: 'manager' }, employee: { employee_id: 1 },
+  });
+
+  assert.equal(res.statusCode, 409);
+  assert.ok(await prisma.projects.findUnique({ where: { id: project.id } }));
+  assert.ok(await prisma.work_project_comments.findUnique({ where: { id: comment.id } }));
+  assert.equal(await readFile(`${projectDir}/keep.txt`, 'utf8'), 'keep files');
+  await rm(projectDir, { recursive: true, force: true });
 });
 
 test('failed project deletion keeps DB data and attachments available for retry', async () => {
@@ -273,6 +290,13 @@ test('completed project allows comments but blocks task edits and attachment upl
   const project = await createProject({ status: 'hoan_thanh', code: 'ISSUE95-DONE' });
   await prisma.project_members.create({ data: { project_id: project.id, employee_id: 2 } });
   const task = await createTask(project.id);
+  const fileId = randomUUID();
+  const directory = attachmentDir('projects', project.id);
+  await mkdir(directory, { recursive: true });
+  await writeFile(path.join(directory, `${fileId}.bin`), 'existing attachment');
+  await writeFile(path.join(directory, `${fileId}.json`), JSON.stringify({
+    id: fileId, name: 'existing.txt', size: 20, author_id: 2, created_at: new Date().toISOString(),
+  }));
 
   const taskComment = await invoke(createTaskComment, {
     params: { id: String(task.id) },
@@ -295,11 +319,23 @@ test('completed project allows comments but blocks task edits and attachment upl
     user: { role: 'manager' },
     employee: { employee_id: 1 },
   });
+  const taskCreate = await invoke(createTaskController, {
+    params: { id: String(project.id) },
+    body: { title: 'Không được tạo', assignee_id: 2, due_date: '2026-11-20', priority: 'cao' },
+    user: { role: 'manager' }, employee: { employee_id: 1 },
+  });
+  const taskMove = await invoke(changeTaskStatus, {
+    params: { id: String(task.id) }, body: { status: 'dang_lam' },
+    user: { role: 'employee' }, employee: { employee_id: 2 },
+  });
   const token = jwt.sign({ user_id: 102, role: 'employee' }, jwtSecret);
   const attachmentList = await fetch(`${baseUrl}/api/attachments/projects/${project.id}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   const attachmentData = await attachmentList.json();
+  const attachmentDelete = await fetch(`${baseUrl}/api/attachments/projects/${project.id}/${fileId}`, {
+    method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+  });
   const upload = await fetch(`${baseUrl}/api/attachments/projects/${project.id}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/octet-stream', 'X-File-Name': 'blocked.txt' },
@@ -309,12 +345,17 @@ test('completed project allows comments but blocks task edits and attachment upl
   assert.equal(taskComment.statusCode, 201);
   assert.equal(projectComment.statusCode, 201);
   assert.equal(taskEdit.statusCode, 409);
+  assert.equal(taskCreate.statusCode, 409);
+  assert.equal(taskMove.statusCode, 409);
   assert.equal(attachmentList.status, 200);
   assert.equal(attachmentData.can_upload, false);
+  assert.equal(attachmentData.files[0].can_delete, false);
   assert.equal(upload.status, 403);
+  assert.equal(attachmentDelete.status, 403);
   assert.equal(await prisma.task_comments.count({ where: { task_id: task.id } }), 1);
   assert.equal(await prisma.work_project_comments.count({ where: { project_id: project.id } }), 1);
-  assert.deepEqual(attachmentData.files, []);
+  assert.equal(attachmentData.files.length, 1);
+  assert.equal(attachmentData.files[0].id, fileId);
 });
 
 test('removed project member cannot create a task or project comment', async () => {
@@ -338,4 +379,38 @@ test('removed project member cannot create a task or project comment', async () 
   assert.equal(projectComment.statusCode, 403);
   assert.equal(await prisma.task_comments.count({ where: { task_id: task.id } }), 0);
   assert.equal(await prisma.work_project_comments.count({ where: { project_id: project.id } }), 0);
+});
+
+test('comment writes and member removal are serialized by the membership lock', async () => {
+  const project = await createProject({ code: 'ISSUE95-RACE' });
+  await prisma.project_members.create({ data: { project_id: project.id, employee_id: 2 } });
+  const task = await createTask(project.id);
+  await prisma.tasks.update({ where: { id: task.id }, data: { status: 'xong' } });
+
+  const [projectComment, taskComment, removal] = await Promise.all([
+    invoke(projectComments, {
+      method: 'POST', params: { id: String(project.id) }, body: { content: 'Đồng bộ membership' },
+      user: { role: 'employee' }, employee: { employee_id: 2 },
+    }),
+    invoke(createTaskComment, {
+      params: { id: String(task.id) }, body: { content: 'Đồng bộ membership' },
+      user: { role: 'employee' }, employee: { employee_id: 2 },
+    }),
+    invoke(removeMember, {
+      params: { id: String(project.id), employee_id: '2' },
+      user: { role: 'manager' }, employee: { employee_id: 1 },
+    }),
+  ]);
+
+  assert.equal(removal.statusCode, 204);
+  assert.ok([201, 403].includes(projectComment.statusCode));
+  assert.ok([201, 403].includes(taskComment.statusCode));
+  assert.equal(await prisma.project_members.count({ where: { project_id: project.id, employee_id: 2 } }), 0);
+  if (projectComment.statusCode === 403) assert.equal(await prisma.work_project_comments.count({ where: { project_id: project.id } }), 0);
+  if (taskComment.statusCode === 403) assert.equal(await prisma.task_comments.count({ where: { task_id: task.id } }), 0);
+});
+
+test('attachment storage rejects traversal and unknown attachment types', async () => {
+  assert.throws(() => attachmentDir('projects', '../1'), /INVALID_ATTACHMENT_PATH/);
+  assert.throws(() => attachmentDir('unknown', 1), /INVALID_ATTACHMENT_PATH/);
 });

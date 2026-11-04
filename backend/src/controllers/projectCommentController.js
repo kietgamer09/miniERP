@@ -1,6 +1,7 @@
 import prisma from '../config/prisma.js';
 import { parseId } from '../utils/validators.js';
 import { canAccessTaskProject } from '../utils/taskAccess.js';
+import { assertCanWriteProjectComment } from '../utils/commentAccess.js';
 
 export async function projectComments(req, res) {
   try {
@@ -12,11 +13,9 @@ export async function projectComments(req, res) {
       const result = await prisma.$transaction(async (tx) => {
         const project = await tx.projects.findUnique({ where: { id } });
         if (!project) return { status: 404, error: 'Không tìm thấy dự án' };
-        const allowed = await canAccessTaskProject(
-          tx, { project_id: id, projects: project }, req.employee.employee_id, req.user.role,
-          { allowProjectManager: true },
-        );
-        if (!allowed) return { status: 403, error: 'Bạn không thuộc dự án này' };
+        await assertCanWriteProjectComment(tx, {
+          projectId: id, employeeId: req.employee.employee_id, role: req.user.role,
+        });
 
         const comment = await tx.work_project_comments.create({
           data: { project_id: id, author_id: req.employee.employee_id, content },
@@ -40,8 +39,9 @@ export async function projectComments(req, res) {
       ORDER BY c.created_at ASC, c.id ASC`;
     res.json(comments);
   } catch (error) {
-    console.error('Project comment error:', error.code || error.name);
+    if (error.status === 403) return res.status(403).json({ error: error.message });
     if (error.code === 'P2034') return res.status(409).json({ error: 'Quyền truy cập vừa thay đổi, vui lòng tải lại' });
+    console.error('Project comment error:', error.code || error.name);
     res.status(500).json({ error: 'Không xử lý được thảo luận dự án. Kiểm tra đã chạy npm run setup:notifications ở backend.' });
   }
 }

@@ -102,7 +102,7 @@ function ProjectOverview() {
             <Button size="small" icon={<EditOutlined />} onClick={() => openForm(project)}>Sửa dự án</Button>
             <Popconfirm
               title="Xóa dự án này?"
-              description="Chỉ xóa được dự án chưa có task. Dự án có task sẽ được giữ nguyên."
+              description="Dự án có task hoặc thảo luận không thể xóa. Tệp đính kèm sẽ bị xóa theo."
               okText="Xóa dự án"
               cancelText="Hủy"
               okButtonProps={{ danger: true, loading: deletingProjectId === project.id }}

@@ -8,10 +8,9 @@ import { attachEmployee } from '../middlewares/employeeMiddleware.js';
 import { parseId } from '../utils/validators.js';
 import { canAccessTaskProject } from '../utils/taskAccess.js';
 import { canViewOvertime, overtimeActor, overtimeRecord } from '../services/overtime.js';
-import { getAttachmentsRoot } from '../utils/projectAttachments.js';
+import { attachmentDir } from '../services/attachmentStorage.js';
 
 const router = express.Router();
-const root = getAttachmentsRoot();
 const maxSize = 10 * 1024 * 1024;
 const extensions = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.docx', '.xlsx', '.pptx', '.txt', '.csv']);
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };
@@ -44,7 +43,7 @@ router.use('/:type/:targetId', handle(async (req, res, next) => {
     writable = target.employee_id === employeeId && target.status === 'pending';
   } else fail(404, 'Loại đính kèm không hợp lệ');
   if (!allowed) fail(403, 'Bạn không có quyền truy cập tệp này');
-  req.attachments = { directory: path.join(root, type, String(id)), writable };
+  req.attachments = { directory: attachmentDir(type, id), writable };
   // Middleware dùng cùng bộ kiểm tra quyền cho đọc, tải lên, tải xuống và xóa.
   next();
 }));
