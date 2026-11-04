@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../src/config/env.js';
 import pg from 'pg';
 import { overtimeMaxDate, overtimeToday, validateOvertime } from '../src/utils/overtimeRules.js';
 import { createTestDatabase } from './lib/testDatabase.mjs';
@@ -59,7 +60,7 @@ test('overtime workflow and push policy in an isolated disposable database', asy
     server = await new Promise((resolve, reject) => { const instance = app.listen(0, '127.0.0.1', () => resolve(instance)); instance.once('error', reject); });
     const base = `http://127.0.0.1:${server.address().port}`;
     const roles = ['employee', 'manager', 'manager', 'admin', 'employee', 'manager'];
-    const tokens = roles.map((role, i) => jwt.sign({ user_id: i + 1, role }, process.env.JWT_SECRET || 'mini_erp_super_secret_key_2026', { expiresIn: '10m' }));
+    const tokens = roles.map((role, i) => jwt.sign({ user_id: i + 1, role }, JWT_SECRET, { expiresIn: '10m' }));
     async function api(actor, path = '', method = 'GET', body) {
       return fetch(`${base}/api/overtime${path}`, { method, headers: { Authorization: `Bearer ${tokens[actor - 1]}`, 'Content-Type': 'application/json' },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }) });

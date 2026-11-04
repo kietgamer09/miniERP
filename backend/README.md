@@ -44,6 +44,7 @@ npx prisma db push
 Sau đó chạy các script chuẩn bị tính năng và tạo Prisma Client:
 
 ```bash
+npm run setup:auth
 npm run setup:attendance
 npm run setup:notifications
 npm run setup:web-push
@@ -52,6 +53,8 @@ npm run setup:overtime
 npm run setup:payroll
 npx prisma generate
 ```
+
+`setup:auth` thêm cột vòng đời mật khẩu. Script nhận diện mật khẩu cũ `12345` theo bcrypt hash, bắt buộc đổi trong 30 ngày và không in ra mật khẩu mới. Mật khẩu tạm cho tài khoản mới/cấp lại hết hạn sau 24 giờ, chỉ dùng đăng nhập một lần và chỉ cấp phiên giới hạn để đổi mật khẩu. Nếu mất phiên hoặc hết hạn, Admin cần cấp lại. Mật khẩu mới dài ít nhất 8 ký tự và tối đa 72 byte UTF-8.
 
 Các script setup bổ sung bảng cho từng tính năng. Web Push và chat tạo khóa cần thiết trong .env nếu chưa có. Với database khôi phục từ máy khác, dùng đúng các khóa cũ trước khi chạy setup; giữ khóa chat cùng dữ liệu chat.
 
@@ -74,6 +77,7 @@ Mở terminal thứ hai, chạy frontend theo [hướng dẫn frontend](../front
 ## 4. Cập nhật sau pull hoặc chuyển máy
 
 - Chạy npm install trong thư mục có dependency thay đổi.
+- Với phiên bản thêm vòng đời tài khoản, chạy `npm run setup:auth` và `npx prisma generate`.
 - Chạy setup tương ứng tính năng mới; bảng lương cần npm run setup:payroll.
 - Khi schema Prisma đổi, chạy npx prisma generate và khởi động lại backend.
 - Khi chuyển máy, mang theo database, uploads và các khóa cấu hình. Không seed lại mỗi lần chạy server.
@@ -88,6 +92,16 @@ Mở terminal thứ hai, chạy frontend theo [hướng dẫn frontend](../front
 | P3005 hoặc No migration found | Dùng quy trình database mới hoặc setup từng tính năng ở mục 2. |
 | Thiếu token khi mở API trên thanh địa chỉ | Dùng frontend đã đăng nhập; API yêu cầu Authorization: Bearer. |
 | Bảng lương công ty trống | Tháng được chọn chưa có bản lương lưu; tạo bảng DB không tự tính lương. |
+| Tài khoản báo mật khẩu tạm hết hạn | Nhờ Admin cấp lại mật khẩu tạm ở danh sách nhân viên. |
+
+### Đăng nhập và vòng đời tài khoản
+
+- Tài khoản mới nhận mật khẩu ngẫu nhiên riêng, có hạn 24 giờ và bắt buộc đổi trước khi gọi nghiệp vụ. Mật khẩu chỉ hiện một lần cho Admin lúc tạo hoặc cấp lại.
+- Đổi mật khẩu yêu cầu mật khẩu hiện tại và mật khẩu mới dài 8–128 ký tự. Backend chặn nghiệp vụ cho đến khi đổi xong.
+- Mỗi request có JWT đọc role và trạng thái nhân viên hiện tại từ DB. Hạ quyền hoặc nghỉ việc có hiệu lực từ request kế tiếp; mỗi request xác thực cần thêm một truy vấn DB.
+- Mật khẩu tạm được tiêu thụ nguyên tử tại lần đăng nhập đầu; phiên này chỉ được đọc hồ sơ và đổi mật khẩu. Nếu phiên bị mất trước khi đổi, Admin phải cấp lại.
+- Đăng nhập giới hạn 10 lần sai mỗi IP/tên tài khoản và 50 lần sai mỗi IP trong 15 phút trên từng backend process. Khi chạy nhiều backend instance, cần shared store cho rate limiter.
+- Đổi `JWT_SECRET` làm mất hiệu lực toàn bộ token đã cấp và buộc người dùng đăng nhập lại. Nếu môi trường từng dùng secret công khai cũ, thay bằng secret ngẫu nhiên mới trước khi khởi động bản này; không giữ hoặc tái sử dụng khóa cũ.
 
 ## 6. Kiểm thử và CI
 

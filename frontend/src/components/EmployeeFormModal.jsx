@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { App, Modal, Form, Input, Select, DatePicker, Button, Space, Typography, Row, Col } from 'antd';
+import { App, Modal, Form, Input, Select, DatePicker, Button, Space, Typography, Row, Col, Popconfirm } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
-import { createEmployee, updateEmployee } from '../services/employeeApi';
+import { createEmployee, resetEmployeePassword, updateEmployee } from '../services/employeeApi';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useFormDraft } from '../hooks/useDraft';
@@ -23,10 +23,11 @@ function employeeValues(employee) {
   };
 }
 
-export default function EmployeeFormModal({ open, employee, departments, onCancel, onSaved, readOnly = false }) {
+export default function EmployeeFormModal({ open, employee, departments, onCancel, onSaved, onPasswordReset, readOnly = false }) {
   const [form] = Form.useForm();
   const { message } = App.useApp();
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   const [isEditingMode, setIsEditingMode] = useState(!employee);
   const submitting = useRef(false);
 
@@ -73,6 +74,19 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
     } finally {
       submitting.current = false;
       setConfirmLoading(false);
+    }
+  }
+
+  async function handlePasswordReset() {
+    if (!employee || resetLoading) return;
+    setResetLoading(true);
+    try {
+      const result = await resetEmployeePassword(employee.employee_id);
+      onPasswordReset?.(result);
+    } catch (error) {
+      message.error(error.message || 'Không cấp lại được mật khẩu tạm');
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -131,6 +145,9 @@ export default function EmployeeFormModal({ open, employee, departments, onCance
             </>
           ) : !isEditingMode ? (
             <>
+              {!readOnly && <Popconfirm title="Cấp mật khẩu tạm mới? Mật khẩu hiện tại sẽ hết hiệu lực ngay." okText="Cấp lại" cancelText="Hủy" onConfirm={handlePasswordReset}>
+                <Button loading={resetLoading}>Cấp lại mật khẩu tạm</Button>
+              </Popconfirm>}
               <Button onClick={onCancel} style={cancelButtonStyle} {...cancelBtnHoverProps}>
                 Đóng
               </Button>

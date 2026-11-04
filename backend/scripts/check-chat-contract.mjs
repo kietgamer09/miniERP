@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import bcrypt from 'bcrypt';
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../src/config/env.js';
 import { Prisma } from '@prisma/client';
 import prisma from '../src/config/prisma.js';
 import chatRoutes from '../src/routes/chatRoutes.js';
@@ -38,7 +39,7 @@ test('chat stores messages/files and enforces conversation membership', async t 
       const instance = app.listen(0, '127.0.0.1', () => resolve(instance)); instance.once('error', reject);
     });
     const url = `http://127.0.0.1:${server.address().port}/api/chat`;
-    const tokens = users.map((id, index) => jwt.sign({ user_id: id, role: index === 2 ? 'admin' : 'employee' }, process.env.JWT_SECRET || 'mini_erp_super_secret_key_2026', { expiresIn: '2d' }));
+    const tokens = users.map((id, index) => jwt.sign({ user_id: id, role: index === 2 ? 'admin' : 'employee' }, JWT_SECRET, { expiresIn: '2d' }));
     const grants = [];
     async function api(index, path, { method = 'GET', body, file, name = 'bien-ban.txt', unlock = grants[index], auth = tokens[index] } = {}) {
       return fetch(`${url}${path}`, { method, headers: {
@@ -60,7 +61,7 @@ test('chat stores messages/files and enforces conversation membership', async t 
         assert.equal(Date.parse(session.expires_at), chatDay().expires * 1000);
       }
       assert.equal((await api(1, '/conversations', { unlock: grants[0] })).status, 423);
-      const otherLogin = jwt.sign({ user_id: users[0], role: 'employee', nonce: randomUUID() }, process.env.JWT_SECRET || 'mini_erp_super_secret_key_2026', { expiresIn: '1d' });
+      const otherLogin = jwt.sign({ user_id: users[0], role: 'employee', nonce: randomUUID() }, JWT_SECRET, { expiresIn: '1d' });
       assert.equal((await api(0, '/conversations', { auth: otherLogin })).status, 423);
       const decoded = jwt.decode(grants[0]);
       const expired = jwt.sign({ ...decoded, exp: Math.floor(Date.now() / 1000) - 1 }, chatSigningKey(), { algorithm: 'HS256' });

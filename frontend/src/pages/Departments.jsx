@@ -24,7 +24,7 @@ export default function Departments() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingDept, setEditingDept] = useState(null);
 
-  const [selectedMemberKeys, setSelectedMemberKeys] = useState([]);
+  const [selectedEmployeeKeys, setSelectedEmployeeKeys] = useState([]);
   const [targetDeptId, setTargetDeptId] = useState(undefined);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -45,13 +45,13 @@ export default function Departments() {
 
   const filtered = departments.filter(item => `${item.department_name || ''} ${item.department_id} ${item.managment || ''} ${item.category || ''}`.toLocaleLowerCase('vi').includes(query.trim().toLocaleLowerCase('vi')));
   const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 8)));
-  const members = id => employees.filter(employee => employee.department_id === id);
+  const deptEmployees = id => employees.filter(employee => employee.department_id === id);
 
-  const currentTeamMembers = selected ? members(selected.department_id) : [];
+  const currentTeamEmployees = selected ? deptEmployees(selected.department_id) : [];
 
-  const memberRowSelection = {
-    selectedRowKeys: selectedMemberKeys,
-    onChange: (keys) => setSelectedMemberKeys(keys),
+  const employeeRowSelection = {
+    selectedRowKeys: selectedEmployeeKeys,
+    onChange: (keys) => setSelectedEmployeeKeys(keys),
   };
 
   const getManagerName = (managerVal) => {
@@ -61,7 +61,7 @@ export default function Departments() {
   };
 
   const handleDelete = (department) => {
-    const team = members(department.department_id);
+    const team = deptEmployees(department.department_id);
     if (team.length > 0) {
       Modal.error({
         title: 'Không thể xóa phòng ban',
@@ -92,9 +92,8 @@ export default function Departments() {
     });
   };
 
-  // Không chọn nhân viên thì chuyển toàn bộ phòng.
-  const handleMoveMembers = async (moveToAll = false) => {
-    const idsToProcess = moveToAll ? currentTeamMembers.map(m => m.employee_id) : selectedMemberKeys;
+  const handleMoveEmployees = async (moveToAll = false) => {
+    const idsToProcess = moveToAll ? currentTeamEmployees.map(e => e.employee_id) : selectedEmployeeKeys;
 
     if (idsToProcess.length === 0) {
       message.warning('Vui lòng chọn nhân viên cần chuyển!');
@@ -112,7 +111,7 @@ export default function Departments() {
         new_department_id: targetDeptId
       });
       message.success('Chuyển phòng ban cho nhân viên thành công!');
-      setSelectedMemberKeys([]);
+      setSelectedEmployeeKeys([]);
       setTargetDeptId(undefined);
       setReload(v => v + 1);
     } catch (err) {
@@ -135,16 +134,16 @@ export default function Departments() {
       key: 'manager',
       render: value => getManagerName(value)
     },
-    { title: 'Thành viên', key: 'members', width: 160, render: (_, department) => {
-      const team = members(department.department_id);
+    { title: 'Thành viên', key: 'employees', width: 160, render: (_, department) => {
+      const team = deptEmployees(department.department_id);
       return <div className="department-team-count"><Typography.Text strong>{team.length} người</Typography.Text>
-        <Typography.Text type="secondary">{team.filter(member => member.status === 'dang_lam_viec').length} đang làm việc</Typography.Text></div>;
+        <Typography.Text type="secondary">{team.filter(emp => emp.status === 'dang_lam_viec').length} đang làm việc</Typography.Text></div>;
     } },
     { title: 'Nhân sự trong phòng', key: 'preview', render: (_, department) => {
-      const team = members(department.department_id);
+      const team = deptEmployees(department.department_id);
       return team.length ? <div className="department-member-preview"><Avatar.Group>
-        {team.slice(0, 3).map(member => <Tooltip key={member.employee_id} title={member.fullname || 'Chưa cập nhật'}><Avatar size={30} className="employee-avatar">{(member.fullname || 'NV').trim().split(/\s+/).slice(-2).map(part => part[0]).join('')}</Avatar></Tooltip>)}
-      </Avatar.Group><Typography.Text type="secondary">{team.slice(0, 2).map(member => member.fullname || 'Chưa cập nhật').join(', ')}{team.length > 2 ? ` và ${team.length - 2} người khác` : ''}</Typography.Text></div>
+        {team.slice(0, 3).map(emp => <Tooltip key={emp.employee_id} title={emp.fullname || 'Chưa cập nhật'}><Avatar size={30} className="employee-avatar">{(emp.fullname || 'NV').trim().split(/\s+/).slice(-2).map(part => part[0]).join('')}</Avatar></Tooltip>)}
+      </Avatar.Group><Typography.Text type="secondary">{team.slice(0, 2).map(emp => emp.fullname || 'Chưa cập nhật').join(', ')}{team.length > 2 ? ` và ${team.length - 2} người khác` : ''}</Typography.Text></div>
         : <Typography.Text type="secondary">Chưa có thành viên</Typography.Text>;
     } },
     { title: 'Phân loại', dataIndex: 'category', key: 'category', render: value => value || 'Chưa cập nhật' },
@@ -187,7 +186,7 @@ export default function Departments() {
       open={Boolean(selected)}
       onCancel={() => {
         setParams({}, { replace: true });
-        setSelectedMemberKeys([]);
+        setSelectedEmployeeKeys([]);
       }}
       title={`Chi tiết phòng ban: ${selected?.department_name || ''}`}
       footer={null}
@@ -199,7 +198,7 @@ export default function Departments() {
           { key: 'id', label: 'ID phòng ban', children: selected.department_id },
           { key: 'manager', label: 'Phụ trách', children: getManagerName(selected.managment) },
           { key: 'category', label: 'Phân loại', children: selected.category || 'Chưa cập nhật' },
-          { key: 'count', label: 'Thành viên', children: currentTeamMembers.length }
+          { key: 'count', label: 'Thành viên', children: currentTeamEmployees.length }
         ]} />
 
         {role === 'admin' && (
@@ -210,10 +209,10 @@ export default function Departments() {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8 }}>
-          <Typography.Title level={5} style={{ margin: 0 }}>Thành viên phòng ban ({currentTeamMembers.length})</Typography.Title>
+          <Typography.Title level={5} style={{ margin: 0 }}>Thành viên phòng ban ({currentTeamEmployees.length})</Typography.Title>
         </div>
 
-        {role === 'admin' && currentTeamMembers.length > 0 && (
+        {role === 'admin' && currentTeamEmployees.length > 0 && (
           <div style={{
             display: 'flex',
             gap: '8px',
@@ -239,25 +238,25 @@ export default function Departments() {
               size="small"
               loading={actionLoading}
               disabled={targetDeptId === undefined}
-              onClick={() => handleMoveMembers(selectedMemberKeys.length === 0)}
+              onClick={() => handleMoveEmployees(selectedEmployeeKeys.length === 0)}
             >
-              {selectedMemberKeys.length > 0 ? `Chuyển đã chọn (${selectedMemberKeys.length})` : 'Chuyển toàn bộ sang phòng này'}
+              {selectedEmployeeKeys.length > 0 ? `Chuyển đã chọn (${selectedEmployeeKeys.length})` : 'Chuyển toàn bộ sang phòng này'}
             </Button>
           </div>
         )}
 
-        {currentTeamMembers.length ? (
+        {currentTeamEmployees.length ? (
           <Table
             size="small"
             rowKey="employee_id"
-            rowSelection={role === 'admin' ? memberRowSelection : undefined}
+            rowSelection={role === 'admin' ? employeeRowSelection : undefined}
             pagination={{ pageSize: 5, hideOnSinglePage: true }}
             columns={[
               { title: 'Nhân viên', dataIndex: 'fullname' },
               { title: 'Chức vụ', dataIndex: 'position', render: value => value || 'Chưa cập nhật' },
               { title: 'Email', dataIndex: 'email' }
             ]}
-            dataSource={currentTeamMembers}
+            dataSource={currentTeamEmployees}
           />
         ) : (
           <Empty description="Chưa có thành viên nào trong phòng ban này" />

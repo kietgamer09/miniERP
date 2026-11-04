@@ -29,7 +29,7 @@ function MainLayout() {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
   const { role } = useRole();
-  const { user, logout } = useAuth();
+  const { user, logout, markPasswordChanged } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const menuPath = /^\/du-an\/\d+$/.test(location.pathname) ? '/du-an/cua-toi' : location.pathname;
@@ -179,7 +179,10 @@ function MainLayout() {
         <div><span className="footer-brand">miniERP</span><span>Hệ thống quản trị doanh nghiệp</span></div>
         <small>© {copyrightYear} miniERP. Bảo lưu mọi quyền.</small>
       </footer>
-      {passwordOpen && <ChangePasswordModal onClose={() => setPasswordOpen(false)} />}
+      {(passwordOpen || user?.must_change_password) && <ChangePasswordModal
+        required={Boolean(user?.must_change_password)}
+        onClose={() => { markPasswordChanged(); setPasswordOpen(false); }}
+      />}
     </Layout>
   );
 }

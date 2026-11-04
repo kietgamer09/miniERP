@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../src/config/env.js';
 import pg from 'pg';
 import { vietnamClock } from '../src/utils/attendanceRules.js';
 import { createTestDatabase } from './lib/testDatabase.mjs';
@@ -44,7 +45,7 @@ try {
   do { previous.setUTCDate(previous.getUTCDate() - 1); } while ([0, 6].includes(previous.getUTCDay()));
   const date = previous.toISOString().slice(0, 10), at = time => new Date(`1970-01-01T${time}Z`);
   async function api(user, method, path, body) {
-    const token = jwt.sign({ user_id: user, role: user === 33 ? 'admin' : user === 22 ? 'manager' : 'employee' }, process.env.JWT_SECRET || 'mini_erp_super_secret_key_2026');
+    const token = jwt.sign({ user_id: user, role: user === 33 ? 'admin' : user === 22 ? 'manager' : 'employee' }, JWT_SECRET);
     const res = await fetch(`${base}${path}`, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       ...(body ? { body: JSON.stringify(body) } : {}) });
     return { status: res.status, data: await res.json() };
