@@ -84,13 +84,22 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
       <Form.Item label="Hạn chót" name="due_date" rules={[
         { required: true, message: 'Vui lòng chọn hạn chót' },
         { validator(_, value) {
-          return value && value.format('YYYY-MM-DD') > project.end_date
-            ? Promise.reject(new Error(`Hạn chót không được sau ngày kết thúc dự án (${formatDateOnlyVN(project.end_date)})`))
-            : Promise.resolve();
+          if (!value) return Promise.resolve();
+          const dueDate = value.format('YYYY-MM-DD');
+          if (dueDate < project.start_date) {
+            return Promise.reject(new Error(`Hạn chót không được trước ngày bắt đầu dự án (${formatDateOnlyVN(project.start_date)})`));
+          }
+          if (dueDate > project.end_date) {
+            return Promise.reject(new Error(`Hạn chót không được sau ngày kết thúc dự án (${formatDateOnlyVN(project.end_date)})`));
+          }
+          return Promise.resolve();
         } },
       ]}>
         <DatePicker locale={viVN.DatePicker} format="DD/MM/YYYY" placeholder="Chọn hạn chót" style={{ width: '100%' }}
-          disabledDate={(date) => date.format('YYYY-MM-DD') > project.end_date} />
+          disabledDate={(date) => {
+            const dueDate = date.format('YYYY-MM-DD');
+            return dueDate < project.start_date || dueDate > project.end_date;
+          }} />
       </Form.Item>
       <Form.Item label="Mức ưu tiên" name="priority" rules={[{ required: true, message: 'Vui lòng chọn mức ưu tiên' }]}>
         <Select placeholder="Chọn mức ưu tiên" options={TASK_PRIORITY_OPTIONS} />

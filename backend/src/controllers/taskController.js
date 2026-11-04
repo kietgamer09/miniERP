@@ -1,7 +1,7 @@
 import prisma from '../config/prisma.js';
 import { loadManagedProject } from './projectController.js';
 import { parseId, isValidDate, toDateOnly } from '../utils/validators.js';
-import { getAllowedMoves } from '../utils/taskRules.js';
+import { dueDateError, getAllowedMoves } from '../utils/taskRules.js';
 
 export const taskFields = {
   id: true, project_id: true, title: true, description: true,
@@ -9,7 +9,7 @@ export const taskFields = {
   status: true, completed_at: true, created_at: true, updated_at: true,
   employees_tasks_assignee_idToemployees: { select: { fullname: true } },
   employees_tasks_created_byToemployees: { select: { fullname: true } },
-  projects: { select: { name: true, status: true, manager_id: true, end_date: true } },
+  projects: { select: { name: true, status: true, manager_id: true, start_date: true, end_date: true } },
 };
 
 export function formatTask(task, caller) {
@@ -84,10 +84,8 @@ export const createTask = async (req, res) => {
       if (member.employees.status !== 'dang_lam_viec') {
         return { status: 400, error: 'Nhân viên đã nghỉ việc' };
       }
-      const endDate = toDateOnly(project.end_date);
-      if (body.due_date > endDate) {
-        return { status: 400, error: `Hạn chót không được sau ngày kết thúc dự án (${endDate})` };
-      }
+      const dateError = dueDateError(body.due_date, project);
+      if (dateError) return { status: 400, error: dateError };
       if (body.description !== undefined && body.description !== null && typeof body.description !== 'string') {
         return { status: 400, error: 'Mô tả phải là chuỗi hoặc null' };
       }

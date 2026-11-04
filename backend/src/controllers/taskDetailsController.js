@@ -1,6 +1,7 @@
-import prisma from '../config/prisma.js';
+﻿import prisma from '../config/prisma.js';
 import { formatTask, taskFields, validateTask } from './taskController.js';
-import { parseId, toDateOnly } from '../utils/validators.js';
+import { parseId } from '../utils/validators.js';
+import { dueDateError } from '../utils/taskRules.js';
 
 function errorResult(status, error) {
   return { status, error };
@@ -64,10 +65,8 @@ export const updateTaskDetails = async (req, res) => {
         }
       }
 
-      const projectEndDate = toDateOnly(task.projects.end_date);
-      if (body.due_date > projectEndDate) {
-        return errorResult(400, `Hạn chót không được sau ngày kết thúc dự án (${projectEndDate})`);
-      }
+      const dateError = dueDateError(body.due_date, task.projects);
+      if (dateError) return errorResult(400, dateError);
       if (body.description !== undefined && body.description !== null && typeof body.description !== 'string') {
         return errorResult(400, 'Mô tả phải là chuỗi hoặc null');
       }

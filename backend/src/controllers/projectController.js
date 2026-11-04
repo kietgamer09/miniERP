@@ -259,9 +259,13 @@ export const updateProject = async (req, res) => {
       const { data, error } = validateProject(body, false);
       if (error) return { status: 400, error };
       const deadlines = await tx.tasks.aggregate({
-        where: { project_id: project.id }, _max: { due_date: true },
+        where: { project_id: project.id }, _min: { due_date: true }, _max: { due_date: true },
       });
+      const earliest = toDateOnly(deadlines._min.due_date);
       const latest = toDateOnly(deadlines._max.due_date);
+      if (earliest && earliest < toDateOnly(data.start_date)) {
+        return { status: 409, error: `Còn task có hạn chót ${earliest}, trước ngày bắt đầu mới` };
+      }
       if (latest && latest > toDateOnly(data.end_date)) {
         return { status: 409, error: `Còn task có hạn chót ${latest}, sau ngày kết thúc mới` };
       }

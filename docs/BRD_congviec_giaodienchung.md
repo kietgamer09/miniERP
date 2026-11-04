@@ -101,7 +101,7 @@ Hệ thống tự kiểm tra quyền theo bảng dưới đây; thao tác ngoài
 - **Là** 1 Quản lý dự án hoặc Admin, **tôi muốn** tạo task với tiêu đề, người làm task, hạn chót, mức ưu tiên (Thấp / Trung bình / Cao) và mô tả **để** giao việc cho nhân viên.
 * **Tiêu chí:**
   - **Khi** dự án đang ở trạng thái `Hoàn thành`, hệ thống chặn tạo task mới.
-  - **Khi** người làm task không phải thành viên dự án, hoặc hạn chót sau ngày kết thúc dự án, hệ thống từ chối và báo lỗi.
+  - **Khi** người làm task không phải thành viên dự án, hoặc hạn chót nằm ngoài khoảng ngày bắt đầu–kết thúc dự án (tính cả hai đầu), hệ thống từ chối và báo lỗi.
   - **Khi** nhập đầy đủ thông tin hợp lệ, hệ thống tạo task mới ở trạng thái `Cần làm`.
 
 ##### US_06: Sửa task và giao lại task
@@ -110,7 +110,7 @@ Hệ thống tự kiểm tra quyền theo bảng dưới đây; thao tác ngoài
 * **Tiêu chí:**
   - **Khi** dự án đang ở trạng thái `Hoàn thành`, hệ thống chặn mọi thao tác sửa hoặc giao lại task.
   - **Khi** giao lại task, người làm mới phải là thành viên dự án. Hệ thống cập nhật người phụ trách và task xuất hiện ở trang "Việc của tôi" của người đó.
-  - **Khi** đổi hạn chót, hạn mới không được sau ngày kết thúc dự án, nếu sai hệ thống báo lỗi. Sửa tiêu đề, mô tả hoặc mức ưu tiên hợp lệ thì hệ thống lưu thay đổi.
+  - **Khi** đổi hạn chót, hạn mới phải nằm trong khoảng ngày bắt đầu–kết thúc dự án (tính cả hai đầu), nếu sai hệ thống báo lỗi. Sửa tiêu đề, mô tả hoặc mức ưu tiên hợp lệ thì hệ thống lưu thay đổi.
 
 ##### US_07: Xem chi tiết task
 - **Phân loại:** Bắt buộc
@@ -210,7 +210,7 @@ Hệ thống tự kiểm tra quyền theo bảng dưới đây; thao tác ngoài
 | 1 | Chỉ Quản lý hoặc Admin tạo được dự án, người tạo trở thành Quản lý dự án (đồng thời là thành viên) | US_01 |
 | 2 | Thành viên dự án chọn từ danh sách nhân viên đang làm việc | US_03 |
 | 3 | Chỉ giao task cho thành viên của dự án (Quản lý dự án có thể tự giao cho mình) | US_05, US_06 |
-| 4 | Hạn chót task không được sau ngày kết thúc dự án (trùng ngày vẫn hợp lệ) | US_05, US_06 |
+| 4 | Hạn chót task phải nằm trong khoảng ngày bắt đầu–kết thúc dự án (hai ngày biên đều hợp lệ) | US_05, US_06 |
 | 5 | Chỉ Quản lý dự án và Admin sửa dự án, thêm/bớt thành viên, tạo/sửa/giao task | US_02, US_03, US_05, US_06 |
 | 6 | Đổi trạng thái theo quy tắc kề nhau; Người làm task chỉ đổi task của mình, chỉ Quản lý dự án và Admin kéo lùi từ Xong | US_10 |
 | 7 | Task quá hạn (ngày hiện tại > hạn chót và chưa Xong) tô đỏ ở mọi nơi | US_09, US_12 |
