@@ -23,6 +23,17 @@ export function summarizeAttendance(days = []) {
   const groups = categories.map(category => ({ ...category,
     days: workingDays.filter(day => attendanceGroup(day) === category.key),
   })).map(group => ({ ...group, count: group.days.length }));
-  return { groups, total: workingDays.length,
-    recorded: workingDays.filter(day => day.check_in || day.check_out).length };
+
+  // Chỉ tính những ngày thực sự có công hoặc nghỉ phép hợp lệ (complete, warning, leave)
+  // Loại trừ hoàn toàn các ngày thiếu check-out/check-in, vắng, conflict (issue) hoặc chưa tới (pending)
+  const recordedCount = workingDays.filter(day => {
+    const groupKey = attendanceGroup(day);
+    return ['complete', 'warning', 'leave'].includes(groupKey);
+  }).length;
+
+  return { 
+    groups, 
+    total: workingDays.length,
+    recorded: recordedCount 
+  };
 }
