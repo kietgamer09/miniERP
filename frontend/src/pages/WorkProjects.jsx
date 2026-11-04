@@ -116,8 +116,8 @@ function WorkProjectPanel({ summary, role, onRefresh }) {
               )}>
               <Button disabled={busy}>{completed ? 'Mở lại dự án' : 'Hoàn thành dự án'}</Button>
             </Popconfirm>
-            {canDelete && <Popconfirm title="Xóa dự án và toàn bộ task thuộc dự án?"
-              description="Thao tác này không thể hoàn tác." okText="Xóa dự án" cancelText="Hủy"
+            {canDelete && <Popconfirm title="Xóa dự án chưa có task hoặc thảo luận?"
+              description="Dự án có task hoặc bình luận không thể xóa. Tệp đính kèm của dự án sẽ bị xóa theo." okText="Xóa dự án" cancelText="Hủy"
               okButtonProps={{ danger: true }} onConfirm={() => handleProjectAction(
                 () => deleteProject(project.id), 'Đã xóa dự án',
               )}>

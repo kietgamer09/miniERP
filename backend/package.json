@@ -14,7 +14,8 @@
     "setup:web-push": "node scripts/setup-web-push.js",
     "setup:chat": "node scripts/setup-chat.js",
     "setup:overtime": "node scripts/setup-overtime.js",
-    "setup:payroll": "node scripts/setup-payroll.js"
+    "setup:payroll": "node scripts/setup-payroll.js",
+    "cleanup:orphan-attachments": "node scripts/cleanup-orphan-attachments.mjs"
   },
   "keywords": [],
   "author": "",

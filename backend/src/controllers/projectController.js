@@ -1,6 +1,7 @@
 import prisma from '../config/prisma.js';
 import { Prisma } from '@prisma/client';
 import { parseId, isValidDate, toDateOnly } from '../utils/validators.js';
+import { removeAttachmentDir } from '../services/attachmentStorage.js';
 
 const serializeProject = (project) => ({
   ...project,
@@ -288,13 +289,20 @@ export const deleteProject = async (req, res) => {
       if (!project) return null;
       const taskCount = await tx.tasks.count({ where: { project_id: project.id } });
       if (taskCount) return { status: 409, error: 'Chỉ có thể xóa dự án chưa có task' };
+      const commentCount = await tx.work_project_comments.count({ where: { project_id: project.id } });
+      if (commentCount) return { status: 409, error: 'Không thể xóa dự án đã có thảo luận để giữ lịch sử bình luận' };
       await tx.project_members.deleteMany({ where: { project_id: project.id } });
       await tx.projects.delete({ where: { id: project.id } });
-      return { deleted: true };
+      return { deleted: true, projectId: project.id };
     }, { isolationLevel: 'Serializable' });
 
     if (!result) return;
     if (result.error) return res.status(result.status).json({ error: result.error });
+    try {
+      await removeAttachmentDir('projects', result.projectId);
+    } catch (fsError) {
+      console.error(`Không thể xóa thư mục attachment project ${result.projectId}:`, fsError);
+    }
     res.status(204).end();
   } catch (error) {
     console.error('Không thể xóa dự án:', error);

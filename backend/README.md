@@ -132,6 +132,30 @@ Bộ test kiểm tra hạn task nằm trong khoảng ngày dự án, quyền t�
 
 ## Chi tiết từng tính năng
 
+### Dự án, bình luận và tệp đính kèm
+
+Integration test của module này dùng PostgreSQL in-memory (PGlite), tạo database mới cho mỗi lần chạy và không đọc/ghi database trong `.env`:
+
+```bash
+npm test
+```
+
+- Chỉ dự án chưa có task hoặc thảo luận mới xóa được. Bình luận là lịch sử bất biến; lỗi xóa DB giữ nguyên tệp. Sau khi DB xóa thành công, backend chuyển thư mục attachment vào tên `.deleted-*` rồi xóa; lỗi filesystem được ghi log.
+- Có thể quét thư mục mồ côi ở chế độ xem trước (mặc định, không xóa):
+
+  ```bash
+  npm run cleanup:orphan-attachments
+  ```
+
+  Script quét task, project, leave, overtime và thư mục `.deleted-*`; chỉ xóa khi bản ghi cha không còn. Sau khi kiểm tra danh sách, thêm `-- --apply` để thực hiện:
+
+  ```bash
+  npm run cleanup:orphan-attachments -- --apply
+  ```
+
+- Bình luận dự án và task vẫn được phép sau khi dự án hoàn thành để lưu trao đổi/lịch sử. Tạo/sửa/kéo task và thêm/xóa attachment bị chặn khi dự án hoàn thành; đọc/tải file hiện có vẫn được.
+- Tạo bình luận task/dự án khóa dòng membership hoặc quyền quản lý cùng transaction với insert. Thao tác bớt thành viên phải chờ comment đang ghi xong; comment sau khi bớt thành viên nhận `403`.
+
 ### Đơn làm thêm / tăng ca
 
 Sau khi nhận bản có chức năng làm thêm, chạy một lần trong `backend` rồi khởi động lại backend:

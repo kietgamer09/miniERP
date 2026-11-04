@@ -74,7 +74,7 @@ Hệ thống tự kiểm tra quyền theo bảng dưới đây; thao tác ngoài
 * **Tiêu chí:**
   - **Khi** cập nhật thông tin dự án (tên, mô tả, ngày bắt đầu, ngày kết thúc) hợp lệ, hệ thống lưu thông tin mới.
   - **Khi** chuyển sang `Hoàn thành` mà dự án chưa có task nào hoặc còn task chưa `Xong`, hệ thống từ chối và báo lỗi (*"Dự án chưa có task nào để hoàn thành"* hoặc *"Vẫn còn task chưa hoàn thành"*).
-  - **Khi** chuyển sang `Hoàn thành` và dự án có ít nhất 1 task, tất cả đã `Xong`, hệ thống cập nhật trạng thái và khóa dự án: không tạo task, không sửa hoặc giao lại task, không kéo thả task. Xem dự án và bình luận vẫn được.
+  - **Khi** chuyển sang `Hoàn thành` và dự án có ít nhất 1 task, tất cả đã `Xong`, hệ thống cập nhật trạng thái và khóa dự án: không tạo/sửa/kéo task và không thêm/xóa attachment. Xem dự án, tải attachment hiện có và gửi bình luận vẫn được để lưu lịch sử trao đổi.
   - **Khi** Quản lý dự án hoặc Admin chọn **Mở lại dự án**, hệ thống đưa dự án về `Đang thực hiện` và mở khóa.
 
 ##### US_03: Thêm và bớt thành viên trong dự án
@@ -124,6 +124,7 @@ Hệ thống tự kiểm tra quyền theo bảng dưới đây; thao tác ngoài
 * **Tiêu chí:**
   - **Khi** thành viên trong dự án hoặc Admin gửi bình luận, hệ thống lưu và hiển thị ngay nội dung kèm tên người gửi và thời gian gửi.
   - **Khi** bình luận đã gửi, hệ thống không có chức năng sửa hoặc xóa bình luận.
+  - **Khi** dự án đã hoàn thành, thành viên vẫn được gửi bình luận task hoặc thảo luận dự án; bình luận là lịch sử trao đổi và không bị xóa khi xóa dự án. Dự án đã có thảo luận không thể bị xóa.
 
 ##### US_09: Trang Việc của tôi và cảnh báo quá hạn
 - **Phân loại:** Bắt buộc
@@ -175,7 +176,8 @@ Hệ thống tự kiểm tra quyền theo bảng dưới đây; thao tác ngoài
 - **Phân loại:** Làm thêm
 - **Là** 1 Quản lý dự án hoặc Admin, **tôi muốn** xóa dự án rỗng không còn sử dụng **để** dọn dẹp danh sách dự án.
 * **Tiêu chí:**
-  - **Khi** dự án còn task (ở bất kỳ trạng thái nào), hệ thống từ chối xóa và báo lỗi. Khi dự án không có task nào, hệ thống cho phép xóa.
+  - **Khi** dự án còn task (ở bất kỳ trạng thái nào) hoặc thảo luận, hệ thống từ chối xóa và giữ nguyên lịch sử.
+  - **Khi** dự án không có task hoặc thảo luận, hệ thống xóa DB trước rồi dọn attachment; lỗi dọn file được ghi log để cleanup có thể chạy lại.
 
 ##### US_14: Biểu đồ thống kê tiến độ trên Trang chủ
 - **Phân loại:** Làm thêm

@@ -50,7 +50,7 @@ Tất cả yêu cầu cần Bearer token và hồ sơ nhân viên `dang_lam_viec
 | Danh sách | `GET /api/projects` | admin xem tất cả; người khác xem dự án mình là thành viên | 200, mảng |
 | Chi tiết | `GET /api/projects/:id` | thành viên dự án, admin | 200, dự án kèm thành viên và tiến độ |
 | Sửa | `PUT /api/projects/:id` | người có employee_id bằng manager_id của dự án, hoặc admin | 200, dự án |
-| Xóa dự án rỗng | `DELETE /api/projects/:id` | Quản lý dự án, admin | 204; dự án còn task trả 409 |
+| Xóa dự án rỗng | `DELETE /api/projects/:id` | Quản lý dự án, admin | 204; dự án còn task hoặc thảo luận trả 409 |
 | Hoàn thành | `POST /api/projects/:id/complete` | quản lý dự án, admin | 200, dự án đã hoàn thành |
 | Mở lại | `POST /api/projects/:id/reopen` | quản lý dự án, admin | 200, dự án đang thực hiện |
 
@@ -518,19 +518,28 @@ Frontend tạm giả định API do phần Nhân sự cung cấp là `GET /api/l
 
 **Cần xác nhận với bạn đồng nghiệp:** đường dẫn thật (các route hiện tại trong `leaveRoutes.js` đang dùng `/api/leaves/...` và chưa có endpoint đếm chờ duyệt), quyền và phạm vi số đếm cho Quản lý/Admin, cùng tên trường phản hồi. Khi hợp đồng được chốt, chỉ cập nhật `getPendingLeaveCount()` trong `frontend/src/services/leaveApi.js`.
 
-## 16. Tệp đính kèm
+## 16. Tệp đính kèm và write policy theo trạng thái dự án
 
-`GET/POST /api/attachments/:type/:targetId`, `GET/DELETE /api/attachments/:type/:targetId/:fileId` yêu cầu Bearer token và nhân viên đang làm việc. `type` là `tasks`, `projects`, `leaves`.
+`GET/POST /api/attachments/:type/:targetId`, `GET/DELETE /api/attachments/:type/:targetId/:fileId` yêu cầu Bearer token và nhân viên đang làm việc. `type` là `tasks`, `projects`, `leaves`, `overtime`.
 
 GET danh sách trả `{ can_upload, files: [{ id, name, size, author_id, created_at, can_delete }] }`. POST gửi body nhị phân với `Content-Type: application/octet-stream` và header `X-File-Name: encodeURIComponent(file.name)`, trả metadata 201. GET file trả download attachment; DELETE trả 204. Giới hạn 10 MB/file, 30 file/mục; định dạng PDF, PNG/JPEG/WebP, DOCX/XLSX/PPTX, TXT/CSV.
 
-Thành viên/quản lý dự án và Admin được đọc/thêm tệp công việc trong dự án đang thực hiện; dự án hoàn thành chỉ được đọc. Người gửi đơn nghỉ phép được thêm tệp khi đơn còn chờ; Quản lý/Admin được đọc minh chứng như phạm vi API duyệt đơn hiện hành. Chỉ tác giả tệp hoặc Admin được xóa, khi đối tượng còn cho phép ghi. Tệp của task/dự án là tài liệu dùng chung, độc lập với bình luận bất biến.
+| Hành động | Dự án đang thực hiện | Dự án hoàn thành |
+|---|---|---|
+| Bình luận task/dự án | Cho phép | Cho phép; lưu lịch sử trao đổi |
+| Thêm/xóa attachment | Cho phép theo quyền | Không cho phép (GET trả `can_upload: false`; POST/DELETE trả 403) |
+| Tạo/sửa/kéo task | Cho phép theo quyền | Không cho phép; API trả 409 |
+
+Thành viên/quản lý dự án và Admin được đọc/thêm tệp công việc trong dự án đang thực hiện; dự án hoàn thành chỉ được đọc. Người gửi đơn nghỉ phép được thêm tệp khi đơn còn chờ; Quản lý/Admin được đọc minh chứng như phạm vi API duyệt đơn hiện hành. Chỉ tác giả tệp hoặc Admin được xóa, khi đối tượng còn cho phép ghi. Tệp của task/dự án là tài liệu dùng chung, độc lập với bình luận bất biến. Dự án đã có task hoặc thảo luận không thể xóa để tránh cascade xóa lịch sử; dự án rỗng không thảo luận được xóa trong DB trước, sau đó mới dọn thư mục file. Lỗi dọn filesystem được log, không đảo ngược xóa DB.
+
+File được lưu dưới `uploads/attachments/<type>/<id>`. Backend chỉ xóa thư mục đúng loại và ID số nguyên dương trong root này, bằng cách đổi tên sang vùng `.deleted-*` rồi xóa; nếu quá trình bị ngắt, script `npm run cleanup:orphan-attachments` mặc định chỉ preview. Chỉ thêm `--apply` sau khi xem danh sách; script chỉ xóa thư mục mà bản ghi cha đã mất, gồm các thư mục quarantine.
 
 Lỗi: 400 ID/định dạng/tên/tệp rỗng không hợp lệ hoặc vượt 30 file; 401 thiếu/sai token; 403 ngoài quyền hoặc đã khóa; 404 đối tượng/tệp không tồn tại; 413 vượt 10 MB. File lưu trong `backend/uploads/attachments`, không lưu vào Git; sao lưu cùng DB. Luồng giải trình chấm công đang vô hiệu hóa nên chưa có đính kèm ở đó.
 ## Thông báo bình luận và thảo luận dự án
 
 - Chuẩn bị DB: chạy `npm run setup:notifications` một lần trong backend; thêm `work_project_comments` và `work_comment_reads`, không reset dữ liệu.
 - `GET/POST /api/projects/:id/comments`: thành viên, quản lý dự án, Admin được xem/gửi. POST nhận `{ content }` (1–2000 ký tự), trả 201 với bình luận và tên người gửi. GET trả danh sách từ cũ tới mới. Không sửa/xóa bình luận.
+- Có thể bình luận khi dự án hoàn thành. Ghi bình luận khóa dòng membership/quản lý trong cùng transaction với insert; thao tác bớt thành viên phải đợi bình luận đang ghi xong, và yêu cầu tới sau khi thành viên bị xóa nhận 403.
 - `GET /api/notifications/comments`: cần token và nhân viên đang làm việc; trả tối đa 100 bình luận mới nhất trong dự án đang tham gia/quản lý, gồm task và thảo luận dự án. Không trả bình luận do chính người nhận gửi. Mỗi mục có `id`, `type`, `title`, `description`, `time`, `read`, `path`.
 - `PATCH /api/notifications/comments/read`: body `{ ids: ["comment:task:123", "comment:project:456"] }`, tối đa 100 ID. Chỉ đánh dấu những thông báo thuộc phạm vi của người gọi; lưu theo employee từ token, không nhận employee_id từ body; trả 204. Gọi lặp không tạo bản ghi trùng.
 - Client tải lại mỗi 15 giây khi trang hiển thị và khi quay lại tab/mở hòm thư. Đọc đồng bộ trên server. Link task `/du-an/:id?task=:taskId`; link thảo luận `/du-an/:id?discussion=1`.
