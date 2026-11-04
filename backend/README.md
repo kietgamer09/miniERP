@@ -19,12 +19,14 @@ Tạo file .env trong thư mục backend:
 ```env
 PORT=5000
 DATABASE_URL="postgresql://postgres:<MAT_KHAU_POSTGRES>@localhost:5432/miniERP?schema=public"
-JWT_SECRET="mini_erp_super_secret_key_2026"
+JWT_SECRET="<SECRET_NGAU_NHIEN>"
 ```
 
-Thay các giá trị trong dấu <...> bằng cấu hình thật. Mật khẩu có ký tự đặc biệt cần được URL-encode trong DATABASE_URL. Không đưa .env vào Git.
+Tạo secret bằng `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` rồi thay placeholder. Thay các giá trị còn lại trong dấu <...> bằng cấu hình thật. Mật khẩu có ký tự đặc biệt cần được URL-encode trong DATABASE_URL. Không đưa .env vào Git.
 
 ## 2. Cài thư viện và chuẩn bị bảng
+
+Prisma CLI tự đọc `prisma.config.ts` khi chạy từ thư mục `backend`. Không cần truyền `--config`.
 
 Từ thư mục gốc dự án:
 
@@ -53,7 +55,7 @@ npx prisma generate
 
 Các script setup bổ sung bảng cho từng tính năng. Web Push và chat tạo khóa cần thiết trong .env nếu chưa có. Với database khôi phục từ máy khác, dùng đúng các khóa cũ trước khi chạy setup; giữ khóa chat cùng dữ liệu chat.
 
-**Database đang có dữ liệu:** dùng các script setup tương ứng thay đổi vừa nhận. Repo chưa có baseline Prisma Migrate; không dùng migrate reset hoặc migrate deploy cho quy trình này. Generate chỉ tạo client, không tạo bảng trong PostgreSQL.
+**Database đang có dữ liệu:** dùng các script setup tương ứng thay đổi vừa nhận. Repo hiện chưa có baseline Prisma Migrate; xem [kế hoạch chuyển đổi và rollback](docs/prisma-migration-plan.md). Không dùng migrate reset hoặc migrate deploy cho quy trình này. Generate chỉ tạo client, không tạo bảng trong PostgreSQL.
 
 ## 3. Chuẩn bị tài khoản và chạy ứng dụng
 
@@ -87,6 +89,21 @@ Mở terminal thứ hai, chạy frontend theo [hướng dẫn frontend](../front
 | Thiếu token khi mở API trên thanh địa chỉ | Dùng frontend đã đăng nhập; API yêu cầu Authorization: Bearer. |
 | Bảng lương công ty trống | Tháng được chọn chưa có bản lương lưu; tạo bảng DB không tự tính lương. |
 
+## 6. Kiểm thử và CI
+
+```bash
+npm test
+npm run test:unit
+npm run lint
+npm run prisma:validate
+npm run prisma:generate
+npm run build
+```
+
+`npm test` chạy unit/contract test không cần DB. `npm run test:integration` cần PostgreSQL test riêng trên loopback và quyền tạo/xóa database. Đặt `TEST_ADMIN_DATABASE_URL` trỏ tới database quản trị `postgres` hoặc `template1`; không dùng `DATABASE_URL` ứng dụng làm URL quản trị. Helper tạo DB `minierp_<suite>_test_<uuid>`, xác nhận tên DB trước khi ghi/xóa và tự dọn khi test kết thúc. Chi tiết và lệnh PowerShell xem [prisma-migration-plan.md](docs/prisma-migration-plan.md).
+
+Workflow `.github/workflows/ci.yml` chạy backend và frontend trên Pull Request. Backend validate/generate Prisma, push schema vào database CI riêng, chạy unit/integration tests; frontend chạy test, lint và build.
+
 ## Chi tiết từng tính năng
 
 ### Đơn làm thêm / tăng ca
@@ -108,7 +125,7 @@ Lệnh tạo bảng `work_overtime_requests` và `work_overtime_notifications`, 
 
 API: `GET/POST /api/overtime`, `GET /api/overtime/:id`, `POST /api/overtime/:id/review`, `POST /api/overtime/:id/cancel`, `GET /api/overtime/notifications`, `PATCH /api/overtime/notifications/read`. Tạo đơn: `{ mode: "past" | "planned", date: "YYYY-MM-DD", start_time: "HH:mm", end_time: "HH:mm", end_next_day: boolean, reason }`. Duyệt: `{ decision: "approved" | "rejected", note? }`.
 
-Kiểm tra bằng `node --test scripts/check-overtime-contract.mjs`. Script cần quyền tạo database PostgreSQL tạm, dùng tài khoản riêng trong database đó, dùng bộ gửi push giả và tự dọn database kiểm thử; không gửi thông báo đến nhân viên thật. Kiểm tra thứ tự hòm thư từ `frontend`: `node --test src/utils/notificationOrder.test.js`.
+Kiểm tra bằng `npm run test:integration`; bộ gửi push được giả lập nên test không gửi thông báo đến nhân viên thật. Kiểm tra thứ tự hòm thư bằng `npm test` trong thư mục `frontend`.
 
 
 ### Nhắn tin nội bộ
@@ -142,7 +159,7 @@ API `/api/chat` yêu cầu đăng nhập và hồ sơ nhân viên đang làm vi�
 
 Giao diện có nút Nhắn tin cạnh hòm thông báo, lấy tin mới mỗi 4 giây khi đang mở cuộc trò chuyện và cập nhật số chưa đọc mỗi 10 giây khi website hiển thị. Chat hiện chưa gửi Web Push khi website đã đóng.
 
-Kiểm tra API và quyền truy cập bằng `node --test scripts/check-chat-contract.mjs`. Kiểm tra dùng PostgreSQL đã cấu hình, tạo ba tài khoản tạm riêng rồi dọn chúng, tin nhắn và tệp kiểm thử; không gửi tin cho tài khoản thật.
+Kiểm tra API và quyền truy cập chat bằng `npm run test:integration`. Suite dùng database PostgreSQL test cô lập, và dọn tài khoản, tin nhắn cùng tệp kiểm thử.
 
 ### Bảng lương
 
@@ -198,5 +215,6 @@ backend/
 │   └── server.js         # File khởi động ứng dụng Express
 ├── .env                  # Biến môi trường (Local config)
 ├── package.json          # Quản lý dependencies và scripts
-└── prisma7.config.ts     # Cấu hình mở rộng của Prisma
+├── prisma.config.ts      # Cấu hình Prisma CLI v7
+└── docs/                 # Kế hoạch migration và hướng dẫn vận hành
 ```

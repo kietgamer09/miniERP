@@ -128,6 +128,8 @@ Bỏ qua `npx prisma db push` để giữ nguyên cấu trúc và dữ liệu đ
 
 #### Chuẩn bị các bảng tính năng và Prisma Client
 
+Prisma config nằm tại `backend/prisma.config.ts`; chạy các lệnh Prisma từ thư mục `backend` để CLI tự nhận cấu hình.
+
 Với database mới, chạy toàn bộ các lệnh sau. Với database khôi phục, chạy nếu đây là lần cài mới trên máy này hoặc backup chưa có các bảng tương ứng; các script được thiết kế để chạy lại mà giữ dữ liệu:
 
 ```powershell
@@ -142,7 +144,7 @@ npx prisma generate
 
 Web Push và chat có thể tự thêm khóa vào `backend/.env`. Sau khi chuyển máy, cần dùng lại các khóa của máy nguồn: `JWT_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `CHAT_ENCRYPTION_KEY` (nếu đã có). Giữ nguyên `CHAT_ENCRYPTION_KEY` để đọc được lịch sử chat đã mã hóa. Nếu backup uploads, khôi phục `backend/uploads` cùng database. Không xóa `.env` hoặc uploads của máy đang chạy.
 
-Repo chưa có baseline Prisma Migrate. **Không chạy** `npx prisma migrate deploy`, `migrate reset` hoặc xóa database để sửa lỗi P3005/thiếu bảng. Dùng quy trình database mới ở trên hoặc script `setup:*` đúng tính năng.
+Repo hiện chưa có baseline Prisma Migrate. Xem [kế hoạch chuyển đổi và rollback](backend/docs/prisma-migration-plan.md). **Không chạy** `npx prisma migrate deploy`, `migrate reset` hoặc xóa database để sửa lỗi P3005/thiếu bảng. Dùng quy trình database mới ở trên hoặc script `setup:*` đúng tính năng.
 
 #### Dữ liệu công việc mẫu (không bắt buộc)
 
@@ -249,12 +251,24 @@ Trên máy đích, khôi phục database và uploads, cấu hình `DATABASE_URL`
 Chạy từ thư mục tương ứng:
 
 ```powershell
+# backend
+cd backend
+npm test
+npm run lint
+npm run prisma:validate
+npm run prisma:generate
+
+# PostgreSQL test riêng: TEST_ADMIN_DATABASE_URL phải trỏ database postgres/template1.
+npm run test:integration
+
 # frontend
+cd ../frontend
+npm test
 npm run lint
 npm run build
 ```
 
-Backend có một số script kiểm tra trong `backend/scripts/check-*.mjs`; xem đầu file trước khi chạy vì một số script cần PostgreSQL và tạo dữ liệu kiểm thử tạm.
+`npm test` không cần DB. Integration test chỉ tạo database tên `minierp_<suite>_test_<uuid>`, xác nhận tên hiện hành trước khi ghi/xóa và tự dọn đúng database đó. CI chạy trên pull request và push lên `develop`/`main`.
 
 ## Cấu trúc thư mục
 

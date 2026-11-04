@@ -1,24 +1,21 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import pg from 'pg';
 import { vietnamClock } from '../src/utils/attendanceRules.js';
+import { createTestDatabase } from './lib/testDatabase.mjs';
 
 const originalUrl = process.env.DATABASE_URL;
-assert.ok(originalUrl);
-const database = `minierp_explanation_test_${randomUUID().replaceAll('-', '')}`;
-assert.match(database, /^minierp_explanation_test_[a-f0-9]{32}$/);
-const admin = new pg.Pool({ connectionString: originalUrl });
-let created = false, prisma, server;
+const testDb = await createTestDatabase('explanation');
+let prisma, server;
 try {
-  await admin.query(`CREATE DATABASE "${database}"`); created = true;
-  const url = new URL(originalUrl); url.pathname = `/${database}`;
+  const url = new URL(testDb.url);
   process.env.DATABASE_URL = url.toString();
   const fixture = new pg.Pool({ connectionString: url.toString() });
   try {
+    await testDb.assertIsolated(fixture);
     await fixture.query(`
       CREATE TYPE employee_status AS ENUM ('dang_lam_viec', 'da_nghi_viec');
       CREATE TYPE leave_status AS ENUM ('cho_xac_thuc', 'da_duoc_duyet', 'bi_tu_choi');
@@ -37,7 +34,7 @@ try {
     await fixture.query(await readFile(new URL('../prisma/sql/attendance-explanations.sql', import.meta.url), 'utf8'));
   } finally { await fixture.end(); }
   prisma = (await import('../src/config/prisma.js')).default;
-  assert.equal((await prisma.$queryRaw`SELECT current_database() AS name`)[0].name, database);
+  await testDb.assertIsolated(prisma);
   const app = express(); app.use(express.json());
   app.use('/api/attendances', (await import('../src/routes/attendancesRoutes.js')).default);
   server = await new Promise(resolve => { const instance = app.listen(0, '127.0.0.1', () => resolve(instance)); });
@@ -103,13 +100,5 @@ try {
   if (server) await new Promise(resolve => server.close(resolve));
   if (prisma) await prisma.$disconnect();
   process.env.DATABASE_URL = originalUrl;
-  if (created) {
-    for (let attempt = 0; attempt < 60; attempt++) {
-      const state = await admin.query('SELECT count(*)::int AS total FROM pg_stat_activity WHERE datname = $1', [database]);
-      if (!state.rows[0].total) break;
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-    await admin.query(`DROP DATABASE "${database}" WITH (FORCE)`);
-  }
-  await admin.end();
+  await testDb.drop();
 }

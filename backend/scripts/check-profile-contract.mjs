@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { randomUUID } from 'node:crypto';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import pg from 'pg';
 import { validateProfileUpdate } from '../src/utils/profileRules.js';
+import { createTestDatabase } from './lib/testDatabase.mjs';
 
 test('personal fields normalize contact data and validate birthdays against Vietnam date', () => {
   const data = validateProfileUpdate({ fullname: '  Trịnh   Minh Đức  ', email: ' duc@example.com ', phone_number: '+84 (912) 345-678', birthday: '2000-02-29' }).data;
@@ -21,17 +21,14 @@ test('personal fields normalize contact data and validate birthdays against Viet
 
 test('personal profile API enforces ownership and rejects privilege changes in an isolated database', async t => {
   const originalUrl = process.env.DATABASE_URL;
-  assert.ok(originalUrl, 'Cần DATABASE_URL để kiểm tra.');
-  const admin = new pg.Pool({ connectionString: originalUrl });
-  const database = `minierp_profile_test_${randomUUID().replaceAll('-', '')}`;
-  assert.match(database, /^minierp_profile_test_[a-f0-9]{32}$/);
-  let created = false, prisma, server;
+  const testDb = await createTestDatabase('profile');
+  let prisma, server;
   try {
-    await admin.query(`CREATE DATABASE "${database}"`); created = true;
-    const url = new URL(originalUrl); url.pathname = `/${database}`;
+    const url = new URL(testDb.url);
     process.env.DATABASE_URL = url.toString();
     const fixture = new pg.Pool({ connectionString: url.toString() });
     try {
+      await testDb.assertIsolated(fixture);
       await fixture.query(`
         CREATE TABLE users(user_id INT PRIMARY KEY, role TEXT, username TEXT, password TEXT, created_at TIMESTAMP);
         CREATE TABLE departments(department_id INT PRIMARY KEY, department_name TEXT);
@@ -48,7 +45,7 @@ test('personal profile API enforces ownership and rejects privilege changes in a
       `);
     } finally { await fixture.end(); }
     prisma = (await import('../src/config/prisma.js')).default;
-    assert.equal((await prisma.$queryRaw`SELECT current_database() AS name`)[0].name, database);
+    await testDb.assertIsolated(prisma);
     const routes = (await import('../src/routes/userRoutes.js')).default;
     const app = express(); app.use(express.json()); app.use('/api/users', routes);
     server = await new Promise((resolve, reject) => { const instance = app.listen(0, '127.0.0.1', () => resolve(instance)); instance.once('error', reject); });
@@ -105,14 +102,6 @@ test('personal profile API enforces ownership and rejects privilege changes in a
     if (server) await new Promise(resolve => server.close(resolve));
     if (prisma) await prisma.$disconnect();
     process.env.DATABASE_URL = originalUrl;
-    if (created) {
-      for (let attempt = 0; attempt < 60; attempt++) {
-        const connections = await admin.query('SELECT count(*)::int AS total FROM pg_stat_activity WHERE datname = $1', [database]);
-        if (!connections.rows[0].total) break;
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-      await admin.query(`DROP DATABASE "${database}" WITH (FORCE)`);
-    }
-    await admin.end();
+    await testDb.drop();
   }
 });
