@@ -62,6 +62,11 @@ async function main() {
   }
 
   await runSchemaSuite('project_task', ['--test', 'tests/project-task.integration.test.js']);
+  await runCommand('auth integration: PGlite isolated in-memory suite', process.execPath,
+    ['--test', 'tests/auth.integration.test.js'], {
+      ...process.env,
+      JWT_SECRET: jwtSecret,
+    });
   await runSchemaSuite('chat', ['--test', 'scripts/check-chat-contract.mjs'], { CHAT_ENCRYPTION_KEY: chatKey }, async (env, testDb) => {
     await testDb.assertIsolatedUrl();
     const fixture = new pg.Pool({ connectionString: env.DATABASE_URL });
