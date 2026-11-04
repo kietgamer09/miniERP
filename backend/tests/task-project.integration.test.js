@@ -31,7 +31,10 @@ async function createFixtureSchema() {
       username TEXT,
       password TEXT,
       role TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT now()
+      created_at TIMESTAMP DEFAULT now(),
+      must_change_password BOOLEAN NOT NULL DEFAULT false,
+      temp_password_expires_at TIMESTAMPTZ,
+      temp_password_used_at TIMESTAMPTZ
     );
     CREATE TABLE departments (
       department_id INT PRIMARY KEY,

@@ -31,7 +31,16 @@ test('personal profile API enforces ownership and rejects privilege changes in a
     try {
       await testDb.assertIsolated(fixture);
       await fixture.query(`
-        CREATE TABLE users(user_id INT PRIMARY KEY, role TEXT, username TEXT, password TEXT, created_at TIMESTAMP);
+        CREATE TABLE users(
+          user_id INT PRIMARY KEY,
+          role TEXT,
+          username TEXT,
+          password TEXT,
+          created_at TIMESTAMP,
+          must_change_password BOOLEAN NOT NULL DEFAULT false,
+          temp_password_expires_at TIMESTAMPTZ,
+          temp_password_used_at TIMESTAMPTZ
+        );
         CREATE TABLE departments(department_id INT PRIMARY KEY, department_name TEXT);
         CREATE TABLE employees(employee_id INT PRIMARY KEY, user_id INT UNIQUE REFERENCES users(user_id), department_id INT REFERENCES departments(department_id),
           fullname TEXT, email TEXT, phone_number TEXT, birthday TEXT, manage_by TEXT, position TEXT, start_date DATE, status TEXT, created_at TIMESTAMP);
@@ -96,7 +105,7 @@ test('personal profile API enforces ownership and rejects privilege changes in a
       assert.equal(cleared.email, null); assert.equal(cleared.phone_number, null); assert.equal(cleared.birthday, null);
     });
     await t.test('blocks inactive employees and accounts without an employee record', async () => {
-      assert.equal((await api(44, { fullname: 'Không được lưu' })).status, 403);
+      assert.equal((await api(44, { fullname: 'Không được lưu' })).status, 401);
       assert.equal((await api(55, { fullname: 'Không được lưu' })).status, 403);
     });
   } finally {
