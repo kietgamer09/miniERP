@@ -13,8 +13,8 @@ function temporaryPasswordExpiry() {
   return new Date(Date.now() + temporaryPasswordLifetimeMs);
 }
 
-// Danh sách Allowlist chuẩn khớp với hệ thống Enum/Schema hiện tại
-const VALID_ROLES = ['admin', 'manager', 'employee', 'ADMIN', 'MANAGER', 'EMPLOYEE'];
+// Chuẩn hóa allowlist role về dạng chữ thường duy nhất để tránh phân mảnh dữ liệu[cite: 2]
+const VALID_ROLES = ['admin', 'manager', 'employee'];
 const VALID_STATUSES = ['dang_lam_viec', 'da_nghi_viec'];
 
 function makeEmployeeUsername(fullname) {
@@ -111,7 +111,6 @@ export const getUsers = async (req, res) => {
   }
 };
 
-// Hồ sơ của tài khoản đang đăng nhập; không trả danh sách nhân viên khác.
 export const getMyProfile = async (req, res) => {
   try {
     const employee = await prisma.employees.findUnique({
@@ -135,7 +134,7 @@ export const getMyProfile = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const {
+    let {
       role,
       department_id,
       fullname,
@@ -146,17 +145,20 @@ export const createUser = async (req, res) => {
       status
     } = req.body;
 
-    // 1. Strict Validation cơ bản
     if (!phone_number || !fullname || !department_id) {
       return res.status(400).json({
         error: 'Số điện thoại, họ tên và phòng ban là bắt buộc để hệ thống tự khởi tạo tài khoản.'
       });
     }
 
-    // 2. Validate Allowlist cho role và status
-    if (role && !VALID_ROLES.includes(role)) {
-      return res.status(400).json({ error: 'Role không hợp lệ trong hệ thống.' });
+    // Chuẩn hóa role về lowercase trước khi check allowlist
+    if (role) {
+      role = String(role).trim().toLowerCase();
+      if (!VALID_ROLES.includes(role)) {
+        return res.status(400).json({ error: 'Role không hợp lệ trong hệ thống.' });
+      }
     }
+
     if (status && !VALID_STATUSES.includes(status)) {
       return res.status(400).json({ error: 'Status không hợp lệ trong hệ thống.' });
     }
@@ -197,7 +199,7 @@ export const createUser = async (req, res) => {
           email: email || null,
           phone_number: phone_number.trim(),
           birthday: birthday || null,
-          position: position || null, // Đã bổ sung lưu position chính xác vào bảng employees
+          position: position || null,
           status: status || 'dang_lam_viec',
         },
         include: {
@@ -229,7 +231,6 @@ export const createUser = async (req, res) => {
     });
 
   } catch (error) {
-    // Bắt lỗi trùng unique từ DB để trả về 409 Conflict chuẩn yêu cầu
     if (error.code === 'P2002') {
       return res.status(409).json({ error: 'Tên đăng nhập hoặc dữ liệu độc nhất đã tồn tại trong hệ thống.' });
     }
@@ -285,7 +286,7 @@ export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const employeeId = Number(id);
-    const {
+    let {
       fullname,
       email,
       phone_number,
@@ -296,9 +297,12 @@ export const updateUser = async (req, res) => {
       position
     } = req.body;
 
-    // Validate Allowlist
-    if (role && !VALID_ROLES.includes(role)) {
-      return res.status(400).json({ error: 'Role không hợp lệ.' });
+    // Chuẩn hóa và validate Allowlist Role
+    if (role) {
+      role = String(role).trim().toLowerCase();
+      if (!VALID_ROLES.includes(role)) {
+        return res.status(400).json({ error: 'Role không hợp lệ.' });
+      }
     }
     if (status && !VALID_STATUSES.includes(status)) {
       return res.status(400).json({ error: 'Status không hợp lệ.' });
@@ -319,7 +323,7 @@ export const updateUser = async (req, res) => {
     if (birthday !== undefined) updateEmployeeData.birthday = birthday;
     if (department_id !== undefined) updateEmployeeData.department_id = Number(department_id);
     if (status !== undefined) updateEmployeeData.status = status;
-    if (position !== undefined) updateEmployeeData.position = position; // Đã bổ sung cập nhật position
+    if (position !== undefined) updateEmployeeData.position = position;
 
     const updatedEmployee = await prisma.$transaction(async (prismaClient) => {
       const emp = await prismaClient.employees.update({
@@ -328,9 +332,10 @@ export const updateUser = async (req, res) => {
       });
 
       if (status === 'da_nghi_viec') {
+        // Đã sửa 'managment' thành 'manager_id' đúng chuẩn Schema[cite: 2]
         await prismaClient.departments.updateMany({
-          where: { managment: String(employeeId) },
-          data: { managment: null },
+          where: { manager_id: employeeId },
+          data: { manager_id: null },
         });
 
         if (emp.user_id) {
@@ -366,7 +371,7 @@ export const updateUser = async (req, res) => {
     return res.status(200).json(updatedEmployee);
   } catch (error) {
     if (error.code === 'P2002') {
-      return res.status(409).json({ error: 'Dữ liệu bị trùng lặpunique.' });
+      return res.status(409).json({ error: 'Dữ liệu bị trùng lặp unique.' });
     }
     console.error('Error updating employee:', error);
     return res.status(500).json({ error: 'Lỗi máy chủ nội bộ.' });
@@ -392,12 +397,9 @@ export const updateEmployeesDepartment = async (req, res) => {
       return res.status(404).json({ error: 'Phòng ban đích không tồn tại.' });
     }
 
-    // Loại bỏ các ID trùng lặp trong request để xử lý sạch sẽ
     const uniqueEmpIds = [...new Set(employee_ids.map(id => Number(id)))];
 
-    // Bọc trong transaction nguyên tử (Atomic Transaction) thay vì Promise.all ngoài transaction
     await prisma.$transaction(async (prismaClient) => {
-      // 1. Kiểm tra xem tất cả các nhân viên có thực sự tồn tại trong DB không
       const existingEmployees = await prismaClient.employees.findMany({
         where: { employee_id: { in: uniqueEmpIds } },
         select: { employee_id: true }
@@ -406,12 +408,10 @@ export const updateEmployeesDepartment = async (req, res) => {
       const existingIds = existingEmployees.map(e => e.employee_id);
       const missingIds = uniqueEmpIds.filter(id => !existingIds.includes(id));
 
-      // 2. Nếu có bất kỳ ID nào không tồn tại -> ném lỗi để rollback toàn bộ (All or Nothing)
       if (missingIds.length > 0) {
         throw new Error(`Chuyển phòng thất bại: Các nhân viên có ID [${missingIds.join(', ')}] không tồn tại trong hệ thống.`);
       }
 
-      // 3. Thực hiện update hàng loạt an toàn
       await prismaClient.employees.updateMany({
         where: { employee_id: { in: uniqueEmpIds } },
         data: { department_id: Number(new_department_id) }
@@ -421,7 +421,6 @@ export const updateEmployeesDepartment = async (req, res) => {
     return res.status(200).json({ message: 'Chuyển phòng ban cho nhân viên thành công!' });
   } catch (error) {
     console.error('Lỗi chuyển phòng ban nhân viên:', error);
-    // Trả về 400 nếu vi phạm logic tồn tại ID hoặc lỗi nghiệp vụ, bảo vệ dữ liệu không bị cập nhật nửa vời
     return res.status(400).json({ error: error.message || 'Lỗi máy chủ nội bộ khi chuyển phòng.' });
   }
 };
