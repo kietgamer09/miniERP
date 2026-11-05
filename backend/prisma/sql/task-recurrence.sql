@@ -1,4 +1,5 @@
 ALTER TABLE tasks
+  ADD COLUMN IF NOT EXISTS due_time VARCHAR(5) NOT NULL DEFAULT '17:00',
   ADD COLUMN IF NOT EXISTS recurrence_series_id UUID,
   ADD COLUMN IF NOT EXISTS recurrence_frequency VARCHAR(10),
   ADD COLUMN IF NOT EXISTS recurrence_anchor_day SMALLINT;
@@ -16,6 +17,17 @@ BEGIN
       OR (recurrence_frequency IN ('daily', 'weekly', 'monthly')
         AND recurrence_series_id IS NOT NULL
         AND recurrence_anchor_day BETWEEN 1 AND 31)
+    );
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'tasks_due_time_format_check'
+  ) THEN
+    ALTER TABLE tasks ADD CONSTRAINT tasks_due_time_format_check CHECK (
+      due_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
     );
   END IF;
 END $$;

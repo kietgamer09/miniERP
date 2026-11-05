@@ -1,13 +1,13 @@
 import prisma from '../config/prisma.js';
 import { loadManagedProject } from './projectController.js';
-import { parseId, isValidDate, toDateOnly } from '../utils/validators.js';
+import { parseId, isValidDate, isValidTime, toDateOnly } from '../utils/validators.js';
 import { dueDateError, getAllowedMoves } from '../utils/taskRules.js';
 import { randomUUID } from 'node:crypto';
-import { isRecurrenceFrequency, recurrenceAnchorDay } from '../utils/taskRecurrence.js';
+import { isRecurrenceFrequency, isWeekendDate, recurrenceAnchorDay } from '../utils/taskRecurrence.js';
 
 export const taskFields = {
   id: true, project_id: true, title: true, description: true,
-  assignee_id: true, created_by: true, due_date: true, priority: true,
+  assignee_id: true, created_by: true, due_date: true, due_time: true, priority: true,
   status: true, completed_at: true, created_at: true, updated_at: true,
   recurrence_series_id: true, recurrence_frequency: true, recurrence_anchor_day: true,
   employees_tasks_assignee_idToemployees: { select: { fullname: true } },
@@ -33,6 +33,7 @@ export function formatTask(task, caller) {
     created_by: task.created_by,
     created_by_name: creator.fullname,
     due_date: toDateOnly(task.due_date),
+    due_time: task.due_time || '17:00',
     priority: task.priority,
     recurrence_frequency: task.recurrence_frequency,
     status: task.status,
@@ -66,6 +67,12 @@ export function validateTask(body) {
     return { error: 'Chu kỳ lặp phải là daily, weekly hoặc monthly' };
   }
   if (!isValidDate(body.due_date)) return { error: 'Hạn chót không hợp lệ, cần dạng YYYY-MM-DD' };
+  if (body.recurrence_frequency && isWeekendDate(body.due_date)) {
+    return { error: 'Task lặp lại chỉ được đặt hạn từ Thứ 2 đến Thứ 6' };
+  }
+  if (body.due_time !== undefined && !isValidTime(body.due_time)) {
+    return { error: 'Giờ hạn chót không hợp lệ, cần dạng HH:mm' };
+  }
   const assigneeId = parseId(body.assignee_id);
   if (!assigneeId) return { error: 'ID người làm phải là số nguyên dương hợp lệ' };
   return { title, assigneeId };
@@ -101,11 +108,12 @@ export const createTask = async (req, res) => {
         data: {
           project_id: project.id, title, description: body.description?.trim() || null,
           assignee_id: assigneeId, created_by: req.employee.employee_id,
-          due_date: new Date(`${body.due_date}T00:00:00.000Z`),
+          due_date: new Date(`${body.due_date}T00:00:00.000Z`), due_time: body.due_time || '17:00',
           priority: body.priority, status: 'can_lam',
           recurrence_series_id: body.recurrence_frequency ? randomUUID() : null,
           recurrence_frequency: body.recurrence_frequency || null,
-          recurrence_anchor_day: body.recurrence_frequency ? recurrenceAnchorDay(body.due_date) : null,
+          recurrence_anchor_day: body.recurrence_frequency
+            ? recurrenceAnchorDay(body.due_date, body.recurrence_frequency) : null,
         },
         select: taskFields,
       });
@@ -150,7 +158,7 @@ export const listProjectTasks = async (req, res) => {
     const tasks = await prisma.tasks.findMany({
       where: { project_id: id },
       select: taskFields,
-      orderBy: [{ due_date: 'asc' }, { id: 'asc' }],
+      orderBy: [{ due_date: 'asc' }, { due_time: 'asc' }, { id: 'asc' }],
     });
     res.json(tasks.map((task) => formatTask(task, {
       employeeId: req.employee.employee_id, role: req.user.role,
@@ -193,7 +201,7 @@ export const listMyTasks = async (req, res) => {
         ],
       },
       select: taskFields,
-      orderBy: [{ due_date: 'asc' }, { id: 'asc' }],
+      orderBy: [{ due_date: 'asc' }, { due_time: 'asc' }, { id: 'asc' }],
     });
     res.json(tasks.map((task) => formatTask(task, {
       employeeId: req.employee.employee_id, role: req.user.role,

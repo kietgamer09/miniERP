@@ -28,7 +28,7 @@ export async function createDueRecurringTasks(now = new Date(), db = prisma) {
       },
       select: {
         id: true, project_id: true, title: true, description: true, assignee_id: true,
-        created_by: true, due_date: true, priority: true, recurrence_series_id: true,
+        created_by: true, due_date: true, due_time: true, priority: true, recurrence_series_id: true,
         recurrence_frequency: true, recurrence_anchor_day: true,
         projects: { select: { status: true, end_date: true } },
       },
@@ -61,6 +61,7 @@ export async function createDueRecurringTasks(now = new Date(), db = prisma) {
         assignee_id: current.assignee_id,
         created_by: current.created_by,
         due_date: dueDate,
+        due_time: cursor.due_time || '17:00',
         priority: current.priority,
         status: 'can_lam',
         recurrence_series_id: current.recurrence_series_id,

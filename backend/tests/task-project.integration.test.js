@@ -83,11 +83,16 @@ async function createFixtureSchema() {
       assignee_id INT NOT NULL REFERENCES employees(employee_id),
       created_by INT NOT NULL REFERENCES employees(employee_id),
       due_date DATE NOT NULL,
+      due_time VARCHAR(5) NOT NULL DEFAULT '17:00',
       priority task_priority NOT NULL DEFAULT 'trung_binh',
       status task_status NOT NULL DEFAULT 'can_lam',
       completed_at TIMESTAMP,
       created_at TIMESTAMP NOT NULL DEFAULT now(),
-      updated_at TIMESTAMP NOT NULL DEFAULT now()
+      updated_at TIMESTAMP NOT NULL DEFAULT now(),
+      recurrence_series_id UUID,
+      recurrence_frequency VARCHAR(10),
+      recurrence_anchor_day SMALLINT,
+      UNIQUE (recurrence_series_id, due_date)
     );
 
     INSERT INTO users(user_id, username, role) VALUES

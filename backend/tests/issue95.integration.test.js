@@ -67,6 +67,7 @@ CREATE TABLE tasks (
   assignee_id integer NOT NULL REFERENCES employees(employee_id),
   created_by integer NOT NULL REFERENCES employees(employee_id),
   due_date date NOT NULL,
+  due_time varchar(5) NOT NULL DEFAULT '17:00',
   priority task_priority NOT NULL DEFAULT 'trung_binh',
   status task_status NOT NULL DEFAULT 'can_lam',
   completed_at timestamp,
@@ -198,6 +199,9 @@ before(async () => {
   await mkdir(testAttachmentsRoot, { recursive: true });
   database = await PGlite.create();
   await database.exec(schema);
+  const recurrenceSetup = await readFile(new URL('../prisma/sql/task-recurrence.sql', import.meta.url), 'utf8');
+  await database.exec(recurrenceSetup);
+  await database.exec(recurrenceSetup);
   databaseServer = new PGLiteSocketServer({ db: database, port: 0, host: '127.0.0.1', maxConnections: 10 });
   await databaseServer.start();
   process.env.DATABASE_URL = `postgresql://postgres:postgres@${databaseServer.getServerConn()}/postgres?sslmode=disable`;
@@ -472,39 +476,42 @@ test('recurring daily tasks create the next task even when the current one is un
   assert.ok(next);
   assert.equal(next.status, 'can_lam');
   assert.equal(next.title, 'Kiểm tra máy (03/11/2026)');
+  assert.equal(original.due_time, '17:00');
+  assert.equal(next.due_time, '17:00');
   assert.equal((await prisma.tasks.findUnique({ where: { id: original.id } })).status, 'can_lam');
   assert.equal((await createDueRecurringTasks(new Date('2026-11-03T12:00:00.000Z'), prisma)).created, 0);
 });
 
-test('recurring weekly tasks use seven-day intervals and update dates in titles', async () => {
+test('recurring weekly tasks use Friday deadlines and update dates in titles', async () => {
   const project = await createProject({ code: 'ISSUE95-R-WEEK' });
   await prisma.project_members.create({ data: { project_id: project.id, employee_id: 2 } });
   const created = await invoke(createTaskController, {
     params: { id: String(project.id) },
-    body: { title: 'Báo cáo 02/11/2026', assignee_id: 2, due_date: '2026-11-02', priority: 'cao', recurrence_frequency: 'weekly' },
+    body: { title: 'Báo cáo 02/11/2026', assignee_id: 2, due_date: '2026-11-02', due_time: '16:30', priority: 'cao', recurrence_frequency: 'weekly' },
     user: { role: 'manager' }, employee: { employee_id: 1 },
   });
   const original = await prisma.tasks.findUnique({ where: { id: created.body.id } });
   const result = await createDueRecurringTasks(new Date('2026-11-09T12:00:00.000Z'), prisma);
   assert.equal(result.created, 1);
   const next = await prisma.tasks.findFirst({
-    where: { recurrence_series_id: original.recurrence_series_id, due_date: new Date('2026-11-09T00:00:00.000Z') },
+    where: { recurrence_series_id: original.recurrence_series_id, due_date: new Date('2026-11-06T00:00:00.000Z') },
   });
-  assert.equal(next.title, 'Báo cáo 09/11/2026');
+  assert.equal(next.title, 'Báo cáo 06/11/2026');
+  assert.equal(next.due_time, '16:30');
 });
 
-test('recurring monthly tasks retain their anchor, keep overdue occurrences and stop at project end', async () => {
+test('recurring monthly tasks use the last weekday, keep overdue occurrences and stop at project end', async () => {
   const project = await createProject({ code: 'ISSUE95-R-MONTH' });
   await prisma.project_members.create({ data: { project_id: project.id, employee_id: 2 } });
   const created = await invoke(createTaskController, {
     params: { id: String(project.id) },
-    body: { title: 'Kiểm kê', assignee_id: 2, due_date: '2026-01-31', priority: 'trung_binh', recurrence_frequency: 'monthly' },
+    body: { title: 'Kiểm kê', assignee_id: 2, due_date: '2026-01-30', priority: 'trung_binh', recurrence_frequency: 'monthly' },
     user: { role: 'manager' }, employee: { employee_id: 1 },
   });
   const original = await prisma.tasks.findUnique({ where: { id: created.body.id } });
   assert.equal((await createDueRecurringTasks(new Date('2026-02-28T12:00:00.000Z'), prisma)).created, 1);
   const february = await prisma.tasks.findFirst({
-    where: { recurrence_series_id: original.recurrence_series_id, due_date: new Date('2026-02-28T00:00:00.000Z') },
+    where: { recurrence_series_id: original.recurrence_series_id, due_date: new Date('2026-02-27T00:00:00.000Z') },
   });
   assert.ok(february);
   assert.equal((await createDueRecurringTasks(new Date('2026-03-31T12:00:00.000Z'), prisma)).created, 1);

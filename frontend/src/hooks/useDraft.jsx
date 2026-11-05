@@ -5,7 +5,7 @@ import { useAuth } from './useAuth';
 import { draftKey, markDraftActive, markDraftInterrupted, readDraft, removeDraft, writeDraft } from '../utils/draftStorage';
 import { DraftResumeContext } from '../context/draftResumeContext';
 
-export default function useDraft(scope, { fields, dateFields = [], enabled = true, onRestore }) {
+export default function useDraft(scope, { fields, dateFields = [], dateTimeFields = [], enabled = true, onRestore }) {
   const { user } = useAuth();
   const resumeScope = useContext(DraftResumeContext);
   const key = enabled ? draftKey(user?.id ?? user?.username, scope) : null;
@@ -14,7 +14,8 @@ export default function useDraft(scope, { fields, dateFields = [], enabled = tru
   const current = state?.snapshot === snapshot ? state : null;
   const pending = !current?.handled && snapshot.record;
   const pick = values => Object.fromEntries(fields.map(field => [field,
-    dateFields.includes(field) && values[field] ? dayjs(values[field]).format('YYYY-MM-DD') : (values[field] ?? null),
+    dateTimeFields.includes(field) && values[field] ? dayjs(values[field]).format('YYYY-MM-DD HH:mm')
+      : dateFields.includes(field) && values[field] ? dayjs(values[field]).format('YYYY-MM-DD') : (values[field] ?? null),
   ]));
 
   function clear() {
@@ -37,7 +38,7 @@ export default function useDraft(scope, { fields, dateFields = [], enabled = tru
     if (!record) { clear(); return; }
     markDraftActive(key);
     const values = pick(record.values);
-    for (const field of dateFields) {
+    for (const field of [...dateFields, ...dateTimeFields]) {
       if (values[field]) values[field] = dayjs(values[field]).isValid() ? dayjs(values[field]) : null;
     }
     onRestore(values);

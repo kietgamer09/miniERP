@@ -7,7 +7,7 @@
 | Phần | Chức năng chính |
 |---|---|
 | Nhân sự | Nhân viên, phòng ban, hồ sơ, chấm công, bảng công, nghỉ phép, làm thêm và phê duyệt |
-| Công việc | Dự án, thành viên, task lặp hàng ngày/tuần/tháng, bình luận, tệp đính kèm; xem dạng danh sách, Kanban, lịch và timeline |
+| Công việc | Dự án, thành viên, task có hạn chót theo ngày/giờ và lặp hàng ngày/tuần/tháng (chỉ ngày làm việc), bình luận, tệp đính kèm; xem dạng danh sách, Kanban, lịch và timeline |
 | Tiện ích | Tiền lương, tài liệu, thông báo desktop, chat cá nhân/nhóm, giao diện sáng/tối |
 
 ## Công nghệ
@@ -220,7 +220,7 @@ Trong mỗi thư mục có `package.json` vừa thay đổi dependency, chạy `
 npx prisma generate
 ```
 
-Khi bản cập nhật thêm cấu trúc tính năng, chạy script tương ứng, ví dụ `npm run setup:payroll` cho bảng lương, `npm run setup:chat` cho chat hoặc `npm run setup:task-recurrence` để thêm trường task lặp. Khởi động lại backend. Không chạy tất cả setup một cách máy móc nếu thông báo cập nhật chỉ yêu cầu một script cụ thể; giữ nguyên dữ liệu hiện có.
+Khi bản cập nhật thêm cấu trúc tính năng, chạy script tương ứng, ví dụ `npm run setup:payroll` cho bảng lương, `npm run setup:chat` cho chat hoặc `npm run setup:task-recurrence` để thêm cấu hình lặp và giờ hạn task. Khởi động lại backend. Không chạy tất cả setup một cách máy móc nếu thông báo cập nhật chỉ yêu cầu một script cụ thể; giữ nguyên dữ liệu hiện có.
 
 `git pull` chỉ cập nhật mã nguồn, **không** đồng bộ database, `.env` hoặc `backend/uploads`.
 

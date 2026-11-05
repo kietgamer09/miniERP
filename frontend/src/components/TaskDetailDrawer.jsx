@@ -4,7 +4,7 @@ import { EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { getTask } from '../services/taskApi';
 import { TASK_PRIORITY_LABELS, TASK_RECURRENCE_LABELS, TASK_STATUS_LABELS } from '../config/taskConstants';
 import { adaptTask } from '../utils/taskAdapter';
-import { formatDateVN } from '../utils/dates';
+import { formatTaskDeadlineVN } from '../utils/dates';
 import { getDueState } from '../utils/taskStatus';
 import TaskComments from './TaskComments';
 import Attachments from './Attachments';
@@ -54,7 +54,7 @@ export default function TaskDetailDrawer({ taskId, open, onClose, onEdit, readOn
               { key: 'assignee', label: 'Người làm', children: task.assignee_name || 'Chưa phân công' },
               { key: 'creator', label: 'Người tạo', children: task.created_by_name || '—' },
               { key: 'due', label: 'Hạn chót', children: <>
-                {formatDateVN(adapted.dueDate)} {dueWarning && <Tag color={dueState === 'overdue' ? 'red' : 'gold'}>
+                {formatTaskDeadlineVN(task.due_date, task.due_time)} {dueWarning && <Tag color={dueState === 'overdue' ? 'red' : 'gold'}>
                   {dueState === 'overdue' ? 'Quá hạn' : 'Sắp hạn'}
                 </Tag>}
               </> },

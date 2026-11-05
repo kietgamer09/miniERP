@@ -4,6 +4,11 @@ export function isRecurrenceFrequency(value) {
   return frequencies.has(value);
 }
 
+export function isWeekendDate(value) {
+  const date = toUtcDate(value);
+  return Boolean(date && (date.getUTCDay() === 0 || date.getUTCDay() === 6));
+}
+
 function toUtcDate(value) {
   if (value instanceof Date) {
     return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
@@ -13,8 +18,16 @@ function toUtcDate(value) {
   return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? null : date;
 }
 
-export function recurrenceAnchorDay(value) {
-  return toUtcDate(value)?.getUTCDate() ?? null;
+export function recurrenceAnchorDay(value, frequency) {
+  const date = toUtcDate(value);
+  if (!date) return null;
+  if (frequency === 'monthly') return 31;
+  return date.getUTCDate();
+}
+
+function previousWeekday(date) {
+  while (date.getUTCDay() === 0 || date.getUTCDay() === 6) date.setUTCDate(date.getUTCDate() - 1);
+  return date;
 }
 
 export function formatRecurrenceTitle(title, dueDate) {
@@ -40,14 +53,20 @@ export function nextRecurrenceDate(value, frequency, anchorDay = recurrenceAncho
   const date = toUtcDate(value);
   if (!date || !isRecurrenceFrequency(frequency)) return null;
 
-  if (frequency === 'daily') date.setUTCDate(date.getUTCDate() + 1);
-  if (frequency === 'weekly') date.setUTCDate(date.getUTCDate() + 7);
+  if (frequency === 'daily') {
+    date.setUTCDate(date.getUTCDate() + 1);
+    while (date.getUTCDay() === 0 || date.getUTCDay() === 6) date.setUTCDate(date.getUTCDate() + 1);
+  }
+  if (frequency === 'weekly') {
+    const day = date.getUTCDay();
+    date.setUTCDate(date.getUTCDate() + (day === 5 ? 7 : day === 6 ? 6 : day === 0 ? 5 : 5 - day));
+  }
   if (frequency === 'monthly') {
-    if (!Number.isInteger(anchorDay) || anchorDay < 1 || anchorDay > 31) return null;
     const year = date.getUTCFullYear();
     const month = date.getUTCMonth() + 1;
     const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-    date.setUTCFullYear(year, month, Math.min(anchorDay, lastDay));
+    date.setUTCFullYear(year, month, lastDay);
+    previousWeekday(date);
   }
 
   return date;

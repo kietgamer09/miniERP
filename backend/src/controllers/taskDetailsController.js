@@ -1,9 +1,9 @@
 ﻿import prisma from '../config/prisma.js';
 import { formatTask, taskFields, validateTask } from './taskController.js';
-import { parseId } from '../utils/validators.js';
+import { parseId, toDateOnly } from '../utils/validators.js';
 import { dueDateError } from '../utils/taskRules.js';
 import { randomUUID } from 'node:crypto';
-import { isRecurrenceFrequency, recurrenceAnchorDay } from '../utils/taskRecurrence.js';
+import { isRecurrenceFrequency, isWeekendDate, recurrenceAnchorDay } from '../utils/taskRecurrence.js';
 
 function errorResult(status, error) {
   return { status, error };
@@ -64,6 +64,11 @@ export const updateTaskDetails = async (req, res) => {
       }
       const { title, assigneeId, error } = validateTask(body);
       if (error) return errorResult(400, error);
+      const effectiveFrequency = body.recurrence_frequency === undefined
+        ? task.recurrence_frequency : body.recurrence_frequency;
+      if (effectiveFrequency && isWeekendDate(body.due_date)) {
+        return errorResult(400, 'Task lặp lại chỉ được đặt hạn từ Thứ 2 đến Thứ 6');
+      }
 
       if (assigneeId !== task.assignee_id) {
         const membership = await tx.project_members.findUnique({
@@ -90,7 +95,9 @@ export const updateTaskDetails = async (req, res) => {
           ? (task.recurrence_series_id || randomUUID())
           : null;
         recurrenceData.recurrence_anchor_day = frequency
-          ? (task.recurrence_anchor_day || recurrenceAnchorDay(body.due_date))
+          ? (frequency !== task.recurrence_frequency || toDateOnly(task.due_date) !== body.due_date
+            ? recurrenceAnchorDay(body.due_date, frequency)
+            : task.recurrence_anchor_day || recurrenceAnchorDay(body.due_date, frequency))
           : null;
       }
 
@@ -101,6 +108,7 @@ export const updateTaskDetails = async (req, res) => {
           description: body.description === undefined ? task.description : body.description?.trim() || null,
           assignee_id: assigneeId,
           due_date: new Date(`${body.due_date}T00:00:00.000Z`),
+          due_time: body.due_time === undefined ? task.due_time || '17:00' : body.due_time,
           priority: body.priority,
           ...recurrenceData,
           updated_at: new Date(),
