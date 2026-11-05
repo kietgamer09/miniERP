@@ -8,10 +8,13 @@ export default function EditDepartmentModal({ open, onCancel, onSuccess, departm
 
   useEffect(() => {
     if (department && open) {
+      // Lấy chính xác manager_id từ object department (hỗ trợ cả manager_id hoặc manager object)
+      const currentManagerId = department.manager_id || department.manager?.employee_id || department.managment;
+      
       form.setFieldsValue({
         department_name: department.department_name,
         category: department.category,
-        managment: department.managment ? Number(department.managment) : undefined
+        manager_id: currentManagerId ? Number(currentManagerId) : undefined
       });
     }
   }, [department, open, form]);
@@ -20,10 +23,11 @@ export default function EditDepartmentModal({ open, onCancel, onSuccess, departm
     if (!department) return;
     setLoading(true);
     try {
+      // Gửi đúng tên trường manager_id lên Backend
       await updateDepartment(department.department_id, {
         department_name: values.department_name,
         category: values.category,
-        managment: values.managment
+        manager_id: values.manager_id !== undefined ? values.manager_id : null
       });
       message.success('Cập nhật phòng ban thành công!');
       onSuccess();
@@ -57,7 +61,7 @@ export default function EditDepartmentModal({ open, onCancel, onSuccess, departm
           <Input placeholder="Nhập phân loại phòng ban..." />
         </Form.Item>
 
-        <Form.Item name="managment" label="Quản lý phòng ban (Trưởng phòng)">
+        <Form.Item name="manager_id" label="Quản lý phòng ban (Trưởng phòng)">
           <Select
             placeholder="Chọn nhân viên làm quản lý..."
             allowClear

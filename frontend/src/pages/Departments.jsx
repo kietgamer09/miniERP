@@ -43,7 +43,12 @@ export default function Departments() {
     return () => { active = false; };
   }, [reload]);
 
-  const filtered = departments.filter(item => `${item.department_name || ''} ${item.department_id} ${item.managment || ''} ${item.category || ''}`.toLocaleLowerCase('vi').includes(query.trim().toLocaleLowerCase('vi')));
+  const filtered = departments.filter(item => {
+    const managerName = item.manager?.fullname || item.employees_departments_manager_idToemployees?.fullname || '';
+    const searchText = `${item.department_name || ''} ${item.department_id} ${managerName} ${item.category || ''}`;
+    return searchText.toLocaleLowerCase('vi').includes(query.trim().toLocaleLowerCase('vi'));
+  });
+
   const visiblePage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 8)));
   const deptEmployees = id => employees.filter(employee => employee.department_id === id);
 
@@ -54,10 +59,14 @@ export default function Departments() {
     onChange: (keys) => setSelectedEmployeeKeys(keys),
   };
 
-  const getManagerName = (managerVal) => {
-    if (!managerVal) return 'Chưa cập nhật';
-    const foundEmp = employees.find(e => String(e.employee_id) === String(managerVal) || String(e.fullname).trim() === String(managerVal).trim());
-    return foundEmp ? foundEmp.fullname : managerVal;
+  const getManagerName = (department) => {
+    if (department?.manager?.fullname) return department.manager.fullname;
+    if (department?.employees_departments_manager_idToemployees?.fullname) {
+      return department.employees_departments_manager_idToemployees.fullname;
+    }
+    if (!department?.manager_id) return 'Chưa cập nhật';
+    const foundEmp = employees.find(e => String(e.employee_id) === String(department.manager_id));
+    return foundEmp ? foundEmp.fullname : 'Chưa cập nhật';
   };
 
   const handleDelete = (department) => {
@@ -130,9 +139,8 @@ export default function Departments() {
     </Space> },
     {
       title: 'Phụ trách',
-      dataIndex: 'managment',
       key: 'manager',
-      render: value => getManagerName(value)
+      render: (_, department) => getManagerName(department)
     },
     { title: 'Thành viên', key: 'employees', width: 160, render: (_, department) => {
       const team = deptEmployees(department.department_id);
@@ -196,7 +204,7 @@ export default function Departments() {
         <Descriptions column={1} items={[
           { key: 'name', label: 'Tên phòng ban', children: selected.department_name },
           { key: 'id', label: 'ID phòng ban', children: selected.department_id },
-          { key: 'manager', label: 'Phụ trách', children: getManagerName(selected.managment) },
+          { key: 'manager', label: 'Phụ trách', children: getManagerName(selected) },
           { key: 'category', label: 'Phân loại', children: selected.category || 'Chưa cập nhật' },
           { key: 'count', label: 'Thành viên', children: currentTeamEmployees.length }
         ]} />

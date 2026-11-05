@@ -21,11 +21,20 @@ export const listDepartments = async (req, res) => {
       include: {
         employees: {
           select: { employee_id: true, fullname: true, position: true, status: true }
+        },
+        employees_departments_manager_idToemployees: {
+          select: { employee_id: true, fullname: true, position: true }
         }
       },
       orderBy: { department_id: 'asc' }
     });
-    return res.status(200).json(departments);
+
+    const result = departments.map(dept => ({
+      ...dept,
+      manager: dept.employees_departments_manager_idToemployees || null
+    }));
+
+    return res.status(200).json(result);
   } catch (error) {
     console.error('Lỗi lấy danh sách phòng ban:', error);
     return res.status(500).json({ error: 'Lỗi máy chủ nội bộ khi lấy phòng ban.' });
@@ -48,8 +57,11 @@ export const updateDepartment = async (req, res) => {
     }
 
     const body = req.body ?? {};
-    const hasManagementField = Object.prototype.hasOwnProperty.call(body, 'manager_id');
-    const { department_name, category, manager_id } = body;
+
+    // Hỗ trợ bắt cả manager_id (snake_case) lẫn managerId (camelCase) từ frontend gửi lên
+    const rawManagerId = body.manager_id !== undefined ? body.manager_id : body.managerId;
+    const hasManagementField = body.manager_id !== undefined || body.managerId !== undefined;
+    const { department_name, category } = body;
 
     const result = await prisma.$transaction(async (tx) => {
       const existingDept = await tx.departments.findUnique({
@@ -58,8 +70,8 @@ export const updateDepartment = async (req, res) => {
       if (!existingDept) return { status: 404, error: 'Không tìm thấy phòng ban.' };
 
       const oldManagerId = existingDept.manager_id ? Number(existingDept.manager_id) : null;
-      const newManagerId = hasManagementField && manager_id !== '' && manager_id !== null && manager_id !== undefined
-        ? Number(manager_id)
+      const newManagerId = hasManagementField && rawManagerId !== '' && rawManagerId !== null && rawManagerId !== undefined
+        ? Number(rawManagerId)
         : hasManagementField ? null : oldManagerId;
 
       if (newManagerId !== null && (!Number.isSafeInteger(newManagerId) || newManagerId <= 0)) {
@@ -107,9 +119,20 @@ export const updateDepartment = async (req, res) => {
           department_name: department_name !== undefined ? department_name : existingDept.department_name,
           category: category !== undefined ? category : existingDept.category,
           manager_id: hasManagementField ? newManagerId : existingDept.manager_id
+        },
+        include: {
+          employees_departments_manager_idToemployees: {
+            select: { employee_id: true, fullname: true, position: true }
+          }
         }
       });
-      return { department: updatedDepartment };
+
+      return {
+        department: {
+          ...updatedDepartment,
+          manager: updatedDepartment.employees_departments_manager_idToemployees || null
+        }
+      };
     });
 
     if (result.error) return res.status(result.status).json({ error: result.error });
@@ -175,14 +198,16 @@ export const createDepartment = async (req, res) => {
       }
     }
 
-    const { department_id, department_name, category, manager_id } = req.body;
+    const body = req.body ?? {};
+    const { department_id, department_name, category } = body;
+    const rawManagerId = body.manager_id !== undefined ? body.manager_id : body.managerId;
 
     if (!department_id || !department_name) {
       return res.status(400).json({ error: 'Mã phòng ban và Tên phòng ban là bắt buộc.' });
     }
 
     const deptIdNumber = Number(department_id);
-    const newManagerId = manager_id !== '' && manager_id !== null && manager_id !== undefined ? Number(manager_id) : null;
+    const newManagerId = rawManagerId !== '' && rawManagerId !== null && rawManagerId !== undefined ? Number(rawManagerId) : null;
 
     if (newManagerId !== null && (!Number.isSafeInteger(newManagerId) || newManagerId <= 0)) {
       return res.status(400).json({ error: 'Mã quản lý phòng ban không hợp lệ.' });
@@ -227,10 +252,20 @@ export const createDepartment = async (req, res) => {
           category: category || null,
           manager_id: newManagerId,
           created_at: new Date()
+        },
+        include: {
+          employees_departments_manager_idToemployees: {
+            select: { employee_id: true, fullname: true, position: true }
+          }
         }
       });
 
-      return { department: newDepartment };
+      return {
+        department: {
+          ...newDepartment,
+          manager: newDepartment.employees_departments_manager_idToemployees || null
+        }
+      };
     });
 
     if (result.error) return res.status(result.status).json({ error: result.error });

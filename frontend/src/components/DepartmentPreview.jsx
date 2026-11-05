@@ -34,7 +34,7 @@ export default function DepartmentPreview() {
       <Link className="department-preview-item department-preview-link" to={`/quan-ly-phong-ban?department=${item.department_id}`}>
         <strong>{item.department_name || 'Chưa đặt tên'}</strong>
         <Typography.Text type="secondary">{item.employees_count} thành viên · {item.active_count} đang làm việc</Typography.Text>
-        {item.managment && <Typography.Text type="secondary">Phụ trách: {item.managment}</Typography.Text>}
+        {item.manager && <Typography.Text type="secondary">Phụ trách: {item.manager.fullname}</Typography.Text>}
         {item.preview && <Typography.Text type="secondary" className="department-preview-names">{item.preview}{item.employees_count > 2 ? ` và ${item.employees_count - 2} người khác` : ''}</Typography.Text>}
       </Link>
     </div>)}
