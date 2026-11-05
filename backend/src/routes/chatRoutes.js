@@ -1,5 +1,5 @@
 import express from 'express';
-import { Prisma } from '@prisma/client';
+import prismaClientPackage from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +10,8 @@ import { attachEmployee } from '../middlewares/employeeMiddleware.js';
 import { parseId } from '../utils/validators.js';
 import chatSecurityRoutes, { requireChatUnlock } from './chatSecurityRoutes.js';
 import { decodeChatMessage, decryptChatBytes, decryptChatText, encryptChatBytes, encryptChatText } from '../services/chatCrypto.js';
+
+const { Prisma } = prismaClientPackage;
 
 const root = fileURLToPath(new URL('../../uploads/chat/', import.meta.url));
 const extensions = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp', '.docx', '.xlsx', '.pptx', '.txt', '.csv', '.zip']);
