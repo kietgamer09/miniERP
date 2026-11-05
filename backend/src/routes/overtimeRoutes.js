@@ -1,11 +1,13 @@
 import express from 'express';
-import { Prisma } from '@prisma/client';
+import prismaClientPackage from '@prisma/client';
 import prisma from '../config/prisma.js';
 import { verifyToken } from '../middlewares/authMiddleware.js';
 import { attachEmployee } from '../middlewares/employeeMiddleware.js';
 import { parseId } from '../utils/validators.js';
 import { overtimeMaxDate, overtimeToday, validateOvertime } from '../utils/overtimeRules.js';
 import { canReviewOvertime, canViewOvertime, overtimeActor, overtimeFeed, overtimeRecord, serializeOvertime } from '../services/overtime.js';
+
+const { Prisma } = prismaClientPackage;
 
 const router = express.Router();
 const fail = (status, message) => { throw Object.assign(new Error(message), { status }); };

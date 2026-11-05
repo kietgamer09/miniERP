@@ -48,17 +48,18 @@ export const updateDepartment = async (req, res) => {
     }
 
     const body = req.body ?? {};
-    const hasManagementField = Object.prototype.hasOwnProperty.call(body, 'managment');
-    const { department_name, category, managment } = body;
+    const hasManagementField = Object.prototype.hasOwnProperty.call(body, 'manager_id');
+    const { department_name, category, manager_id } = body;
+
     const result = await prisma.$transaction(async (tx) => {
       const existingDept = await tx.departments.findUnique({
         where: { department_id: departmentId }
       });
       if (!existingDept) return { status: 404, error: 'Không tìm thấy phòng ban.' };
 
-      const oldManagerId = existingDept.managment ? Number(existingDept.managment) : null;
-      const newManagerId = hasManagementField && managment !== '' && managment !== null && managment !== undefined
-        ? Number(managment)
+      const oldManagerId = existingDept.manager_id ? Number(existingDept.manager_id) : null;
+      const newManagerId = hasManagementField && manager_id !== '' && manager_id !== null && manager_id !== undefined
+        ? Number(manager_id)
         : hasManagementField ? null : oldManagerId;
 
       if (newManagerId !== null && (!Number.isSafeInteger(newManagerId) || newManagerId <= 0)) {
@@ -84,7 +85,7 @@ export const updateDepartment = async (req, res) => {
         if (oldManagerId !== null) {
           const otherDeptAsManager = await tx.departments.findFirst({
             where: {
-              managment: String(oldManagerId),
+              manager_id: oldManagerId,
               department_id: { not: departmentId }
             }
           });
@@ -105,7 +106,7 @@ export const updateDepartment = async (req, res) => {
         data: {
           department_name: department_name !== undefined ? department_name : existingDept.department_name,
           category: category !== undefined ? category : existingDept.category,
-          managment: hasManagementField ? (newManagerId === null ? null : String(newManagerId)) : existingDept.managment
+          manager_id: hasManagementField ? newManagerId : existingDept.manager_id
         }
       });
       return { department: updatedDepartment };
@@ -174,54 +175,68 @@ export const createDepartment = async (req, res) => {
       }
     }
 
-    const { department_id, department_name, category, managment } = req.body;
+    const { department_id, department_name, category, manager_id } = req.body;
 
     if (!department_id || !department_name) {
       return res.status(400).json({ error: 'Mã phòng ban và Tên phòng ban là bắt buộc.' });
     }
 
     const deptIdNumber = Number(department_id);
+    const newManagerId = manager_id !== '' && manager_id !== null && manager_id !== undefined ? Number(manager_id) : null;
 
-    const existingDept = await prisma.departments.findUnique({
-      where: { department_id: deptIdNumber }
-    });
-
-    if (existingDept) {
-      return res.status(400).json({ error: `Mã phòng ban "${deptIdNumber}" đã tồn tại. Vui lòng chọn mã khác.` });
+    if (newManagerId !== null && (!Number.isSafeInteger(newManagerId) || newManagerId <= 0)) {
+      return res.status(400).json({ error: 'Mã quản lý phòng ban không hợp lệ.' });
     }
 
-    if (managment) {
-          const newManagerId = Number(managment);
+    const result = await prisma.$transaction(async (tx) => {
+      const existingDept = await tx.departments.findUnique({
+        where: { department_id: deptIdNumber }
+      });
 
-          const employee = await prisma.employees.findUnique({
-            where: { employee_id: newManagerId }
-          });
+      if (existingDept) {
+        return { status: 400, error: `Mã phòng ban "${deptIdNumber}" đã tồn tại. Vui lòng chọn mã khác.` };
+      }
 
-          if (!employee) {
-            return res.status(400).json({ error: `Không thể chỉ định quản lý: Nhân viên với ID [${newManagerId}] không tồn tại trong hệ thống.` });
-          }
+      if (newManagerId !== null) {
+        const employee = await tx.employees.findUnique({
+          where: { employee_id: newManagerId }
+        });
 
-          if (employee.user_id) {
-            await prisma.users.update({
+        if (!employee) {
+          return { status: 400, error: `Không thể chỉ định quản lý: Nhân viên với ID [${newManagerId}] không tồn tại trong hệ thống.` };
+        }
+        if (employee.status === 'da_nghi_viec') {
+          return { status: 400, error: 'Không thể chỉ định nhân viên đã nghỉ việc làm quản lý phòng ban.' };
+        }
+
+        if (employee.user_id) {
+          const user = await tx.users.findUnique({ where: { user_id: employee.user_id } });
+          if (user?.role === 'employee') {
+            await tx.users.update({
               where: { user_id: employee.user_id },
               data: { role: 'manager' }
             });
           }
         }
-
-    const newDepartment = await prisma.departments.create({
-      data: {
-        department_id: deptIdNumber,
-        department_name,
-        category: category || null,
-        managment: managment ? String(managment) : null,
-        created_at: new Date()
       }
+
+      const newDepartment = await tx.departments.create({
+        data: {
+          department_id: deptIdNumber,
+          department_name,
+          category: category || null,
+          manager_id: newManagerId,
+          created_at: new Date()
+        }
+      });
+
+      return { department: newDepartment };
     });
 
+    if (result.error) return res.status(result.status).json({ error: result.error });
     return res.status(201).json({
       message: 'Tạo phòng ban thành công!',
-      department: newDepartment
+      department: result.department
     });
   } catch (error) {
     console.error('Lỗi tạo phòng ban:', error);

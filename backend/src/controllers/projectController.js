@@ -1,7 +1,9 @@
 import prisma from '../config/prisma.js';
-import { Prisma } from '@prisma/client';
+import prismaClientPackage from '@prisma/client';
 import { parseId, isValidDate, toDateOnly } from '../utils/validators.js';
 import { removeAttachmentDir } from '../services/attachmentStorage.js';
+
+const { Prisma } = prismaClientPackage;
 
 const serializeProject = (project) => ({
   ...project,
