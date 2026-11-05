@@ -64,6 +64,12 @@ async function runSchemaSuite(prefix, testArgs, suiteEnv = {}, beforeTest) {
 }
 
 async function main() {
+  await runCommand('issue95 attachment/comment integration: PGlite isolated in-memory suite', process.execPath,
+    ['--test', 'tests/issue95.integration.test.js'], {
+      ...process.env,
+      JWT_SECRET: jwtSecret,
+    });
+
   if (!process.env.TEST_ADMIN_DATABASE_URL) {
     throw new Error('Thiếu TEST_ADMIN_DATABASE_URL. Integration tests chỉ chạy trên DB test riêng; không dùng DATABASE_URL ứng dụng.');
   }

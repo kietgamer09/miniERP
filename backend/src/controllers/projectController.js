@@ -284,7 +284,7 @@ export const updateProject = async (req, res) => {
   }
 };
 
-export const deleteProject = async (req, res) => {
+export const createDeleteProjectHandler = (removeProjectAttachments = removeAttachmentDir) => async (req, res) => {
   try {
     const result = await prisma.$transaction(async (tx) => {
       const project = await loadManagedProject(req, res, tx);
@@ -301,7 +301,7 @@ export const deleteProject = async (req, res) => {
     if (!result) return;
     if (result.error) return res.status(result.status).json({ error: result.error });
     try {
-      await removeAttachmentDir('projects', result.projectId);
+      await removeProjectAttachments('projects', result.projectId);
     } catch (fsError) {
       console.error(`Không thể xóa thư mục attachment project ${result.projectId}:`, fsError);
     }
@@ -314,6 +314,8 @@ export const deleteProject = async (req, res) => {
     res.status(500).json({ error: 'Lỗi máy chủ khi xóa dự án' });
   }
 };
+
+export const deleteProject = createDeleteProjectHandler();
 
 export const completeProject = async (req, res) => {
   try {
