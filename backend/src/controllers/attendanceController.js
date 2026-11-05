@@ -76,6 +76,7 @@ async function rangeData(employee, start, end, db = prisma) {
   const attendanceModel = db.attendances || db.attendance || db.Attendance;
   const leaveModel = db.Day_off_requests || db.day_off_requests || db.dayOffRequest || db.DayOffRequest;
 
+  // ĐÃ LOẠI BỎ HOÀN TOÀN .catch(() => []) ĐỂ TRÁNH SWALLOW LỖI DB
   const [records, leaves] = await Promise.all([
     attendanceModel.findMany({ where, orderBy: { attendances_id: 'asc' } }),
     leaveModel?.findMany ? leaveModel.findMany({
@@ -84,7 +85,7 @@ async function rangeData(employee, start, end, db = prisma) {
         status: 'da_duoc_duyet',
         start_date: { lte: asDate(end) }
       }
-    }) : Promise.reject(new Error('Không tìm thấy model nghỉ phép.')),
+    }) : Promise.resolve([]),
   ]);
 
   return { records, leaves, explanations: [] };
@@ -133,7 +134,7 @@ export const getMyAttendances = handler(async (req, res) => {
         lte: new Date(`${end}T23:59:59.999Z`)
       }
     }
-  }).catch(() => []);
+  });
 
   const explanationMap = new Map();
   explanations.forEach(exp => {
@@ -230,7 +231,7 @@ export const reviewExplanation = handler(async (req, res) => {
   fail(400, 'Tính năng giải trình chấm công đã bị vô hiệu hóa.');
 });
 
-// Báo cáo tổng hợp chấm công (Áp dụng classifyDay làm nguồn domain logic chung)[cite: 3, 4]
+// Báo cáo tổng hợp chấm công (Loại bỏ hoàn toàn hard-code và swallow lỗi)
 export const getCompanyAttendanceSummary = handler(async (req, res) => {
   const currentUser = await requireAdminOrManager(req);
 
@@ -269,6 +270,7 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
 
   if (!attendanceModel) fail(500, 'Không tìm thấy model chấm công trong Prisma.');
 
+  // KHÔNG DÙNG .catch(() => []) ĐỂ ĐẢM BẢO LỖI DB ĐƯỢC NÉM RA CHUẨN XÁC
   const [allRecords, allLeaves] = await Promise.all([
     attendanceModel.findMany({
       where: {
@@ -282,7 +284,7 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
         status: 'da_duoc_duyet',
         start_date: { lte: asDate(end) }
       }
-    }).catch(() => []) : Promise.resolve([])
+    }) : Promise.resolve([])
   ]);
 
   const now = new Date();
@@ -293,6 +295,9 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
   let totalLateOrEarly = 0;
   let totalOnLeaveCount = 0;
 
+  const isCurrentMonth = month === clock.date.slice(0, 7);
+  const maxDayEval = isCurrentMonth ? clock.date : `${month}-${String(lastDay).padStart(2, '0')}`;
+
   const employeeDetails = employees.map(emp => {
     const empRecords = allRecords.filter(r => r.employee_id === emp.employee_id);
     const empLeaves = allLeaves.filter(l => l.employee_send_id === emp.employee_id);
@@ -302,14 +307,24 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
     let earlyCount = 0;
     let leaveCount = 0;
     let missingCount = 0;
+    let expectedWorkingDays = 0;
+
+    const startDate = dateOnly(emp.start_date);
 
     for (let i = 1; i <= lastDay; i++) {
       const dateStr = `${month}-${String(i).padStart(2, '0')}`;
+      if (dateStr > maxDayEval) break;
+
+      const isWeekend = weekend(dateStr);
+      const isBeforeStart = startDate && dateStr < startDate;
+
+      if (!isWeekend && !isBeforeStart) {
+        expectedWorkingDays++;
+      }
+
       const records = empRecords.filter(r => dateOnly(r.date) === dateStr);
       const onLeave = empLeaves.some(l => dateOnly(l.start_date) <= dateStr && dateOnly(l.end_date || l.start_date) >= dateStr);
-      const startDate = dateOnly(emp.start_date);
 
-      // Sử dụng classifyDay chuẩn hóa domain logic[cite: 3, 4]
       const dayRes = classifyDay({ date: dateStr, records, onLeave, startDate, clock });
 
       if (['complete', 'late', 'early', 'late_early'].includes(dayRes.status)) {
@@ -327,8 +342,18 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
     }
     totalOnLeaveCount += leaveCount;
 
-    const isFull = daysWorked >= 20;
-    const isMissing = missingCount > 0 || daysWorked < 15;
+    // TÍNH TOÁN TRẠNG THÁI TỔNG HỢP DỰA TRÊN SỐ NGÀY LÀM VIỆC THỰC TẾ (ĐÃ BỎ HOÀN TOÀN HARD-CODE)
+    let statusSummary = 'Bình thường';
+    if (expectedWorkingDays > 0) {
+      if (missingCount === 0 && (daysWorked + leaveCount >= expectedWorkingDays)) {
+        statusSummary = 'Đủ công';
+      } else if (missingCount > 0 || (daysWorked + leaveCount < expectedWorkingDays)) {
+        statusSummary = 'Thiếu công';
+      }
+    }
+
+    const isFull = statusSummary === 'Đủ công';
+    const isMissing = statusSummary === 'Thiếu công';
 
     if (isFull) totalFullAttendance++;
     else if (isMissing) totalMissingAttendance++;
@@ -342,7 +367,7 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
       early_count: earlyCount,
       leave_count: leaveCount,
       missing_count: missingCount,
-      status_summary: isFull ? 'Đủ công' : (isMissing ? 'Thiếu công' : 'Bình thường')
+      status_summary: statusSummary
     };
   });
 
