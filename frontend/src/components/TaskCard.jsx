@@ -1,6 +1,6 @@
 import { Card, Typography } from 'antd';
 import { getDueState, getDueColor, getDueLabel } from '../utils/taskStatus';
-import { formatDateVN } from '../utils/dates';
+import { formatTaskDeadlineVN } from '../utils/dates';
 
 const { Text } = Typography;
 
@@ -11,7 +11,7 @@ function TaskCard({ task, onClick, clickable = true, draggable = false, dragRef,
   const bg = dueState === 'overdue' ? 'var(--red-bg)' : dueState === 'near-due' ? 'var(--gold-bg)'
     : dueState === 'done' ? 'var(--surface)' : 'var(--task-normal-bg)';
   const label = dueState === 'done' && !task.completedAt
-    ? `Đã xong · Hạn ${formatDateVN(task.dueDate)}` : getDueLabel(task, dueState);
+    ? `Đã xong · Hạn ${formatTaskDeadlineVN(task.dueDate, task.dueTime)}` : getDueLabel(task, dueState);
 
   const labelColor =
     dueState === 'overdue' ? 'var(--red-text)' :

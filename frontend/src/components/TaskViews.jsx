@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import KanbanBoard from './KanbanBoard';
 import { adaptTask, adaptTasks } from '../utils/taskAdapter';
 import { getDueState, sortTasks } from '../utils/taskStatus';
-import { formatDateOnlyVN } from '../utils/dates';
+import { formatDateOnlyVN, formatTaskDeadlineVN } from '../utils/dates';
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '../config/taskConstants';
 import './TaskViews.css';
 
@@ -42,7 +42,7 @@ function TaskCalendar({ tasks, onOpen }) {
         return <div key={key} className={`task-calendar-day${date.month() !== anchor.month() && range === 'month' ? ' is-outside' : ''}${date.isSame(dayjs(), 'day') ? ' is-today' : ''}`}>
           <span className="task-calendar-date">{date.date()}</span>
           {items.slice(0, 3).map(task => <button type="button" className={`task-calendar-event task-calendar-event--${getDueState(adaptTask(task))}`} key={task.id}
-            title={`${task.title} · ${task.project_name || ''}`} onClick={() => onOpen?.(task)}>{task.title}</button>)}
+            title={`${task.title} · ${task.project_name || ''}`} onClick={() => onOpen?.(task)}>{task.due_time || '17:00'} {task.title}</button>)}
           {items.length > 3 && <button type="button" className="task-calendar-more" onClick={() => setSelected(key)}>+{items.length - 3} công việc</button>}
         </div>;
       })}
@@ -75,7 +75,7 @@ export default function TaskViews({ tasks = [], loading, sortMode = 'due', stora
     { title: 'Người thực hiện', dataIndex: 'assignee_name', width: 180, render: value => value || '—' },
     { title: 'Trạng thái', dataIndex: 'status', width: 140, render: value => <Tag color={value === 'xong' ? 'green' : value === 'dang_lam' ? 'blue' : 'default'}>{TASK_STATUS_LABELS[value]}</Tag> },
     { title: 'Ưu tiên', dataIndex: 'priority', width: 120, render: value => TASK_PRIORITY_LABELS[value] || value },
-    { title: 'Hạn chót', dataIndex: 'due_date', width: 150, render: (value, task) => <span className={`task-due--${getDueState(adaptTask(task))}`}>{value ? formatDateOnlyVN(value) : 'Chưa có hạn'}</span> },
+    { title: 'Hạn chót', dataIndex: 'due_date', width: 175, render: (value, task) => <span className={`task-due--${getDueState(adaptTask(task))}`}>{value ? formatTaskDeadlineVN(value, task.due_time) : 'Chưa có hạn'}</span> },
     { title: '', key: 'edit', width: 80, render: (_, task) => task.can_edit && !boardProps.readOnly && task.project_status !== 'hoan_thanh' && boardProps.onEdit ? <Button size="small" onClick={() => boardProps.onEdit(task)}>Sửa</Button> : null },
   ];
   return <div className="task-views">

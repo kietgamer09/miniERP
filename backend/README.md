@@ -51,6 +51,7 @@ npm run setup:web-push
 npm run setup:chat
 npm run setup:overtime
 npm run setup:payroll
+npm run setup:task-recurrence
 npx prisma generate
 ```
 
@@ -78,7 +79,7 @@ Mở terminal thứ hai, chạy frontend theo [hướng dẫn frontend](../front
 
 - Chạy npm install trong thư mục có dependency thay đổi.
 - Với phiên bản thêm vòng đời tài khoản, chạy `npm run setup:auth` và `npx prisma generate`.
-- Chạy setup tương ứng tính năng mới; bảng lương cần npm run setup:payroll.
+- Chạy setup tương ứng tính năng mới; bảng lương cần `npm run setup:payroll`, task lặp cần `npm run setup:task-recurrence`.
 - Khi schema Prisma đổi, chạy npx prisma generate và khởi động lại backend.
 - Khi chuyển máy, mang theo database, uploads và các khóa cấu hình. Không seed lại mỗi lần chạy server.
 
@@ -127,6 +128,12 @@ npm test
 ```
 
 Test dùng `node:test`, HTTP server tạm và PostgreSQL đã cấu hình trong `.env`. Tài khoản DB cần quyền `CREATEDB`; bộ test tạo database có tên ngẫu nhiên, nạp dữ liệu giả riêng, rồi tự đóng kết nối và xóa database đó. Nó không ghi vào database `miniERP` đang dùng. Không chạy đồng thời với thao tác xóa database thử nghiệm thủ công.
+
+### Task lặp lại
+
+Hạn chót task có cả ngày và giờ; mặc định là **17:00 (giờ tan ca)**. Task lặp chỉ được đặt hạn vào ngày làm việc từ Thứ 2 đến Thứ 6. Mặc định hàng ngày chọn ngày làm việc kế tiếp, hàng tuần chọn **Thứ 6**, hàng tháng chọn ngày làm việc cuối tháng; nếu ngày cuối tháng rơi vào Thứ 7 hoặc Chủ nhật thì hạn chuyển về Thứ 6 trước đó. Người tạo có thể chọn giờ khác 17:00; task sinh tiếp theo giữ giờ đó. Khi tạo hoặc sửa task chưa hoàn thành, chọn **Không lặp lại**, **Hàng ngày**, **Hàng tuần** hoặc **Hàng tháng**. Backend tạo task theo lịch mỗi ngày, kể cả khi task cũ chưa hoàn thành, để task cũ vẫn có thể làm bù và task mới vẫn xuất hiện. Lịch hàng ngày bỏ qua cuối tuần, hàng tuần tạo vào Thứ 6 kế tiếp, hàng tháng tạo vào ngày làm việc cuối tháng. Task tiếp theo giữ mô tả, người làm và mức ưu tiên; nếu tiêu đề có ngày thì ngày được cập nhật, nếu chưa có thì ngày hạn mới được thêm vào tiêu đề. Lịch lặp dừng khi ngày kế tiếp vượt ngày kết thúc dự án hoặc người làm không còn là thành viên đang làm việc của dự án. Backend rà soát lịch lặp mỗi phút khi server đang chạy; nếu server tắt, lúc khởi động lại sẽ bù các task đến hạn (tối đa 1.000 task mỗi chuỗi trong một lượt rà soát). Các task đến hạn xuất hiện sau lần rà soát kế tiếp.
+
+Database đã có dữ liệu: chạy `npm run setup:task-recurrence` rồi `npx prisma generate`. Script thêm giờ hạn mặc định 17:00 cho các task cũ mà không đổi ngày hạn. Database mới nhận các cột qua `npx prisma db push`; script setup vẫn an toàn để chạy lại.
 
 Bộ test kiểm tra hạn task nằm trong khoảng ngày dự án, quyền tạo/sửa/xóa dự án, không hoàn thành dự án còn task dở, chặn sửa/tạo task khi dự án hoàn tất và xử lý hai yêu cầu đổi trạng thái cạnh tranh.
 

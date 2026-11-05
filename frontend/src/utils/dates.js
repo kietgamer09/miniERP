@@ -19,6 +19,12 @@ function formatDateOnlyVN(value) {
   return `${value.slice(8, 10)}/${value.slice(5, 7)}/${value.slice(0, 4)}`;
 }
 
+function formatTaskDeadlineVN(value, time = '17:00') {
+  const dateLabel = typeof value === 'string' ? formatDateOnlyVN(value.slice(0, 10))
+    : value instanceof Date && !Number.isNaN(value.getTime()) ? formatDateVN(value) : '—';
+  return `${dateLabel} ${/^([01]\d|2[0-3]):[0-5]\d$/.test(time) ? time : '17:00'}`;
+}
+
 /** Định dạng thời điểm ISO theo múi giờ địa phương: HH:mm DD/MM/YYYY. */
 function formatDateTimeVN(isoString) {
   if (typeof isoString !== 'string') return '—';
@@ -108,6 +114,7 @@ function getWorkingDaysInMonth(year, month) {
 export {
   parseDateOnly,
   formatDateOnlyVN,
+  formatTaskDeadlineVN,
   formatDateTimeVN,
   DAY_NAMES,
   formatDateVN,

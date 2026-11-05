@@ -1,5 +1,5 @@
 // BRD: quá hạn đỏ, sắp hạn 0–3 ngày vàng; task xong không cảnh báo.
-import { startOfDay, formatDateVN } from './dates';
+import { startOfDay, formatDateVN } from './dates.js';
 
 const STATUS = {
   TODO: 'todo',
@@ -18,8 +18,11 @@ function getDueState(task, today = new Date()) {
   const dueStart = startOfDay(task.dueDate);
   const diffMs = dueStart.getTime() - todayStart.getTime();
   const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  const [hours = 17, minutes = 0] = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(task.dueTime || '')?.slice(1).map(Number) || [];
+  const deadline = new Date(dueStart);
+  deadline.setHours(hours, minutes, 0, 0);
 
-  if (diffDays < 0) return 'overdue';
+  if (diffDays < 0 || deadline.getTime() < today.getTime()) return 'overdue';
   if (diffDays <= 3) return 'near-due';
 
   return 'normal';
@@ -42,7 +45,7 @@ function getDueLabel(task, dueState) {
       : formatDateVN(task.dueDate);
     return `Xong (${dateStr})`;
   }
-  const dateStr = formatDateVN(task.dueDate);
+  const dateStr = `${formatDateVN(task.dueDate)} ${task.dueTime || '17:00'}`;
   switch (dueState) {
     case 'overdue': return `Quá hạn (${dateStr})`;
     case 'near-due': return `Sắp hạn (${dateStr})`;
@@ -68,14 +71,21 @@ function sortTasks(tasks, mode = 'due', today = new Date()) {
       const priDiff = (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9);
       if (priDiff !== 0) return priDiff;
 
-      return new Date(a.dueDate) - new Date(b.dueDate);
+      return getDeadlineTimestamp(a) - getDeadlineTimestamp(b);
     }
 
-    const dateDiff = new Date(a.dueDate) - new Date(b.dueDate);
+    const dateDiff = getDeadlineTimestamp(a) - getDeadlineTimestamp(b);
     if (dateDiff !== 0) return dateDiff;
 
     return (PRIORITY_ORDER[a.priority] ?? 9) - (PRIORITY_ORDER[b.priority] ?? 9);
   });
+}
+
+function getDeadlineTimestamp(task) {
+  const date = new Date(task.dueDate);
+  const [hours = 17, minutes = 0] = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(task.dueTime || '')?.slice(1).map(Number) || [];
+  date.setHours(hours, minutes, 0, 0);
+  return date.getTime();
 }
 
 export { STATUS, PRIORITY_ORDER, getDueState, getDueColor, getDueLabel, sortTasks };

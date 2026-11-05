@@ -114,10 +114,13 @@ export const listProjects = async (req, res) => {
       SELECT project_id,
         count(*) FILTER (WHERE status = 'xong' AND completed_at IS NOT NULL)::int AS completed_with_date,
         count(*) FILTER (WHERE status = 'xong' AND completed_at IS NOT NULL
-          AND (completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <= due_date)::int AS completed_on_time,
+          AND (completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Ho_Chi_Minh')
+            <= (due_date::timestamp + due_time::time))::int AS completed_on_time,
         count(*) FILTER (WHERE status = 'xong' AND completed_at IS NOT NULL
-          AND (completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Ho_Chi_Minh')::date > due_date)::int AS completed_late,
-        count(*) FILTER (WHERE status <> 'xong' AND due_date < (now() AT TIME ZONE 'Asia/Ho_Chi_Minh')::date)::int AS active_overdue
+          AND (completed_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Ho_Chi_Minh')
+            > (due_date::timestamp + due_time::time))::int AS completed_late,
+        count(*) FILTER (WHERE status <> 'xong'
+          AND (now() AT TIME ZONE 'Asia/Ho_Chi_Minh') > (due_date::timestamp + due_time::time))::int AS active_overdue
       FROM tasks WHERE project_id IN (${Prisma.join(projects.map(project => project.id))}) GROUP BY project_id`;
     const performance = new Map(performanceRows.map(row => [row.project_id, row]));
     const groups = await prisma.tasks.groupBy({

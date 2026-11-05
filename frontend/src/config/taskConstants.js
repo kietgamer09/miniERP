@@ -18,4 +18,15 @@ export const TASK_PRIORITY_OPTIONS = [
   { value: 'cao', label: TASK_PRIORITY_LABELS.cao },
 ];
 
+export const TASK_RECURRENCE_LABELS = {
+  daily: 'Hàng ngày',
+  weekly: 'Hàng tuần',
+  monthly: 'Hàng tháng',
+};
+
+export const TASK_RECURRENCE_OPTIONS = [
+  { value: '', label: 'Không lặp lại' },
+  ...Object.entries(TASK_RECURRENCE_LABELS).map(([value, label]) => ({ value, label })),
+];
+
 export const DONE_COLUMN_LABEL = 'Hoàn thành';

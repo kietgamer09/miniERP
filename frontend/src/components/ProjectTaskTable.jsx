@@ -3,7 +3,7 @@ import { Alert, Button, Card, Space, Table, Tag } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import { listProjectTasks } from '../services/projectApi';
 import { getDueState } from '../utils/taskStatus';
-import { formatDateOnlyVN, parseDateOnly } from '../utils/dates';
+import { formatTaskDeadlineVN, parseDateOnly } from '../utils/dates';
 import './ProjectTaskTable.css';
 import TaskDetailDrawer from './TaskDetailDrawer';
 
@@ -14,7 +14,7 @@ function getTaskDueState(task, today) {
   const dueDate = parseDateOnly(task.due_date);
   if (!dueDate) return 'normal';
   // Chỉ đổi định dạng tại đây để dùng lại quy tắc cảnh báo của TaskCard.
-  return getDueState({ status: task.status === 'xong' ? 'done' : 'todo', dueDate }, today);
+  return getDueState({ status: task.status === 'xong' ? 'done' : 'todo', dueDate, dueTime: task.due_time || '17:00' }, today);
 }
 
 function ProjectTaskTable({ projectId, embedded = false }) {
@@ -53,7 +53,7 @@ function ProjectTaskTable({ projectId, embedded = false }) {
     { title: 'Người làm', dataIndex: 'assignee_name', width: 180, render: (value) => value || '—' },
     { title: 'Hạn chót', dataIndex: 'due_date', width: 180, render: (value, task) => {
       const state = getTaskDueState(task, today);
-      return <Space wrap>{formatDateOnlyVN(value)}
+      return <Space wrap>{formatTaskDeadlineVN(value, task.due_time)}
         {state === 'overdue' && <Tag color="red">Quá hạn</Tag>}
         {state === 'near-due' && <Tag color="gold">Sắp hạn</Tag>}
       </Space>;

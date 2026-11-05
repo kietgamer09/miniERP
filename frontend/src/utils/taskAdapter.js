@@ -13,6 +13,7 @@ export function adaptTask(task) {
     priority: TASK_PRIORITY_LABELS[task.priority] || task.priority,
     projectName: task.project_name,
     dueDate: parseDateOnly(task.due_date),
+    dueTime: task.due_time || '17:00',
     completedAt: task.completed_at ? new Date(task.completed_at) : null,
   };
 }

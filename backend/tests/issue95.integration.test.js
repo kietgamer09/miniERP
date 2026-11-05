@@ -67,11 +67,16 @@ CREATE TABLE tasks (
   assignee_id integer NOT NULL REFERENCES employees(employee_id),
   created_by integer NOT NULL REFERENCES employees(employee_id),
   due_date date NOT NULL,
+  due_time varchar(5) NOT NULL DEFAULT '17:00',
   priority task_priority NOT NULL DEFAULT 'trung_binh',
   status task_status NOT NULL DEFAULT 'can_lam',
   completed_at timestamp,
   created_at timestamp NOT NULL DEFAULT now(),
-  updated_at timestamp NOT NULL DEFAULT now()
+  updated_at timestamp NOT NULL DEFAULT now(),
+  recurrence_series_id uuid,
+  recurrence_frequency varchar(10),
+  recurrence_anchor_day smallint,
+  UNIQUE (recurrence_series_id, due_date)
 );
 CREATE TABLE task_comments (
   id serial PRIMARY KEY,
@@ -118,6 +123,7 @@ let updateTaskDetails;
 let removeMember;
 let createTaskController;
 let changeTaskStatus;
+let createDueRecurringTasks;
 let baseUrl;
 const testAttachmentsRoot = path.join(tmpdir(), `miniERP-issue95-${randomUUID()}`);
 const jwtSecret = randomBytes(48).toString('hex');
@@ -193,6 +199,9 @@ before(async () => {
   await mkdir(testAttachmentsRoot, { recursive: true });
   database = await PGlite.create();
   await database.exec(schema);
+  const recurrenceSetup = await readFile(new URL('../prisma/sql/task-recurrence.sql', import.meta.url), 'utf8');
+  await database.exec(recurrenceSetup);
+  await database.exec(recurrenceSetup);
   databaseServer = new PGLiteSocketServer({ db: database, port: 0, host: '127.0.0.1', maxConnections: 10 });
   await databaseServer.start();
   process.env.DATABASE_URL = `postgresql://postgres:postgres@${databaseServer.getServerConn()}/postgres?sslmode=disable`;
@@ -207,6 +216,7 @@ before(async () => {
   ({ removeMember } = await import('../src/controllers/memberController.js'));
   ({ createTask: createTaskController } = await import('../src/controllers/taskController.js'));
   ({ changeTaskStatus } = await import('../src/controllers/taskActionController.js'));
+  ({ createDueRecurringTasks } = await import('../src/services/taskRecurrenceWorker.js'));
   const attachmentRoutes = (await import('../src/routes/attachmentRoutes.js')).default;
   const app = express();
   app.use(express.json());
@@ -445,6 +455,80 @@ test('completed project allows comments but blocks task edits and attachment upl
   assert.equal(await prisma.work_project_comments.count({ where: { project_id: project.id } }), 1);
   assert.equal(attachmentData.files.length, 1);
   assert.equal(attachmentData.files[0].id, fileId);
+});
+
+test('recurring daily tasks create the next task even when the current one is unfinished', async () => {
+  const project = await createProject({ code: 'ISSUE95-R-DAY' });
+  await prisma.project_members.create({ data: { project_id: project.id, employee_id: 2 } });
+  const created = await invoke(createTaskController, {
+    params: { id: String(project.id) },
+    body: { title: 'Kiểm tra máy', assignee_id: 2, due_date: '2026-11-02', priority: 'trung_binh', recurrence_frequency: 'daily' },
+    user: { role: 'manager' }, employee: { employee_id: 1 },
+  });
+  assert.equal(created.statusCode, 201);
+  const original = await prisma.tasks.findUnique({ where: { id: created.body.id } });
+
+  const result = await createDueRecurringTasks(new Date('2026-11-03T12:00:00.000Z'), prisma);
+  assert.equal(result.created, 1);
+  const next = await prisma.tasks.findFirst({
+    where: { recurrence_series_id: original.recurrence_series_id, due_date: new Date('2026-11-03T00:00:00.000Z') },
+  });
+  assert.ok(next);
+  assert.equal(next.status, 'can_lam');
+  assert.equal(next.title, 'Kiểm tra máy (03/11/2026)');
+  assert.equal(original.due_time, '17:00');
+  assert.equal(next.due_time, '17:00');
+  assert.equal((await prisma.tasks.findUnique({ where: { id: original.id } })).status, 'can_lam');
+  assert.equal((await createDueRecurringTasks(new Date('2026-11-03T12:00:00.000Z'), prisma)).created, 0);
+});
+
+test('recurring weekly tasks use Friday deadlines and update dates in titles', async () => {
+  const project = await createProject({ code: 'ISSUE95-R-WEEK' });
+  await prisma.project_members.create({ data: { project_id: project.id, employee_id: 2 } });
+  const created = await invoke(createTaskController, {
+    params: { id: String(project.id) },
+    body: { title: 'Báo cáo 02/11/2026', assignee_id: 2, due_date: '2026-11-02', due_time: '16:30', priority: 'cao', recurrence_frequency: 'weekly' },
+    user: { role: 'manager' }, employee: { employee_id: 1 },
+  });
+  const original = await prisma.tasks.findUnique({ where: { id: created.body.id } });
+  const result = await createDueRecurringTasks(new Date('2026-11-09T12:00:00.000Z'), prisma);
+  assert.equal(result.created, 1);
+  const next = await prisma.tasks.findFirst({
+    where: { recurrence_series_id: original.recurrence_series_id, due_date: new Date('2026-11-06T00:00:00.000Z') },
+  });
+  assert.equal(next.title, 'Báo cáo 06/11/2026');
+  assert.equal(next.due_time, '16:30');
+});
+
+test('recurring monthly tasks use the last weekday, keep overdue occurrences and stop at project end', async () => {
+  const project = await createProject({ code: 'ISSUE95-R-MONTH' });
+  await prisma.project_members.create({ data: { project_id: project.id, employee_id: 2 } });
+  const created = await invoke(createTaskController, {
+    params: { id: String(project.id) },
+    body: { title: 'Kiểm kê', assignee_id: 2, due_date: '2026-01-30', priority: 'trung_binh', recurrence_frequency: 'monthly' },
+    user: { role: 'manager' }, employee: { employee_id: 1 },
+  });
+  const original = await prisma.tasks.findUnique({ where: { id: created.body.id } });
+  assert.equal((await createDueRecurringTasks(new Date('2026-02-28T12:00:00.000Z'), prisma)).created, 1);
+  const february = await prisma.tasks.findFirst({
+    where: { recurrence_series_id: original.recurrence_series_id, due_date: new Date('2026-02-27T00:00:00.000Z') },
+  });
+  assert.ok(february);
+  assert.equal((await createDueRecurringTasks(new Date('2026-03-31T12:00:00.000Z'), prisma)).created, 1);
+  assert.equal(await prisma.tasks.count({
+    where: { recurrence_series_id: original.recurrence_series_id, due_date: new Date('2026-03-31T00:00:00.000Z') },
+  }), 1);
+
+  const ending = await createProject({ code: 'ISSUE95-R-END' });
+  await prisma.project_members.create({ data: { project_id: ending.id, employee_id: 2 } });
+  const last = await invoke(createTaskController, {
+    params: { id: String(ending.id) },
+    body: { title: 'Task cuối', assignee_id: 2, due_date: '2026-12-31', priority: 'thap', recurrence_frequency: 'daily' },
+    user: { role: 'manager' }, employee: { employee_id: 1 },
+  });
+  await createDueRecurringTasks(new Date('2026-12-31T12:00:00.000Z'), prisma);
+  assert.equal(await prisma.tasks.count({ where: { project_id: ending.id } }), 1);
+  assert.equal(last.statusCode, 201);
 });
 
 test('removed project member cannot create a task or project comment', async () => {

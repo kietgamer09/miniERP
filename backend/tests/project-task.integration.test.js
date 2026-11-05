@@ -71,7 +71,6 @@ before(async () => {
   });
   baseUrl = `http://127.0.0.1:${server.address().port}`;
 });
-
 after(async () => {
   if (server) await new Promise(resolve => server.close(resolve));
   await prisma.$disconnect();

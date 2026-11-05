@@ -12,4 +12,6 @@ export const isValidDate = (value) => {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 };
 
+export const isValidTime = (value) => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+
 export const toDateOnly = (date) => date == null ? null : date.toISOString().slice(0, 10);
