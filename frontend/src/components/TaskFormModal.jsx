@@ -101,6 +101,9 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
         <Select showSearch optionFilterProp="label" placeholder="Chọn thành viên dự án"
           notFoundContent="Dự án chưa có thành viên" options={assigneeOptions} />
       </Form.Item>
+      <Form.Item label="Lặp lại" name="recurrence_frequency" extra="Task tiếp theo tự tạo theo lịch, bỏ Thứ 7 và Chủ nhật. Mặc định hạn lúc 17:00: hàng ngày vào ngày làm việc kế tiếp, hàng tuần vào Thứ 6, hàng tháng vào ngày làm việc cuối tháng.">
+        <Select options={TASK_RECURRENCE_OPTIONS} disabled={task?.status === 'xong'} />
+      </Form.Item>
       <Form.Item label="Hạn chót" name="due_date" rules={[
         { required: true, message: 'Vui lòng chọn hạn chót' },
         { validator(_, value) {
@@ -128,9 +131,6 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
       </Form.Item>
       <Form.Item label="Mức ưu tiên" name="priority" rules={[{ required: true, message: 'Vui lòng chọn mức ưu tiên' }]}>
         <Select placeholder="Chọn mức ưu tiên" options={TASK_PRIORITY_OPTIONS} />
-      </Form.Item>
-      <Form.Item label="Lặp lại" name="recurrence_frequency" extra="Task tiếp theo tự tạo theo lịch, bỏ Thứ 7 và Chủ nhật. Mặc định hạn lúc 17:00: hàng ngày vào ngày làm việc kế tiếp, hàng tuần vào Thứ 6, hàng tháng vào ngày làm việc cuối tháng.">
-        <Select options={TASK_RECURRENCE_OPTIONS} disabled={task?.status === 'xong'} />
       </Form.Item>
     </Form>
   </Modal>;
