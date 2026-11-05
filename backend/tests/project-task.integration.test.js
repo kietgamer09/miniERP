@@ -130,6 +130,18 @@ test('project permissions, task date bounds, lifecycle and concurrent status wri
   const validUpdate = await api(actors.manager, `/api/tasks/${taskId}`, { method: 'PUT', body });
   assert.equal(validUpdate.status, 200);
 
+  const invalidProjectStart = await api(actors.manager, `/api/projects/${projectId}`, {
+    method: 'PUT', body: { name: project.name, start_date: '2026-12-02', end_date: '2099-12-31' },
+  });
+  const invalidProjectEnd = await api(actors.manager, `/api/projects/${projectId}`, {
+    method: 'PUT', body: { name: project.name, start_date: '2020-01-01', end_date: '2026-11-30' },
+  });
+  assert.equal(invalidProjectStart.status, 409);
+  assert.equal(invalidProjectEnd.status, 409);
+  const unchangedProject = await prisma.projects.findUnique({ where: { id: projectId } });
+  assert.equal(unchangedProject.start_date.toISOString().slice(0, 10), '2020-01-01');
+  assert.equal(unchangedProject.end_date.toISOString().slice(0, 10), '2099-12-31');
+
   assert.equal((await api(actors.manager, `/api/projects/${projectId}/complete`, { method: 'POST' })).status, 409);
   const concurrentMoves = await Promise.all([
     api(actors.employee, `/api/tasks/${taskId}/status`, { method: 'PATCH', body: { status: 'dang_lam' } }),
