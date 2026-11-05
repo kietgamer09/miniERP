@@ -1,11 +1,18 @@
-process.env.NODE_ENV = 'test';
 import 'dotenv/config';
 import test from 'node:test';
 import assert from 'node:assert';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import app from '../src/server.js';
-import prisma from '../src/config/prisma.js';
+import { randomBytes } from 'node:crypto';
+
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = randomBytes(48).toString('hex');
+process.env.DATABASE_URL ||= 'postgresql://test:test@127.0.0.1:1/minierp_unit_test?schema=public';
+
+const [{ default: app }, { default: prisma }] = await Promise.all([
+  import('../src/server.js'),
+  import('../src/config/prisma.js'),
+]);
 
 const generateToken = (userId = 1) => {
   return jwt.sign({ user_id: userId }, process.env.JWT_SECRET || 'your_jwt_secret', { expiresIn: '1h' });

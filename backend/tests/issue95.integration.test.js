@@ -3,7 +3,8 @@ import { after, before, beforeEach, test } from 'node:test';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import express from 'express';
 import jwt from 'jsonwebtoken';
@@ -16,9 +17,19 @@ CREATE TYPE employee_status AS ENUM ('dang_lam_viec', 'da_nghi_viec');
 CREATE TYPE project_status AS ENUM ('dang_thuc_hien', 'hoan_thanh');
 CREATE TYPE task_priority AS ENUM ('thap', 'trung_binh', 'cao');
 CREATE TYPE task_status AS ENUM ('can_lam', 'dang_lam', 'xong');
+CREATE TABLE users (
+  user_id serial PRIMARY KEY,
+  username varchar NOT NULL UNIQUE,
+  password varchar NOT NULL,
+  role varchar NOT NULL,
+  must_change_password boolean NOT NULL DEFAULT false,
+  temp_password_expires_at timestamptz,
+  temp_password_used_at timestamptz,
+  created_at timestamp DEFAULT now()
+);
 CREATE TABLE employees (
   employee_id integer PRIMARY KEY,
-  user_id integer UNIQUE NOT NULL,
+  user_id integer UNIQUE NOT NULL REFERENCES users(user_id),
   department_id integer NOT NULL DEFAULT 1,
   fullname varchar,
   email varchar,
@@ -86,6 +97,12 @@ CREATE TABLE work_comment_reads (
 CREATE TABLE project_delete_blockers (
   project_id integer NOT NULL REFERENCES projects(id)
 );
+CREATE TABLE "Day_off_requests" (
+  "Day_off_id" serial PRIMARY KEY
+);
+CREATE TABLE work_overtime_requests (
+  id serial PRIMARY KEY
+);
 `;
 
 let database;
@@ -94,6 +111,7 @@ let httpServer;
 let prisma;
 let pool;
 let deleteProject;
+let createDeleteProjectHandler;
 let createTaskComment;
 let projectComments;
 let updateTaskDetails;
@@ -102,7 +120,30 @@ let createTaskController;
 let changeTaskStatus;
 let baseUrl;
 const testAttachmentsRoot = path.join(tmpdir(), `miniERP-issue95-${randomUUID()}`);
-const jwtSecret = 'issue-95-integration-test-secret';
+const jwtSecret = randomBytes(48).toString('hex');
+const backendRoot = path.resolve(import.meta.dirname, '..');
+
+function runOrphanScanner(args = []) {
+  const scannerPath = path.join(backendRoot, 'scripts', 'cleanup-orphan-attachments.mjs');
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [scannerPath, ...args], {
+      cwd: backendRoot,
+      env: {
+        ...process.env,
+        DATABASE_URL: process.env.DATABASE_URL,
+        JWT_SECRET: jwtSecret,
+        MINIERP_TEST_ATTACHMENTS_ROOT: testAttachmentsRoot,
+      },
+      windowsHide: true,
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8').on('data', chunk => { stdout += chunk; });
+    child.stderr.setEncoding('utf8').on('data', chunk => { stderr += chunk; });
+    child.once('error', reject);
+    child.once('close', code => resolve({ code, stdout, stderr }));
+  });
+}
 
 function responseRecorder() {
   return {
@@ -159,6 +200,7 @@ before(async () => {
 
   ({ default: prisma, pool } = await import('../src/config/prisma.js'));
   ({ deleteProject } = await import('../src/controllers/projectController.js'));
+  ({ createDeleteProjectHandler } = await import('../src/controllers/projectController.js'));
   ({ createTaskComment } = await import('../src/controllers/commentController.js'));
   ({ projectComments } = await import('../src/controllers/projectCommentController.js'));
   ({ updateTaskDetails } = await import('../src/controllers/taskDetailsController.js'));
@@ -178,7 +220,14 @@ before(async () => {
 });
 
 beforeEach(async () => {
-  await database.exec('TRUNCATE project_delete_blockers, work_comment_reads, task_comments, work_project_comments, tasks, project_members, projects, employees RESTART IDENTITY CASCADE');
+  await database.exec('TRUNCATE project_delete_blockers, work_comment_reads, task_comments, work_project_comments, tasks, project_members, projects, employees, users RESTART IDENTITY CASCADE');
+  await prisma.users.createMany({
+    data: [
+      { user_id: 101, username: 'issue95-manager', password: 'test', role: 'manager' },
+      { user_id: 102, username: 'issue95-member', password: 'test', role: 'employee' },
+      { user_id: 103, username: 'issue95-other', password: 'test', role: 'employee' },
+    ],
+  });
   await prisma.employees.createMany({
     data: [
       { employee_id: 1, user_id: 101, department_id: 1, fullname: 'Quản lý' },
@@ -284,6 +333,46 @@ test('database delete failure rolls back and leaves attachments available for re
   assert.ok(await prisma.projects.findUnique({ where: { id: project.id } }));
   assert.equal(await readFile(`${projectDir}/keep.txt`, 'utf8'), 'retry after DB error');
   await rm(projectDir, { recursive: true, force: true });
+});
+
+test('filesystem delete failure after DB commit is logged and orphan scanner cleans attachments', async () => {
+  const project = await createProject({ code: 'ISSUE95-FS-FAIL' });
+  const projectDir = projectAttachmentPath(project.id);
+  const filePath = path.join(projectDir, 'orphan.txt');
+  await mkdir(projectDir, { recursive: true });
+  await writeFile(filePath, 'orphan after filesystem failure');
+
+  const loggedErrors = [];
+  const originalConsoleError = console.error;
+  let res;
+  try {
+    console.error = (...args) => loggedErrors.push(args);
+    const failFilesystemCleanup = createDeleteProjectHandler(async () => {
+      throw Object.assign(new Error('simulated filesystem permission failure'), { code: 'EACCES' });
+    });
+    res = await invoke(failFilesystemCleanup, {
+      params: { id: String(project.id) },
+      user: { role: 'manager' },
+      employee: { employee_id: 1 },
+    });
+  } finally {
+    console.error = originalConsoleError;
+  }
+
+  assert.equal(res.statusCode, 204);
+  assert.equal(await prisma.projects.findUnique({ where: { id: project.id } }), null);
+  assert.equal(loggedErrors.length, 1);
+  assert.equal(await readFile(filePath, 'utf8'), 'orphan after filesystem failure');
+
+  const dryRun = await runOrphanScanner();
+  assert.equal(dryRun.code, 0, dryRun.stderr);
+  assert.match(dryRun.stdout, new RegExp(`projects/${project.id}`));
+  assert.equal(await readFile(filePath, 'utf8'), 'orphan after filesystem failure');
+
+  const cleanup = await runOrphanScanner(['--apply']);
+  assert.equal(cleanup.code, 0, cleanup.stderr);
+  assert.match(cleanup.stdout, new RegExp(`Đã xóa projects/${project.id}`));
+  await assert.rejects(readFile(filePath), { code: 'ENOENT' });
 });
 
 test('completed project allows comments but blocks task edits and attachment uploads in API', async () => {
