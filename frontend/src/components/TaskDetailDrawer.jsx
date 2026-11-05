@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Descriptions, Drawer, Spin, Tag, Tooltip } from 'antd';
 import { EditOutlined, ReloadOutlined } from '@ant-design/icons';
 import { getTask } from '../services/taskApi';
-import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS } from '../config/taskConstants';
+import { TASK_PRIORITY_LABELS, TASK_RECURRENCE_LABELS, TASK_STATUS_LABELS } from '../config/taskConstants';
 import { adaptTask } from '../utils/taskAdapter';
 import { formatDateVN } from '../utils/dates';
 import { getDueState } from '../utils/taskStatus';
@@ -59,6 +59,7 @@ export default function TaskDetailDrawer({ taskId, open, onClose, onEdit, readOn
                 </Tag>}
               </> },
               { key: 'priority', label: 'Mức ưu tiên', children: TASK_PRIORITY_LABELS[task.priority] || task.priority },
+              ...(task.recurrence_frequency ? [{ key: 'recurrence', label: 'Lặp lại', children: TASK_RECURRENCE_LABELS[task.recurrence_frequency] || task.recurrence_frequency }] : []),
               { key: 'status', label: 'Trạng thái', children: TASK_STATUS_LABELS[task.status] || task.status },
               { key: 'project', label: 'Dự án', children: task.project_name },
             ]} />

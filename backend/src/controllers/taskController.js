@@ -2,11 +2,14 @@ import prisma from '../config/prisma.js';
 import { loadManagedProject } from './projectController.js';
 import { parseId, isValidDate, toDateOnly } from '../utils/validators.js';
 import { dueDateError, getAllowedMoves } from '../utils/taskRules.js';
+import { randomUUID } from 'node:crypto';
+import { isRecurrenceFrequency, recurrenceAnchorDay } from '../utils/taskRecurrence.js';
 
 export const taskFields = {
   id: true, project_id: true, title: true, description: true,
   assignee_id: true, created_by: true, due_date: true, priority: true,
   status: true, completed_at: true, created_at: true, updated_at: true,
+  recurrence_series_id: true, recurrence_frequency: true, recurrence_anchor_day: true,
   employees_tasks_assignee_idToemployees: { select: { fullname: true } },
   employees_tasks_created_byToemployees: { select: { fullname: true } },
   projects: { select: { name: true, status: true, manager_id: true, start_date: true, end_date: true } },
@@ -31,6 +34,7 @@ export function formatTask(task, caller) {
     created_by_name: creator.fullname,
     due_date: toDateOnly(task.due_date),
     priority: task.priority,
+    recurrence_frequency: task.recurrence_frequency,
     status: task.status,
     completed_at: task.completed_at?.toISOString() ?? null,
     created_at: task.created_at,
@@ -56,6 +60,10 @@ export function validateTask(body) {
   if (title.length > 200) return { error: 'Tiêu đề không được quá 200 ký tự' };
   if (!['thap', 'trung_binh', 'cao'].includes(body.priority)) {
     return { error: 'Mức ưu tiên phải là thap, trung_binh hoặc cao' };
+  }
+  if (body.recurrence_frequency !== undefined && body.recurrence_frequency !== null
+    && body.recurrence_frequency !== '' && !isRecurrenceFrequency(body.recurrence_frequency)) {
+    return { error: 'Chu kỳ lặp phải là daily, weekly hoặc monthly' };
   }
   if (!isValidDate(body.due_date)) return { error: 'Hạn chót không hợp lệ, cần dạng YYYY-MM-DD' };
   const assigneeId = parseId(body.assignee_id);
@@ -95,6 +103,9 @@ export const createTask = async (req, res) => {
           assignee_id: assigneeId, created_by: req.employee.employee_id,
           due_date: new Date(`${body.due_date}T00:00:00.000Z`),
           priority: body.priority, status: 'can_lam',
+          recurrence_series_id: body.recurrence_frequency ? randomUUID() : null,
+          recurrence_frequency: body.recurrence_frequency || null,
+          recurrence_anchor_day: body.recurrence_frequency ? recurrenceAnchorDay(body.due_date) : null,
         },
         select: taskFields,
       });

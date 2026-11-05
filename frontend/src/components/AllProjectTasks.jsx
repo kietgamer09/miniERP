@@ -24,6 +24,17 @@ export default function AllProjectTasks({ projects, onChanged }) {
       .catch(error => { if (active) setState({ key, tasks: [], error: error.message }); });
     return () => { active = false; };
   }, [projects, key]);
+  useEffect(() => {
+    const refresh = () => {
+      if (!document.hidden) setRevision(value => value + 1);
+    };
+    const timer = window.setInterval(refresh, 60000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
   async function edit(task) {
     setTaskId(null);
     try { setEditor({ task, project: await getProject(task.project_id) }); }

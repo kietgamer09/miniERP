@@ -16,6 +16,7 @@ import chatRoutes from './routes/chatRoutes.js';
 import overtimeRoutes from './routes/overtimeRoutes.js';
 import payrollsRoutes from './routes/payrollRoutes.js';
 import { startPushWorker } from './services/webPush.js';
+import { startTaskRecurrenceWorker } from './services/taskRecurrenceWorker.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -53,6 +54,7 @@ if (process.env.NODE_ENV !== 'test') {
   server = app.listen(PORT);
   server.once('listening', () => {
     startPushWorker();
+    startTaskRecurrenceWorker();
     console.log(`Server đang chạy tại http://localhost:${PORT}`);
   });
   server.once('error', error => {

@@ -6,7 +6,7 @@ import 'dayjs/locale/vi';
 import { createTask } from '../services/projectApi';
 import { updateTask } from '../services/taskApi';
 import { formatDateOnlyVN } from '../utils/dates';
-import { TASK_PRIORITY_OPTIONS } from '../config/taskConstants';
+import { TASK_PRIORITY_OPTIONS, TASK_RECURRENCE_OPTIONS } from '../config/taskConstants';
 import { useFormDraft } from '../hooks/useDraft';
 
 dayjs.locale('vi');
@@ -18,7 +18,7 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
   const submitting = useRef(false);
   const editing = Boolean(task);
   const draft = useFormDraft(form, `task:${project.id}:${task?.id ?? 'new'}`, {
-    fields: ['title', 'description', 'assignee_id', 'due_date', 'priority'], dateFields: ['due_date'],
+    fields: ['title', 'description', 'assignee_id', 'due_date', 'priority', 'recurrence_frequency'], dateFields: ['due_date'],
   });
   const assigneeOptions = (project.members || []).map((member) => ({
     value: member.employee_id, label: member.fullname || `Nhân viên ${member.employee_id}`,
@@ -44,6 +44,7 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
       const payload = {
         title: values.title.trim(), description: values.description?.trim() || null,
         assignee_id: values.assignee_id, due_date: values.due_date.format('YYYY-MM-DD'), priority: values.priority,
+        recurrence_frequency: values.recurrence_frequency || null,
       };
       if (editing) await updateTask(task.id, payload);
       else await createTask(project.id, payload);
@@ -66,7 +67,8 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
     {draft.notice}
     <Form form={form} layout="vertical" disabled={saving} preserve={false}
       initialValues={task ? { title: task.title, description: task.description || '', assignee_id: task.assignee_id,
-        due_date: task.due_date ? dayjs(task.due_date) : null, priority: task.priority } : {}}
+        due_date: task.due_date ? dayjs(task.due_date) : null, priority: task.priority,
+        recurrence_frequency: task.recurrence_frequency || '' } : { recurrence_frequency: '' }}
       onValuesChange={(changed, values) => {
       setSaveError(''); draft.onValuesChange(changed, values);
     }}>
@@ -103,6 +105,9 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
       </Form.Item>
       <Form.Item label="Mức ưu tiên" name="priority" rules={[{ required: true, message: 'Vui lòng chọn mức ưu tiên' }]}>
         <Select placeholder="Chọn mức ưu tiên" options={TASK_PRIORITY_OPTIONS} />
+      </Form.Item>
+      <Form.Item label="Lặp lại" name="recurrence_frequency" extra="Task tiếp theo tự tạo theo lịch, kể cả khi task trước chưa hoàn thành.">
+        <Select options={TASK_RECURRENCE_OPTIONS} disabled={task?.status === 'xong'} />
       </Form.Item>
     </Form>
   </Modal>;

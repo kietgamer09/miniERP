@@ -30,6 +30,18 @@ export default function ProjectKanban({ projectId, projectStatus, revision = 0, 
     return () => { active = false; };
   }, [projectId, requestKey, revision]);
 
+  useEffect(() => {
+    const refresh = () => {
+      if (!document.hidden) setRequestKey((key) => key + 1);
+    };
+    const timer = window.setInterval(refresh, 60000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [projectId]);
+
   function reload() {
     setLoading(true);
     setError('');

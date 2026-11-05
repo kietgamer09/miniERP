@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "npm run test:unit && npm run test:contract && npm run test:department",
-    "test:unit": "node --test tests/attendance.test.js",
+    "test:unit": "node --test tests/attendance.test.js tests/task-recurrence.test.js",
     "test:contract": "node --experimental-vm-modules scripts/check-attendance-contract.mjs && node --experimental-vm-modules scripts/check-payroll-contract.mjs && node --experimental-vm-modules scripts/check-explanation-times.mjs",
     "test:department": "cross-env NODE_ENV=test node --test tests/department.test.js",
     "test:integration": "node scripts/run-integration-tests.mjs",
@@ -23,6 +23,7 @@
     "setup:chat": "node scripts/setup-chat.js",
     "setup:overtime": "node scripts/setup-overtime.js",
     "setup:payroll": "node scripts/setup-payroll.js",
+    "setup:task-recurrence": "node scripts/setup-task-recurrence.js",
     "cleanup:orphan-attachments": "node scripts/cleanup-orphan-attachments.mjs"
   },
   "keywords": [],

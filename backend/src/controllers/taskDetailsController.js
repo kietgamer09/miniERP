@@ -2,6 +2,8 @@
 import { formatTask, taskFields, validateTask } from './taskController.js';
 import { parseId } from '../utils/validators.js';
 import { dueDateError } from '../utils/taskRules.js';
+import { randomUUID } from 'node:crypto';
+import { isRecurrenceFrequency, recurrenceAnchorDay } from '../utils/taskRecurrence.js';
 
 function errorResult(status, error) {
   return { status, error };
@@ -51,6 +53,15 @@ export const updateTaskDetails = async (req, res) => {
       }
 
       const body = req.body;
+      if (Object.hasOwn(body || {}, 'recurrence_frequency')
+        && body.recurrence_frequency !== null && body.recurrence_frequency !== ''
+        && !isRecurrenceFrequency(body.recurrence_frequency)) {
+        return errorResult(400, 'Chu kỳ lặp phải là daily, weekly hoặc monthly');
+      }
+      if (task.status === 'xong' && Object.hasOwn(body || {}, 'recurrence_frequency')
+        && body.recurrence_frequency !== task.recurrence_frequency) {
+        return errorResult(409, 'Không thể thay đổi chu kỳ lặp của task đã hoàn thành');
+      }
       const { title, assigneeId, error } = validateTask(body);
       if (error) return errorResult(400, error);
 
@@ -71,6 +82,18 @@ export const updateTaskDetails = async (req, res) => {
         return errorResult(400, 'Mô tả phải là chuỗi hoặc null');
       }
 
+      const recurrenceData = {};
+      if (Object.hasOwn(body, 'recurrence_frequency')) {
+        const frequency = body.recurrence_frequency || null;
+        recurrenceData.recurrence_frequency = frequency;
+        recurrenceData.recurrence_series_id = frequency
+          ? (task.recurrence_series_id || randomUUID())
+          : null;
+        recurrenceData.recurrence_anchor_day = frequency
+          ? (task.recurrence_anchor_day || recurrenceAnchorDay(body.due_date))
+          : null;
+      }
+
       const updatedTask = await tx.tasks.update({
         where: { id },
         data: {
@@ -79,6 +102,7 @@ export const updateTaskDetails = async (req, res) => {
           assignee_id: assigneeId,
           due_date: new Date(`${body.due_date}T00:00:00.000Z`),
           priority: body.priority,
+          ...recurrenceData,
           updated_at: new Date(),
         },
         select: taskFields,
