@@ -35,7 +35,7 @@ try {
         fullname TEXT, email TEXT, phone_number TEXT, birthday TEXT, manage_by TEXT, position TEXT, start_date DATE, status employee_status, created_at TIMESTAMP);
       CREATE TABLE attendances(attendances_id SERIAL PRIMARY KEY, employee_id INT REFERENCES employees(employee_id), date DATE, check_in TIME, check_out TIME, created_at TIMESTAMP);
       CREATE TABLE "Day_off_requests"("Day_off_id" SERIAL PRIMARY KEY, employee_send_id INT, employee_receive_id INT, start_date DATE, end_date DATE, reason TEXT, status leave_status, created_at TIMESTAMP);
-      INSERT INTO departments VALUES (1,'Phòng A');
+      INSERT INTO departments VALUES (1, 'Phòng A', 112);
       INSERT INTO users(user_id,role,username,password) VALUES (11,'employee','e11','test'),(12,'employee','e12','test'),(13,'employee','e13','test'),
         (14,'employee','e14','test'),(15,'employee','e15','test'),(16,'employee','e16','test'),(22,'manager','m22','test'),(33,'admin','a33','test');
       INSERT INTO employees(employee_id,user_id,department_id,fullname,status,start_date)
