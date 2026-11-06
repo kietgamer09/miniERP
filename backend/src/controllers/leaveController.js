@@ -103,19 +103,49 @@ export const createLeaveRequest = async (req, res) => {
         return { status: 400, error: `Bạn đã dùng/đăng ký ${reservedDates.size} ngày phép trong năm ${year}; chỉ còn ${Math.max(0, MAX_LEAVE_DAYS - reservedDates.size)} ngày.` };
       }
 
-      const adminEmployee = await tx.employees.findFirst({
-        where: {
-          employee_id: { not: employeeId },
-          status: 'dang_lam_viec',
-          users: { role: { equals: 'ADMIN', mode: 'insensitive' } },
-        },
-        select: { employee_id: true },
-        orderBy: { employee_id: 'asc' },
-      });
-      const recipientId = adminEmployee?.employee_id;
-      if (!recipientId || recipientId === employeeId) {
-        return { status: 409, error: 'Chưa có người duyệt khác người gửi. Hãy liên hệ quản trị viên.' };
-      }
+      // 1. Lấy thông tin nhân viên gửi và phòng ban của họ, bao gồm cả manager_id của phòng ban đó
+            const senderEmployee = await tx.employees.findUnique({
+              where: { employee_id: employeeId },
+              select: {
+                department_id: true,
+                departments: {
+                  select: { manager_id: true }
+                }
+              }
+            });
+
+            let recipientId = null;
+
+            // 2. Ưu tiên gửi cho quản lý trực tiếp của phòng ban (nếu có và khác chính nhân viên gửi)
+            const departmentManagerId = senderEmployee?.departments?.manager_id;
+            if (departmentManagerId && departmentManagerId !== employeeId) {
+              // Kiểm tra xem quản lý đó có đang làm việc không
+              const managerEmp = await tx.employees.findFirst({
+                where: { employee_id: departmentManagerId, status: 'dang_lam_viec' },
+                select: { employee_id: true }
+              });
+              if (managerEmp) {
+                recipientId = managerEmp.employee_id;
+              }
+            }
+
+            // 3. Nếu phòng ban chưa có quản lý hoặc quản lý không hợp lệ, mới chuyển hướng gửi cho Admin
+            if (!recipientId) {
+              const adminEmployee = await tx.employees.findFirst({
+                where: {
+                  employee_id: { not: employeeId },
+                  status: 'dang_lam_viec',
+                  users: { role: { equals: 'ADMIN', mode: 'insensitive' } },
+                },
+                select: { employee_id: true },
+                orderBy: { employee_id: 'asc' },
+              });
+              recipientId = adminEmployee?.employee_id;
+            }
+
+            if (!recipientId || recipientId === employeeId) {
+              return { status: 409, error: 'Chưa có người duyệt (quản lý phòng ban hoặc admin) thích hợp. Hãy liên hệ quản trị viên.' };
+            }
 
       const request = await tx.Day_off_requests.create({
         data: {
