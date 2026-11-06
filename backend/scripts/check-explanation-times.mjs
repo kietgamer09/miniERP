@@ -16,7 +16,16 @@ assert.ok(explanationTimes({ requested_check_in: '08:00', requested_check_out: '
 
 let writes = 0;
 const db = {
-  employees: { findUnique: async () => ({ employee_id: 12, department_id: 1 }), findFirst: async () => ({ user_id: 5 }) },
+  employees: {
+    findUnique: async () => ({
+      employee_id: 12,
+      department_id: 1,
+      departments: {
+        manager_id: 2
+      }
+    }),
+    findFirst: async () => ({ user_id: 5 })
+  },
   attendance_explanations: {
     findUnique: async () => null,
     create: async ({ data }) => { writes++; return { id: 1, ...data }; },
