@@ -102,7 +102,11 @@ function TaskFormModal({ project, task = null, onCancel, onSaved }) {
           notFoundContent="Dự án chưa có thành viên" options={assigneeOptions} />
       </Form.Item>
       <Form.Item label="Lặp lại" name="recurrence_frequency" extra="Task tiếp theo tự tạo theo lịch, bỏ Thứ 7 và Chủ nhật. Mặc định hạn lúc 17:00: hàng ngày vào ngày làm việc kế tiếp, hàng tuần vào Thứ 6, hàng tháng vào ngày làm việc cuối tháng.">
-        <Select options={TASK_RECURRENCE_OPTIONS} disabled={task?.status === 'xong'} />
+        <Select options={TASK_RECURRENCE_OPTIONS.map((option) => ({
+          ...option,
+          disabled: task?.status === 'xong' && Boolean(option.value)
+            && option.value !== task.recurrence_frequency,
+        }))} />
       </Form.Item>
       <Form.Item label="Hạn chót" name="due_date" rules={[
         { required: true, message: 'Vui lòng chọn hạn chót' },

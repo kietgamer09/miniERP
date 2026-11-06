@@ -482,6 +482,35 @@ test('recurring daily tasks create the next task even when the current one is un
   assert.equal((await createDueRecurringTasks(new Date('2026-11-03T12:00:00.000Z'), prisma)).created, 0);
 });
 
+test('disabling recurrence on a completed task stops its whole series without creating a replacement', async () => {
+  const project = await createProject({ code: 'ISSUE95-R-STOP' });
+  await prisma.project_members.create({ data: { project_id: project.id, employee_id: 2 } });
+  const created = await invoke(createTaskController, {
+    params: { id: String(project.id) },
+    body: { title: 'Việc lặp cần dừng', assignee_id: 2, due_date: '2026-11-02', priority: 'trung_binh', recurrence_frequency: 'daily' },
+    user: { role: 'manager' }, employee: { employee_id: 1 },
+  });
+  const original = await prisma.tasks.findUnique({ where: { id: created.body.id } });
+  assert.equal((await createDueRecurringTasks(new Date('2026-11-03T12:00:00.000Z'), prisma)).created, 1);
+  await prisma.tasks.update({ where: { id: original.id }, data: { status: 'xong' } });
+
+  const stopped = await invoke(updateTaskDetails, {
+    params: { id: String(original.id) },
+    body: {
+      title: 'Việc lặp cần dừng', assignee_id: 2, due_date: '2026-11-02',
+      priority: 'trung_binh', recurrence_frequency: null,
+    },
+    user: { role: 'manager' }, employee: { employee_id: 1 },
+  });
+  assert.equal(stopped.statusCode, 200);
+  assert.equal(stopped.body.id, original.id);
+  assert.equal(stopped.body.recurrence_frequency, null);
+  assert.equal(await prisma.tasks.count({ where: { project_id: project.id } }), 2);
+  assert.equal(await prisma.tasks.count({ where: { project_id: project.id, recurrence_frequency: { not: null } } }), 0);
+  assert.equal((await createDueRecurringTasks(new Date('2026-11-04T12:00:00.000Z'), prisma)).created, 0);
+  assert.equal(await prisma.tasks.count({ where: { project_id: project.id } }), 2);
+});
+
 test('recurring weekly tasks use Friday deadlines and update dates in titles', async () => {
   const project = await createProject({ code: 'ISSUE95-R-WEEK' });
   await prisma.project_members.create({ data: { project_id: project.id, employee_id: 2 } });
