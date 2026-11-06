@@ -30,7 +30,7 @@ try {
         temp_password_expires_at TIMESTAMPTZ,
         temp_password_used_at TIMESTAMPTZ
       );
-      CREATE TABLE departments(department_id INT PRIMARY KEY, department_name TEXT);
+      CREATE TABLE departments(department_id INT PRIMARY KEY, department_name TEXT, manager_id INT);
       CREATE TABLE employees(employee_id INT PRIMARY KEY, user_id INT UNIQUE REFERENCES users(user_id), department_id INT REFERENCES departments(department_id),
         fullname TEXT, email TEXT, phone_number TEXT, birthday TEXT, manage_by TEXT, position TEXT, start_date DATE, status employee_status, created_at TIMESTAMP);
       CREATE TABLE attendances(attendances_id SERIAL PRIMARY KEY, employee_id INT REFERENCES employees(employee_id), date DATE, check_in TIME, check_out TIME, created_at TIMESTAMP);
