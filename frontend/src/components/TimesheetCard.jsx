@@ -148,7 +148,9 @@ export default function TimesheetCard({ compact = false }) {
         {Array.from({ length: offset }, (_, i) => <div key={`empty-${i}`} />)}
         {data.days.map(item => {
           const expl = getExplanation(item);
-          const dayColor = item.color;
+          const isPendingExpl = expl?.status === 'pending';
+          const dayColor = isPendingExpl ? 'gold' : item.color;
+          
           const dayLabel = item.label;
 
           return (

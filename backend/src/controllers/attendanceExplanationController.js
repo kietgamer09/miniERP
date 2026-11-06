@@ -76,33 +76,47 @@ export const createAttendanceExplanation = async (req, res) => {
       return res.status(409).json({ error: 'Bạn đã gửi giải trình cho ngày này rồi.' });
     }
 
-    const sender = await prisma.employees.findUnique({
-      where: { employee_id: employeeId },
-      select: { department_id: true }
-    });
+    // 1. Lấy thông tin nhân viên gửi, phòng ban và manager_id của phòng ban đó
+        const sender = await prisma.employees.findUnique({
+          where: { employee_id: employeeId },
+          select: {
+            department_id: true,
+            departments: {
+              select: { manager_id: true }
+            }
+          }
+        });
 
-    let reviewerUserId = null;
+        let reviewerUserId = null;
 
-    const managerInDept = await prisma.employees.findFirst({
-      where: {
-        department_id: sender?.department_id,
-        employee_id: { not: employeeId },
-        status: 'dang_lam_viec',
-        users: { role: { equals: 'MANAGER', mode: 'insensitive' } }
-      },
-      select: { user_id: true }
-    });
+        // 2. Ưu tiên lấy user_id của quản lý trực tiếp phòng ban
+        const departmentManagerId = sender?.departments?.manager_id;
+        if (departmentManagerId && departmentManagerId !== employeeId) {
+          const managerEmp = await prisma.employees.findFirst({
+            where: {
+              employee_id: departmentManagerId,
+              status: 'dang_lam_viec'
+            },
+            select: { user_id: true }
+          });
+          if (managerEmp?.user_id) {
+            reviewerUserId = managerEmp.user_id;
+          }
+        }
 
-    if (managerInDept) {
-      reviewerUserId = managerInDept.user_id;
-    } else {
-      const adminUser = await prisma.users.findFirst({
-        where: { role: { equals: 'ADMIN', mode: 'insensitive' } },
-        select: { user_id: true },
-        orderBy: { user_id: 'asc' }
-      });
-      reviewerUserId = adminUser?.user_id;
-    }
+        // 3. Nếu phòng ban chưa có quản lý hoặc quản lý không hợp lệ, mới chuyển hướng tìm Admin
+        if (!reviewerUserId) {
+          const adminUser = await prisma.users.findFirst({
+            where: { role: { equals: 'ADMIN', mode: 'insensitive' } },
+            select: { user_id: true },
+            orderBy: { user_id: 'asc' }
+          });
+          reviewerUserId = adminUser?.user_id;
+        }
+
+        if (!reviewerUserId) {
+          return res.status(409).json({ error: 'Chưa có người duyệt (quản lý phòng ban hoặc admin) thích hợp. Hãy liên hệ quản trị viên.' });
+        }
 
     const explanation = await prisma.attendance_explanations.create({
       data: {
