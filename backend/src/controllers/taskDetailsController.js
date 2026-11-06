@@ -59,7 +59,7 @@ export const updateTaskDetails = async (req, res) => {
         return errorResult(400, 'Chu kỳ lặp phải là daily, weekly hoặc monthly');
       }
       if (task.status === 'xong' && Object.hasOwn(body || {}, 'recurrence_frequency')
-        && body.recurrence_frequency !== task.recurrence_frequency) {
+        && body.recurrence_frequency && body.recurrence_frequency !== task.recurrence_frequency) {
         return errorResult(409, 'Không thể thay đổi chu kỳ lặp của task đã hoàn thành');
       }
       const { title, assigneeId, error } = validateTask(body);
@@ -90,6 +90,12 @@ export const updateTaskDetails = async (req, res) => {
       const recurrenceData = {};
       if (Object.hasOwn(body, 'recurrence_frequency')) {
         const frequency = body.recurrence_frequency || null;
+        if (!frequency && task.recurrence_series_id) {
+          await tx.tasks.updateMany({
+            where: { recurrence_series_id: task.recurrence_series_id },
+            data: { recurrence_series_id: null, recurrence_frequency: null, recurrence_anchor_day: null },
+          });
+        }
         recurrenceData.recurrence_frequency = frequency;
         recurrenceData.recurrence_series_id = frequency
           ? (task.recurrence_series_id || randomUUID())
