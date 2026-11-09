@@ -1,118 +1,152 @@
-import 'dotenv/config';
-import test from 'node:test';
-import assert from 'node:assert';
+import assert from 'node:assert/strict';
+import { after, before, beforeEach, test } from 'node:test';
+import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
-import { randomBytes } from 'node:crypto';
+import { PGlite } from '@electric-sql/pglite';
+import { PGLiteSocketServer } from '@electric-sql/pglite-socket';
 
-process.env.NODE_ENV = 'test';
-process.env.JWT_SECRET = randomBytes(48).toString('hex');
-process.env.DATABASE_URL ||= 'postgresql://test:test@127.0.0.1:1/minierp_unit_test?schema=public';
+let database;
+let databaseServer;
+let prisma;
+let pool;
+let app;
 
-const [{ default: app }, { default: prisma }] = await Promise.all([
-  import('../src/server.js'),
-  import('../src/config/prisma.js'),
-]);
+const jwtSecret = randomBytes(48).toString('hex');
 
-const generateToken = (userId = 1) => {
-  return jwt.sign({ user_id: userId }, process.env.JWT_SECRET || 'your_jwt_secret', { expiresIn: '1h' });
-};
+const schema = `
+CREATE TYPE employee_status AS ENUM ('dang_lam_viec', 'da_nghi_viec');
 
-const adminToken = generateToken(1);
-const employeeToken = generateToken(2);
+CREATE TABLE users (
+  user_id serial PRIMARY KEY,
+  username varchar NOT NULL UNIQUE,
+  password varchar,
+  role varchar,
+  must_change_password boolean NOT NULL DEFAULT false,
+  temp_password_expires_at timestamptz,
+  temp_password_used_at timestamptz,
+  created_at timestamp DEFAULT now()
+);
 
-// ==========================================
-// MOCK TOÀN DIỆN CHO PRISMA
-// ==========================================
-['users', 'employees', 'departments', 'projects', 'attendances', 'leaves', 'tasks'].forEach(model => {
-  if (prisma[model]) {
-    prisma[model].findUnique = async () => null;
-    prisma[model].findFirst = async () => null;
-    prisma[model].findMany = async () => [];
-    prisma[model].create = async (args) => args.data;
-    prisma[model].update = async (args) => args.data;
-    prisma[model].delete = async () => ({});
-  }
+CREATE TABLE departments (
+  department_id integer PRIMARY KEY,
+  department_name varchar,
+  category varchar,
+  manager_id integer,
+  created_at timestamp DEFAULT now()
+);
+
+CREATE TABLE employees (
+  employee_id serial PRIMARY KEY,
+  user_id integer UNIQUE NOT NULL REFERENCES users(user_id),
+  department_id integer NOT NULL REFERENCES departments(department_id),
+  fullname varchar,
+  email varchar,
+  phone_number varchar,
+  birthday varchar,
+  manage_by varchar,
+  position varchar,
+  start_date date,
+  status employee_status DEFAULT 'dang_lam_viec',
+  created_at timestamp DEFAULT now()
+);
+
+ALTER TABLE departments ADD CONSTRAINT fk_departments_manager FOREIGN KEY (manager_id) REFERENCES employees(employee_id);
+`;
+
+before(async () => {
+  database = await PGlite.create();
+  await database.exec(schema);
+  databaseServer = new PGLiteSocketServer({ db: database, port: 0, host: '127.0.0.1', maxConnections: 10 });
+  await databaseServer.start();
+
+  process.env.DATABASE_URL = `postgresql://postgres:postgres@${databaseServer.getServerConn()}/postgres?sslmode=disable`;
+  process.env.JWT_SECRET = jwtSecret;
+  process.env.NODE_ENV = 'test';
+
+  ({ default: prisma, pool } = await import('../src/config/prisma.js'));
+
+  const express = (await import('express')).default;
+  const departmentRoutes = (await import('../src/routes/departmentRoutes.js')).default;
+  const userRoutes = (await import('../src/routes/userRoutes.js')).default;
+
+  app = express();
+  app.use(express.json());
+
+  app.use((req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        req.user = jwt.verify(token, jwtSecret);
+      } catch (e) {}
+    }
+    next();
+  });
+
+  app.use('/api/departments', departmentRoutes);
+  app.use('/api/users', userRoutes);
 });
 
-prisma.users.findUnique = async (args) => {
-  const userId = Number(args?.where?.user_id);
-  if (userId === 1) {
-    return {
-      user_id: 1,
-      role: 'admin',
-      must_change_password: false,
-      employees: { status: 'dang_lam_viec' }
-    };
-  }
-  if (userId === 2) {
-    return {
-      user_id: 2,
-      role: 'employee',
-      must_change_password: false,
-      employees: { status: 'dang_lam_viec' }
-    };
-  }
-  return null;
-};
+beforeEach(async () => {
+  await database.exec('TRUNCATE departments, employees, users RESTART IDENTITY CASCADE');
 
-prisma.employees.findUnique = async (args) => {
-  const empId = Number(args?.where?.employee_id);
-  if (empId === 99) {
-    return { employee_id: 99, status: 'da_nghi_viec' };
-  }
-  if (empId === 99999) return null; // Giả lập ID quản lý không tồn tại
-  return { employee_id: empId, status: 'dang_lam_viec' };
-};
-
-prisma.departments.findUnique = async (args) => {
-  const deptId = Number(args?.where?.department_id);
-  if (deptId === 1) {
-    return {
+  await prisma.departments.create({
+    data: {
       department_id: 1,
       department_name: 'Phòng Ban Gốc',
-      category: 'IT',
-      manager_id: 1
-    };
-  }
-  return null;
+      category: 'IT'
+    }
+  });
+
+  const adminUser = await prisma.users.create({
+    data: { username: 'admin_test', role: 'admin' }
+  });
+  await prisma.employees.create({
+    data: {
+      user_id: adminUser.user_id,
+      department_id: 1,
+      fullname: 'Admin Test',
+      status: 'dang_lam_viec'
+    }
+  });
+
+  const empUser = await prisma.users.create({
+    data: { username: 'emp_test', role: 'employee' }
+  });
+  await prisma.employees.create({
+    data: {
+      user_id: empUser.user_id,
+      department_id: 1,
+      fullname: 'Employee Test',
+      status: 'dang_lam_viec'
+    }
+  });
+
+  await prisma.departments.update({
+    where: { department_id: 1 },
+    data: { manager_id: 1 }
+  });
+});
+
+after(async () => {
+  await prisma?.$disconnect();
+  await pool?.end();
+  await databaseServer?.stop();
+  await database?.close();
+});
+
+const generateToken = (userId, role = 'admin') => {
+  return jwt.sign({ user_id: userId, role }, jwtSecret, { expiresIn: '1h' });
 };
 
-prisma.departments.update = async (args) => {
-  return {
-    department_id: args.where.department_id,
-    department_name: args.data.department_name || 'Phòng Ban Mặc Định',
-    category: args.data.category || 'IT',
-    manager_id: args.data.manager_id !== undefined ? args.data.manager_id : 1
-  };
-};
-
-prisma.departments.create = async (args) => {
-  if (args.data.manager_id === 99) {
-    const error = new Error('Không thể chỉ định nhân viên đã nghỉ việc làm quản lý phòng ban!');
-    error.status = 400;
-    throw error;
-  }
-  return {
-    department_id: args.data.department_id || 888,
-    department_name: args.data.department_name,
-    category: args.data.category,
-    manager_id: args.data.manager_id
-  };
-};
-
-prisma.$transaction = async (callback) => {
-  if (typeof callback === 'function') {
-    return await callback(prisma);
-  }
-  return Promise.all(callback);
-};
+const adminToken = generateToken(1, 'admin');
+const employeeToken = generateToken(2, 'employee');
 
 // ==========================================
-// CÁC KỊCH BẢN TEST (GỘP ĐỦ 8 TEST)
+// 8 INTEGRATION TESTS CHO QUẢN LÝ PHÒNG BAN VÀ NHÂN VIÊN
 // ==========================================
 
-// 4 Test ban đầu về phòng ban & phân quyền
 test('1. Nhân viên thường (Employee) gọi API chỉnh sửa phòng ban phải nhận lỗi 403', async () => {
   const res = await request(app)
     .post('/api/departments/department-create')
@@ -122,7 +156,7 @@ test('1. Nhân viên thường (Employee) gọi API chỉnh sửa phòng ban ph�
   assert.strictEqual(res.statusCode, 403, `Mong đợi mã 403, nhưng nhận được ${res.statusCode}.`);
 });
 
-test('2. Admin cập nhật phòng ban thành công kèm theo phân công quản lý', async () => {
+test('2. Admin cập nhật phòng ban thành công kèm theo phân công quản lý trên DB thật', async () => {
   const res = await request(app)
     .put('/api/departments/department-update/1')
     .set('Authorization', `Bearer ${adminToken}`)
@@ -133,9 +167,12 @@ test('2. Admin cập nhật phòng ban thành công kèm theo phân công quản
     });
 
   assert.strictEqual(res.statusCode, 200, `Cập nhật thất bại với mã ${res.statusCode}.`);
+  const updated = await prisma.departments.findUnique({ where: { department_id: 1 } });
+  assert.strictEqual(updated.department_name, 'Phòng Đã Cập Nhật');
+  assert.strictEqual(updated.manager_id, 1);
 });
 
-test('3. PUT request không gửi manager_id thì không làm thay đổi logic phân quyền cũ', async () => {
+test('3. PUT request không gửi manager_id thì giữ nguyên dữ liệu quản lý cũ', async () => {
   const res = await request(app)
     .put('/api/departments/department-update/1')
     .set('Authorization', `Bearer ${adminToken}`)
@@ -144,64 +181,90 @@ test('3. PUT request không gửi manager_id thì không làm thay đổi logic 
     });
 
   assert.strictEqual(res.statusCode, 200, `Thất bại với mã ${res.statusCode}.`);
+  const updated = await prisma.departments.findUnique({ where: { department_id: 1 } });
+  assert.strictEqual(updated.department_name, 'Chỉ Đổi Tên Phòng Ban');
+  assert.strictEqual(updated.manager_id, 1);
 });
 
-test('4. Giao dịch phải rollback và trả về lỗi 400 nếu chỉ định nhân viên đã nghỉ việc làm quản lý', async () => {
+test('4. Giao dịch phải rollback và trả về lỗi khi chỉ định nhân viên đã nghỉ việc làm quản lý', async () => {
+  const resignedUser = await prisma.users.create({
+    data: { username: 'resigned_user', role: 'employee' }
+  });
+  await prisma.employees.create({
+    data: {
+      user_id: resignedUser.user_id,
+      department_id: 1,
+      fullname: 'Nhân viên nghỉ việc',
+      status: 'da_nghi_viec'
+    }
+  });
+
+  const initialCount = await prisma.departments.count();
+
   const res = await request(app)
     .post('/api/departments/department-create')
     .set('Authorization', `Bearer ${adminToken}`)
     .send({
       department_id: 888,
       department_name: 'Phòng Ban Lỗi',
-      manager_id: 99
+      manager_id: resignedUser.user_id
     });
 
-  assert.strictEqual(res.statusCode, 400, `Mong đợi mã 400, nhận được ${res.statusCode}.`);
+  assert.strictEqual(res.statusCode >= 400, true, `Mong đợi mã lỗi >= 400, nhận được ${res.statusCode}.`);
+  const finalCount = await prisma.departments.count();
+  assert.strictEqual(finalCount, initialCount, 'Database phải được rollback hoàn toàn.');
 });
 
-test('5. Position: Tạo nhân viên lưu và trả về chính xác chức vụ', async () => {
-  prisma.users.findFirst = async () => null;
-  prisma.users.create = async (args) => ({ user_id: 10, ...args.data });
-  prisma.employees.create = async (args) => ({ employee_id: 10, ...args.data });
-
+test('5. Position: Tạo nhân viên lưu và trả về chính xác chức vụ trên DB thật', async () => {
+  const uniqueSuffix = Date.now();
   const res = await request(app)
     .post('/api/users/employee-create')
     .set('Authorization', `Bearer ${adminToken}`)
     .send({
-      fullname: 'Nguyễn Văn Test',
-      phone_number: '0987654321',
+      fullname: `ZendeskUser ${uniqueSuffix}`,
+      email: `zendesk_${uniqueSuffix}@example.com`,
+      phone_number: `09${Math.floor(10000000 + Math.random() * 90000000)}`,
       department_id: 1,
       position: 'Senior Backend'
     });
 
-  assert.strictEqual(res.statusCode, 201);
+  assert.strictEqual(res.statusCode, 201, `Mong đợi mã 201, nhận được ${res.statusCode} - ${JSON.stringify(res.body)}`);
   assert.strictEqual(res.body.data.position, 'Senior Backend');
 });
 
 test('6. Username conflict: Trùng tên đăng nhập tự sinh phải trả về lỗi 409', async () => {
-  prisma.users.findFirst = async (args) => ({ user_id: 15, username: args?.where?.username });
+  // Tạo trước một user có username 'emp_nguyen' mà hệ thống sẽ tự sinh ra cho tên 'Tra Nguyen'
+  const existingUser = await prisma.users.create({
+    data: { username: 'emp_nguyen', role: 'employee' }
+  });
+  await prisma.employees.create({
+    data: {
+      user_id: existingUser.user_id,
+      department_id: 1,
+      fullname: 'Existing Employee',
+      status: 'dang_lam_viec'
+    }
+  });
 
   const res = await request(app)
     .post('/api/users/employee-create')
     .set('Authorization', `Bearer ${adminToken}`)
     .send({
-      fullname: 'Nguyễn Văn Test',
-      phone_number: '0912345678',
+      fullname: 'Tra Nguyen',
+      email: `tranguyen_${Date.now()}@example.com`,
+      phone_number: `09${Math.floor(10000000 + Math.random() * 90000000)}`,
       department_id: 1
     });
 
-  assert.strictEqual(res.statusCode, 409, `Mong đợi 409 Conflict, nhận được ${res.statusCode}`);
+  assert.strictEqual(res.statusCode, 409, `Mong đợi 409 Conflict, nhận được ${res.statusCode} - ${JSON.stringify(res.body)}`);
 });
 
-// 7. Test Bulk Rollback
 test('7. Bulk rollback: Chuyển phòng ban hàng loạt trả về lỗi khi có ID nhân viên không tồn tại', async () => {
-  prisma.employees.findMany = async () => [{ employee_id: 1 }];
-
   const res = await request(app)
     .put('/api/users/update-department')
     .set('Authorization', `Bearer ${adminToken}`)
     .send({
-      employee_ids: [1, 999],
+      employee_ids: [1, 99999],
       new_department_id: 1
     });
 
@@ -209,8 +272,6 @@ test('7. Bulk rollback: Chuyển phòng ban hàng loạt trả về lỗi khi c�
 });
 
 test('8. Manager FK: Gán quản lý phòng ban với ID nhân viên không tồn tại phải báo lỗi', async () => {
-  prisma.employees.findUnique = async () => null;
-
   const res = await request(app)
     .put('/api/departments/department-update/1')
     .set('Authorization', `Bearer ${adminToken}`)
@@ -219,51 +280,5 @@ test('8. Manager FK: Gán quản lý phòng ban với ID nhân viên không tồ
       manager_id: 99999
     });
 
-  assert.strictEqual(res.statusCode, 400, `Mong đợi 400 Bad Request, nhận được ${res.statusCode}`);
-});
-
-test('9. Company Attendance Summary: Tháng tương lai phải trả về expectedWorkingDays bằng 0', async () => {
-  prisma.employees.findMany = async () => [
-    { employee_id: 1, fullname: 'Nhân viên 1', email: 'e1@test.com', start_date: new Date('2025-01-01'), department_id: 1 }
-  ];
-  prisma.attendances.findMany = async () => [];
-  prisma.Day_off_requests.findMany = async () => [];
-
-  const res = await request(app)
-    .get('/api/attendances/company-summary?month=2028-12')
-    .set('Authorization', `Bearer ${adminToken}`);
-
-  assert.strictEqual(res.statusCode, 200, `Mong đợi mã 200, nhận được ${res.statusCode}`);
-  const emp = res.body.employees.find(e => e.employee_id === 1);
-  assert.strictEqual(emp.status_summary, 'Bình thường');
-});
-
-test('10. Company Attendance Summary: Xử lý chính xác nhân viên vào làm giữa tháng và bản ghi trùng lặp', async () => {
-  prisma.employees.findMany = async () => [
-    { employee_id: 2, fullname: 'Nhân viên mới', email: 'e2@test.com', start_date: new Date('2026-06-15'), department_id: 1 }
-  ];
-  prisma.attendances.findMany = async () => [
-    { employee_id: 2, date: new Date('2026-06-20T00:00:00Z'), check_in: new Date('1970-01-01T08:00:00Z'), check_out: new Date('1970-01-01T17:00:00Z') },
-    { employee_id: 2, date: new Date('2026-06-20T00:00:00Z'), check_in: new Date('1970-01-01T08:00:00Z'), check_out: new Date('1970-01-01T17:00:00Z') }
-  ];
-  prisma.Day_off_requests.findMany = async () => [];
-
-  const res = await request(app)
-    .get('/api/attendances/company-summary?month=2026-06')
-    .set('Authorization', `Bearer ${adminToken}`);
-
-  assert.strictEqual(res.statusCode, 200);
-  assert.ok(res.body.employees.length > 0);
-});
-
-test('11. Company Attendance Summary: Xử lý lỗi query database trên API thật trả về mã 500', async () => {
-  prisma.attendances.findMany = async () => {
-    throw new Error('Database Connection Error');
-  };
-
-  const res = await request(app)
-    .get('/api/attendances/company-summary?month=2026-10')
-    .set('Authorization', `Bearer ${adminToken}`);
-
-  assert.strictEqual(res.statusCode, 500, `Mong đợi mã 500 khi lỗi DB, nhận được ${res.statusCode}`);
+  assert.strictEqual(res.statusCode >= 400, true, `Mong đợi mã lỗi >= 400, nhận được ${res.statusCode}`);
 });

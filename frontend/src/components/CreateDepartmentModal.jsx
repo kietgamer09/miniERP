@@ -13,7 +13,7 @@ export default function CreateDepartmentModal({ open, onCancel, onSuccess, emplo
         department_id: values.department_id,
         department_name: values.department_name,
         category: values.category,
-        managment: values.managment
+        manager_id: values.manager_id // Đã đổi thành manager_id thống nhất với backend
       });
       message.success('Tạo phòng ban thành công!');
       form.resetFields();
@@ -55,7 +55,7 @@ export default function CreateDepartmentModal({ open, onCancel, onSuccess, emplo
           <Input placeholder="Nhập phân loại phòng ban..." />
         </Form.Item>
 
-        <Form.Item name="managment" label="Quản lý phòng ban (Trưởng phòng)">
+        <Form.Item name="manager_id" label="Quản lý phòng ban (Trưởng phòng)">
           <Select
             placeholder="Chọn nhân viên làm quản lý..."
             allowClear
