@@ -13,9 +13,13 @@ function temporaryPasswordExpiry() {
   return new Date(Date.now() + temporaryPasswordLifetimeMs);
 }
 
-// Chuẩn hóa allowlist role về dạng chữ thường duy nhất để tránh phân mảnh dữ liệu[cite: 2]
 const VALID_ROLES = ['admin', 'manager', 'employee'];
 const VALID_STATUSES = ['dang_lam_viec', 'da_nghi_viec'];
+
+const isValidEmployeeId = (id) => {
+  const num = Number(id);
+  return Number.isInteger(num) && num > 0 && Number.isSafeInteger(num);
+};
 
 function makeEmployeeUsername(fullname) {
   const nameParts = fullname.trim().split(/\s+/).filter(Boolean);
@@ -151,7 +155,6 @@ export const createUser = async (req, res) => {
       });
     }
 
-    // Chuẩn hóa role về lowercase trước khi check allowlist
     if (role) {
       role = String(role).trim().toLowerCase();
       if (!VALID_ROLES.includes(role)) {
@@ -297,7 +300,6 @@ export const updateUser = async (req, res) => {
       position
     } = req.body;
 
-    // Chuẩn hóa và validate Allowlist Role
     if (role) {
       role = String(role).trim().toLowerCase();
       if (!VALID_ROLES.includes(role)) {
@@ -332,7 +334,6 @@ export const updateUser = async (req, res) => {
       });
 
       if (status === 'da_nghi_viec') {
-        // Đã sửa 'managment' thành 'manager_id' đúng chuẩn Schema[cite: 2]
         await prismaClient.departments.updateMany({
           where: { manager_id: employeeId },
           data: { manager_id: null },
@@ -384,6 +385,13 @@ export const updateEmployeesDepartment = async (req, res) => {
 
     if (!Array.isArray(employee_ids) || employee_ids.length === 0) {
       return res.status(400).json({ error: 'Danh sách nhân viên không hợp lệ.' });
+    }
+
+    const hasInvalidId = employee_ids.some(id => !isValidEmployeeId(id));
+    if (hasInvalidId) {
+      return res.status(400).json({
+        error: 'Phát hiện mã nhân viên (employee_id) chứa giá trị không hợp lệ (NaN, số âm, số thập phân hoặc sai định dạng).'
+      });
     }
 
     if (new_department_id === null || new_department_id === undefined) {

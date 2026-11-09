@@ -7,11 +7,34 @@ UPDATE "users"
 SET "username" = 'user_' || "user_id"
 WHERE "username" IS NULL OR TRIM("username") = '';
 
-UPDATE "users" u1
-SET "username" = u1."username" || '_' || u1."user_id"
-FROM "users" u2
-WHERE u1."user_id" > u2."user_id"
-  AND u1."username" = u2."username";
+DO $$
+DECLARE
+    rec RECORD;
+    base_name TEXT;
+    candidate TEXT;
+    counter INT;
+BEGIN
+    FOR rec IN SELECT "user_id", "username" FROM "users" ORDER BY "user_id" ASC LOOP
+        base_name := rec."username";
+        candidate := base_name;
+        counter := 1;
+
+        WHILE EXISTS (
+            SELECT 1 FROM "users"
+            WHERE "username" = candidate
+              AND "user_id" <> rec."user_id"
+        ) LOOP
+            candidate := base_name || '_' || rec."user_id" || '_' || counter;
+            counter := counter + 1;
+        END LOOP;
+
+        IF candidate <> rec."username" THEN
+            UPDATE "users"
+            SET "username" = candidate
+            WHERE "user_id" = rec."user_id";
+        END IF;
+    END LOOP;
+END $$;
 
 ALTER TABLE "users" ALTER COLUMN "username" SET NOT NULL;
 

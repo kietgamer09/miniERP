@@ -57,10 +57,11 @@ export const updateDepartment = async (req, res) => {
     }
 
     const body = req.body ?? {};
+    const rawManagerId = body.manager_id !== undefined ? body.manager_id
+                       : body.managerId !== undefined ? body.managerId
+                       : body.managment;
 
-    // Hỗ trợ bắt cả manager_id (snake_case) lẫn managerId (camelCase) từ frontend gửi lên
-    const rawManagerId = body.manager_id !== undefined ? body.manager_id : body.managerId;
-    const hasManagementField = body.manager_id !== undefined || body.managerId !== undefined;
+    const hasManagementField = body.manager_id !== undefined || body.managerId !== undefined || body.managment !== undefined;
     const { department_name, category } = body;
 
     const result = await prisma.$transaction(async (tx) => {
@@ -200,7 +201,9 @@ export const createDepartment = async (req, res) => {
 
     const body = req.body ?? {};
     const { department_id, department_name, category } = body;
-    const rawManagerId = body.manager_id !== undefined ? body.manager_id : body.managerId;
+    const rawManagerId = body.manager_id !== undefined ? body.manager_id
+                       : body.managerId !== undefined ? body.managerId
+                       : body.managment;
 
     if (!department_id || !department_name) {
       return res.status(400).json({ error: 'Mã phòng ban và Tên phòng ban là bắt buộc.' });
