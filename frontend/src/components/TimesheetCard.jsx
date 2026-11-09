@@ -99,7 +99,7 @@ export default function TimesheetCard({ compact = false }) {
   return <Card title={<Space size={8}><span>Bảng công</span><Typography.Text type="secondary" style={{ fontSize: 12 }}>Bấm vào khung để xem bảng công tháng</Typography.Text></Space>} className={`timesheet-card${compact ? ' timesheet-card--compact' : ''}${data ? ' detail-clickable-card' : ''}`}
     {...(data ? detailInteraction(() => setShowCalendar(true), 'Mở bảng công chi tiết tháng') : {})}
     style={{ height: '100%' }} extra={<Space size={6}>
-    <DatePicker picker="month" allowClear={false} format="MM/YYYY" value={dayjs(`${month}-01`)} size="small"
+    <DatePicker picker="month" allowClear={false} format="MM/YYYY" disabledDate={(current) => current && current > dayjs().endOf('month')} value={dayjs(`${month}-01`)} size="small"
       aria-label="Tháng xem bảng công" onChange={value => { if (value) {
         setMonth(value.format('YYYY-MM')); setSelected(null); changeGroup('attention');
       } }} style={{ width: 104 }} />
