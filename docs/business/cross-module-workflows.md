@@ -1,123 +1,118 @@
 # Luồng nghiệp vụ liên module: Nhân sự ↔ Dự án
 
-> Đây là phân tích hợp đồng giữa các module, không thay thế quy trình HR. Người phụ trách Nhân sự cần xác nhận bước HR, người nhận phê duyệt và cách xử lý hồ sơ trước khi chốt vận hành.
+> Đối chiếu với code trong checkout `develop` ngày 09/11/2026. Nhãn **Hiện trạng** mô tả code; **Quy tắc đã thống nhất** chỉ dùng cho policy đã có căn cứ; **Đề xuất** và **Cần xác nhận** không được hiểu là hành vi đã triển khai.
 
-## 1. Tiếp nhận nhân viên → tài khoản → tham gia dự án
+## 1. Onboarding: tạo nhân viên → tài khoản → tham gia dự án
 
-### Tiền điều kiện
+### Hiện trạng
 
-- Phòng ban đích đã tồn tại.
-- Người tạo có quyền quản trị nhân sự.
-- Nhân viên chưa có username xung đột.
+1. Chỉ Admin được gọi `POST /api/users/employee-create`. Backend tạo `users` và `employees` trong cùng transaction; username được sinh theo tên và kiểm tra uniqueness.
+2. Mật khẩu tạm được tạo ngẫu nhiên riêng cho mỗi tài khoản, có hạn 24 giờ. Tài khoản phải đổi mật khẩu trước khi gọi nghiệp vụ; lần đăng nhập bằng mật khẩu tạm được đánh dấu đã dùng. Admin có thể cấp lại mật khẩu tạm qua endpoint reset.
+3. API tạo project thêm project manager vào membership. Người quản lý thêm các nhân viên đang làm việc vào project.
+4. Khi tạo/giao lại task, assignee phải là nhân viên đang làm việc và là thành viên của project.
+5. Nhân viên mới không tự động được thêm vào project chỉ vì thuộc một phòng ban.
 
-### Luồng hiện tại
-
-1. API tạo nhân viên sinh username từ tên, tạo user và employee trong cùng transaction.
-2. API trả `login_info.default_password` là mật khẩu chung `12345`.
-3. Quản lý/Admin tạo dự án, chọn nhân viên đang làm việc làm thành viên; quản lý dự án cũng được thêm vào membership.
-4. Người quản lý tạo task và chỉ định một thành viên đang làm việc.
+Nguồn: `backend/src/routes/userRoutes.js`, `userController.createUser`, `authController.login`, `authMiddleware.verifyToken`, `projectController.createProject`, `memberController`, `taskController`, `taskDetailsController`.
 
 ```mermaid
 sequenceDiagram
-    actor HR as Nhân sự/Admin
+    actor A as Admin
     participant U as Users + Employees
-    actor PM as Quản lý dự án
+    actor M as Project manager
     participant P as Projects + Members
     participant T as Tasks
-    HR->>U: Tạo nhân viên và user (transaction)
-    U-->>HR: employee_id + username + mật khẩu tạm chung
-    PM->>P: Tạo dự án và membership
-    PM->>T: Tạo task cho thành viên đang làm việc
-    T-->>PM: Từ chối nếu assignee không thuộc dự án
+    A->>U: Tạo nhân viên (transaction)
+    U-->>A: username + mật khẩu tạm riêng, hạn 24 giờ
+    A->>U: Chuyển credential cho nhân viên qua kênh đã xác nhận
+    U->>U: Đăng nhập lần đầu, chỉ được đổi mật khẩu
+    U->>U: Đổi mật khẩu thành công mới dùng nghiệp vụ
+    M->>P: Thêm nhân viên đang làm việc vào project
+    M->>T: Giao task cho project member
+    T-->>M: Từ chối assignee không thuộc project
 ```
 
-### Hậu điều kiện và rủi ro
+### Hậu điều kiện, rollback và khoảng trống
 
-- User và employee hoặc cùng được tạo, hoặc transaction rollback.
-- Project membership được tạo cùng dự án; task được giao cho thành viên hiện hành.
-- Mật khẩu chung đoán được là rủi ro bảo mật. Luồng tạo người dùng và activation thuộc HR/backend tích hợp; không dùng sơ đồ này để phê chuẩn quy trình cấp credential.
+- Transaction đảm bảo user và employee cùng được tạo hoặc cùng rollback.
+- Nếu lỗi sau khi tạo nhân viên nhưng trước khi thêm vào project, tài khoản vẫn tồn tại; thử lại thao tác membership sau khi xác nhận hồ sơ, không tạo trùng tài khoản.
+- **Rủi ro hiện tại:** `/api/users/employee-list` chỉ yêu cầu đăng nhập và trả danh sách có dữ liệu cá nhân. Cần giới hạn trường và phạm vi theo vai trò trước khi dùng endpoint này làm danh bạ onboarding.
+- **Cần xác nhận:** kênh gửi mật khẩu tạm, người chịu trách nhiệm giao credential, và yêu cầu activation thay cho mật khẩu tạm.
 
-### Rollback / khôi phục
+## 2. Chuyển phòng ban → rà soát project/task
 
-- Lỗi trong transaction tạo user/employee: không có bản ghi dở dang theo transaction.
-- Lỗi sau khi nhân viên đã được tạo nhưng trước khi đưa vào dự án: giữ hồ sơ nhân viên, không xóa tài khoản tự động; HR xác nhận lại thông tin rồi thử thêm membership.
-- Tạo nhầm membership nhưng chưa giao task: quản lý dự án/Admin có thể bớt thành viên. Nếu đã có task chưa xong, cần giao lại trước khi bớt.
+### Hiện trạng
 
-## 2. Chuyển phòng ban → rà soát dự án và task
+1. Admin gọi `PUT /api/users/update-department` để cập nhật phòng ban cho nhiều nhân viên. Backend kiểm tra danh sách rồi thực hiện `employees.updateMany` trong một transaction; nếu transaction lỗi, cả nhóm cập nhật rollback.
+2. Hệ thống hiện chỉ cập nhật `employees.department_id`, không lưu ngày hiệu lực/lịch sử phòng ban.
+3. `project_members`, task assignee và `projects.manager_id` không tự thay đổi theo phòng ban. Quyền project dựa vào membership, `manager_id`, role hiện hành và các kiểm tra ở API, không suy ra từ phòng ban.
+4. Người nhận yêu cầu làm thêm được lưu tại thời điểm gửi; chuyển phòng không tự chuyển các yêu cầu đang chờ.
 
-### Tiền điều kiện
-
-- Nhân viên và phòng ban đích tồn tại.
-- HR xác nhận ngày hiệu lực và người có quyền thực hiện.
-
-### Luồng hiện tại / điểm cần thống nhất
-
-1. API cập nhật `employees.department_id` cho danh sách nhân viên.
-2. `project_members` và `tasks.assignee_id` không tự thay đổi theo phòng ban; quyền dự án dựa vào membership/manager, không dựa trực tiếp vào phòng ban.
-3. Reviewer của yêu cầu làm thêm lưu `department_id` lúc gửi; thay đổi phòng ban không tự chuyển reviewer đã ghi nhận.
-4. HR và quản lý dự án cần quyết định task/membership cũ có được giữ, chuyển giao hay thu hồi.
+Nguồn: `backend/src/routes/userRoutes.js`, `userController.updateEmployeesDepartment`, `schema.prisma` (`employees`, `project_members`, `projects`), `overtimeController`.
 
 ```mermaid
 flowchart TD
-    A[HR xác nhận nhân viên và ngày hiệu lực] --> B[Cập nhật department_id]
-    B --> C{Rà soát project_members và task đang mở}
-    C -->|Giữ nguyên theo quyết định| D[Giữ quyền và assignee]
-    C -->|Cần bàn giao| E[Quản lý dự án giao lại task]
-    E --> F[Bớt membership khi không còn task chưa xong]
-    D --> G[Đối soát reviewer / yêu cầu chờ duyệt]
-    F --> G
+    A[Admin xác nhận danh sách và phòng ban đích] --> B[API kiểm tra toàn bộ employee IDs]
+    B --> C{Transaction cập nhật thành công?}
+    C -->|Có| D[Toàn bộ department_id được cập nhật]
+    C -->|Không| E[Rollback toàn bộ transaction]
+    D --> F[Rà soát manager/project/task và yêu cầu đang chờ]
+    F --> G[Giữ nguyên hoặc bàn giao theo quyết định có người chịu trách nhiệm]
 ```
 
-### Hậu điều kiện và rollback
+### Hậu điều kiện, rollback và quyết định cần xác nhận
 
-- Hậu điều kiện mong muốn: phòng ban cập nhật; các quyền/task được rà soát theo quyết định có người chịu trách nhiệm; yêu cầu đang chờ giữ nguyên người nhận theo snapshot hoặc được chuyển có audit.
-- Hiện nhiều nhân viên được chuyển bằng `Promise.all`, không phải một transaction toàn nhóm; một phần có thể đã đổi nếu một thao tác thất bại.
-- Nếu có lỗi: kiểm tra từng `employee_id` và phòng ban thực tế, khôi phục các bản ghi đã đổi về phòng cũ theo danh sách đối soát; không chạy lại mù toàn bộ lệnh.
+- Sau thành công, toàn bộ danh sách có phòng ban mới; quyền và assignment project giữ nguyên cho đến khi được xử lý riêng.
+- Nếu request timeout và không rõ transaction đã commit chưa, đọc lại `department_id` của đúng danh sách nhân viên trước khi chạy lại; không suy đoán dựa trên response bị mất.
+- **Đề xuất:** lưu ngày hiệu lực và lịch sử chuyển phòng; rà soát project manager, membership, task assignee và approver đang chờ như checklist nghiệp vụ, không tự động đổi assignment.
+- **Cần xác nhận:** ngày hiệu lực có thể trong tương lai không; ai phê duyệt chuyển phòng; approver đã chụp lúc gửi có được giữ nguyên không; ai quyết định bàn giao task/project.
 
-## 3. Nghỉ việc → thu hồi quyền → bàn giao dự án
+## 3. Offboarding: nghỉ việc → thu hồi quyền → bàn giao project
 
-### Tiền điều kiện
+### Hiện trạng
 
-- HR xác nhận trạng thái và thời điểm nghỉ việc.
-- Có người tiếp nhận các task/membership cần duy trì.
+1. Admin cập nhật trạng thái employee qua API user. Khi trạng thái thành `da_nghi_viec`, transaction xóa liên kết department manager nếu trỏ tới người đó và hạ role user khỏi `manager` khi phù hợp.
+2. `verifyToken` đọc role và trạng thái employee hiện tại từ DB ở mỗi request; tài khoản `da_nghi_viec` bị từ chối, nên quyền API bị thu hồi ngay ở request kế tiếp, kể cả token chưa hết hạn.
+3. Việc nghỉ không tự xóa account, project membership hay task. Task còn mở phải được quản lý/Admin giao lại; API không cho remove member khi họ còn task chưa hoàn tất.
+4. Khi đổi trạng thái trở lại active, hệ thống không tự khôi phục liên kết department manager, membership hay task đã được xử lý.
 
-### Luồng hiện tại / khoảng trống
-
-1. HR cập nhật `employees.status = da_nghi_viec`.
-2. Đăng nhập hiện từ chối nhân viên đã nghỉ việc; tuy nhiên middleware JWT chung hiện kiểm tra chữ ký/expiry và dùng role trong token, không truy vấn trạng thái hiện hành cho mọi request.
-3. Membership, task được giao và quản lý dự án không tự đóng/chuyển khi đổi trạng thái nhân viên.
-4. Giao lại task đang mở trước khi bớt thành viên; API hiện chặn bớt nếu nhân viên còn task chưa xong.
+Nguồn: `backend/src/routes/userRoutes.js`, `userController.updateUser`, `authMiddleware.verifyToken`, `memberController.removeMember`, `taskDetailsController.updateTaskDetails`.
 
 ```mermaid
 sequenceDiagram
-    actor HR as Nhân sự
+    actor A as Admin / HR operator
     participant E as Employee + User
-    actor PM as Quản lý dự án
-    participant T as Task / Membership
-    HR->>E: Đặt trạng thái nghỉ việc
-    HR->>PM: Yêu cầu danh sách bàn giao
-    PM->>T: Giao lại task đang mở
-    PM->>T: Bớt membership sau khi không còn task chưa xong
-    Note over E: Token đang tồn tại cần chính sách thu hồi chung
+    participant Auth as Auth middleware
+    actor M as Project manager
+    participant P as Project / Tasks
+    A->>E: Cập nhật status = da_nghi_viec
+    E-->>Auth: Request tiếp theo với token hiện hữu
+    Auth-->>E: 401, phiên không còn hiệu lực
+    M->>P: Rà soát task và giao lại task còn mở
+    M->>P: Remove membership sau khi đủ điều kiện
 ```
 
-### Hậu điều kiện và rollback
+### Hậu điều kiện, rollback và khoảng trống
 
-- Hậu điều kiện mong muốn: quyền đăng nhập/API bị thu hồi theo SLA đã quyết định; task đang mở có chủ sở hữu mới hoặc được đưa vào trạng thái chờ phân công; lịch sử người cũ được giữ.
-- Không tự xóa employee/user hoặc task. Nếu nghỉ việc bị nhập nhầm, HR có thể khôi phục trạng thái theo quy trình HR; sau đó quản lý xác nhận lại membership và task.
-- Cần ghi lại người thực hiện, thời điểm, lý do và quyết định bàn giao để có thể kiểm toán. Hiện các thay đổi HR này chưa có audit trail đầy đủ.
+- Quyền gọi API bị thu hồi theo kiểm tra DB ở request tiếp theo; không đợi JWT hết hạn.
+- Nếu nhập nghỉ việc nhầm, Admin có thể cập nhật trạng thái employee, nhưng cần chủ động rà soát lại manager relationship, membership và assignment; đây chưa phải luồng rehire hoàn chỉnh.
+- Không xóa account/task tự động. Ghi lại đối soát bàn giao ngoài hệ thống hiện là quy trình vận hành; code chưa có audit log đầy đủ cho thay đổi role/phòng ban/offboarding.
+- **Đề xuất:** bổ sung checklist bàn giao trước/sau khi đổi trạng thái và lưu người thực hiện, thời điểm, lý do cùng các assignment được bàn giao.
+- **Cần xác nhận:** có bắt buộc bàn giao xong trước khi cho nghỉ việc không; ai được phép đánh dấu hoàn tất bàn giao; thời hạn giữ dữ liệu và xử lý hồ sơ sau nghỉ việc.
 
-## Các quyết định liên module còn mở
+## Luồng liên quan: duyệt nghỉ phép
 
-- Ai khởi tạo và xác nhận việc bàn giao task khi chuyển phòng/nghỉ việc?
-- Thay đổi phòng ban có hiệu lực ngay hay theo ngày hiệu lực; yêu cầu đang chờ có giữ người duyệt đã chụp lúc gửi không?
-- SLA thu hồi JWT sau khi đổi role/nghỉ việc là bao lâu?
-- Có cần lịch sử membership và lịch sử phòng ban để báo cáo theo thời điểm không?
+- API chặn người gửi tự duyệt đơn. Đơn gửi tới quản lý phòng ban hợp lệ, nếu không có thì fallback tới Admin đang hoạt động theo truy vấn hiện hành.
+- Quyết định duyệt/từ chối hiện cập nhật trạng thái có điều kiện để tránh duyệt trùng; model chưa lưu đầy đủ người duyệt, thời điểm và lý do từ chối.
+- Hủy đơn hiện là xóa cứng và thao tác đọc trạng thái rồi xóa chưa nằm trong một transaction/conditional delete thống nhất; có race có thể xóa đơn vừa được duyệt.
 
-## Nguồn đối chiếu
+Nguồn: `backend/src/controllers/leaveController.js`, `backend/src/routes/leaveRoutes.js`, `backend/prisma/schema.prisma` (`Day_off_requests`).
 
-- `backend/src/controllers/userController.js` — tạo nhân viên, cập nhật phòng ban.
-- `backend/src/controllers/projectController.js`, `memberController.js`, `taskController.js` — dự án, thành viên, phân công task.
-- `backend/src/controllers/authController.js`, `middlewares/authMiddleware.js` — đăng nhập và xác thực token.
-- `backend/src/routes/overtimeRoutes.js`, `backend/src/controllers/leaveController.js` — người nhận và trạng thái yêu cầu HR.
+## Quyết định liên module còn mở
 
+1. Quy trình và kênh cấp credential tạm cho nhân viên mới.
+2. Hiệu lực và audit của thay đổi phòng ban; xử lý project/task/reviewer đang tồn tại.
+3. Quy trình bàn giao bắt buộc khi nghỉ việc và khi tái kích hoạt.
+4. Quyền truy cập employee directory và các trường thông tin được hiển thị theo vai trò.
+5. Audit cho phê duyệt nghỉ phép, từ chối và hủy đơn.
+
+Các quyết định nghiệp vụ trên cần người phụ trách Nhân sự và chủ nghiệp vụ xác nhận; nội dung “Đề xuất” không đại diện cho quyết định đã thống nhất.

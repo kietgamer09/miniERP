@@ -1,82 +1,85 @@
-# Phân tích nghiệp vụ Dự án / Task
+# Phân tích domain Dự án / Task / Thành viên
 
-## Phạm vi và thuật ngữ
+> Đối chiếu với code trong checkout `develop` ngày 09/11/2026. Bảng dưới mô tả contract hiện hành; mục “Cần chủ nghiệp vụ quyết định” là câu hỏi, không phải policy đã duyệt.
 
-- **Dự án** là phạm vi công việc có mã, tên, thời hạn, quản lý và thành viên.
-- **Quản lý dự án** là nhân viên tham chiếu bởi `projects.manager_id`; khác với vai trò tài khoản `manager`.
-- **Thành viên dự án** là bản ghi `project_members`; người được giao task phải là thành viên đang làm việc.
-- **Task** có trạng thái `can_lam`, `dang_lam`, `xong`, người giao, người thực hiện, ưu tiên và hạn chót.
+## Thuật ngữ và chủ thể
 
-## Invariants cần giữ
+- **Project manager**: employee ở `projects.manager_id`; cần đồng thời có user role `manager` để các thao tác quản trị project được cho phép.
+- **Project member**: dòng `project_members`; project manager được tự thêm vào membership khi tạo project.
+- **Assignee**: employee được giao task; ở luồng API phải là member đang làm việc của project.
+- **Task**: `can_lam` → `dang_lam` → `xong`, kèm deadline ngày/giờ, priority và assignee.
 
-1. `projects.start_date <= projects.end_date`; dự án mới không kết thúc trước ngày hiện tại.
-2. Mỗi cặp dự án/nhân viên chỉ có một membership; quản lý dự án được tự thêm vào danh sách thành viên khi tạo dự án.
-3. Người được giao task phải là thành viên dự án và đang làm việc. Backend kiểm tra điều này khi tạo task và khi đổi người thực hiện.
-4. Hạn task không được sau `project.end_date`, nhưng hiện chưa chặn hạn trước `project.start_date` trong create/update. `updateProject` chỉ kiểm tra deadline lớn nhất so với ngày kết thúc mới, chưa kiểm tra deadline nhỏ nhất so với ngày bắt đầu mới.
-5. Chỉ Admin hoặc tài khoản vai trò `manager` quản lý đúng dự án được tạo/sửa/xóa dự án, quản lý thành viên, tạo task và sửa chi tiết task.
-6. Nhân viên chỉ đọc dự án/task mà họ tham gia; quản lý có thể đọc dự án mình quản lý; Admin đọc toàn công ty.
-7. Thành viên chỉ đổi trạng thái task mình được giao theo bước cho phép; quản lý đúng dự án/Admin có thể đổi task qua trạng thái kề.
-8. Không hoàn tất dự án khi chưa có task hoặc còn task chưa `xong`; dự án hoàn tất không nhận task mới, sửa task hay đổi trạng thái task.
-9. Không thể bớt quản lý dự án khỏi membership; không thể bớt thành viên còn task chưa hoàn tất được giao cho họ.
-10. Xóa dự án hiện chỉ cho phép khi dự án chưa có task.
+Nguồn: `schema.prisma: projects/project_members/tasks`; `projectController.createProject`; `taskController.validateTask/createTask`; `taskDetailsController.updateTaskDetails`.
 
-Các invariants 4 và các quyết định mở lại dự án cần được khóa bằng test/tài liệu nghiệp vụ; việc kiểm tra hiện trạng không thay thế nguồn quyết định backend.
+## Invariants và bằng chứng hiện hành
 
-## State diagram: dự án
+1. **Ngày project:** `start_date <= end_date`; project mới không thể kết thúc trước ngày hiện tại. Nguồn: `projectController.validateProject`.
+2. **Ngày task:** `project.start_date <= task.due_date <= project.end_date` khi tạo/sửa task; đổi khoảng project trả 409 nếu deadline nhỏ nhất/lớn nhất nằm ngoài khoảng mới. Nguồn: `utils/taskRules.dueDateError`, `taskController.createTask`, `taskDetailsController.updateTaskDetails`, `projectController.updateProject`.
+3. **Assignee:** phải là member project và employee đang làm việc ở create/reassign. Nguồn: `taskController.createTask`, `taskDetailsController.updateTaskDetails`.
+4. **Quyền quản trị project:** admin hoặc tài khoản role `manager` có `employee_id === projects.manager_id`; membership không tự cấp quyền sửa project/task. Nguồn: `projectController.canManageProject/loadManagedProject`.
+5. **Phạm vi đọc:** admin xem mọi project; member xem project mình tham gia; role manager xem project mình quản lý hoặc tham gia. Task detail/list được kiểm tra quyền project. Nguồn: `projectController.listProjects/getProject`, `taskController.listProjectTasks/listMyTasks`, `taskDetailsController.getTaskDetails`.
+6. **Hoàn tất project:** phải có ít nhất một task và mọi task phải `xong`; project hoàn thành chặn tạo/sửa/đổi trạng thái task. Nguồn: `projectController.completeProject`, `taskController`, `taskDetailsController`, `taskActionController`.
+7. **Trạng thái task:** chỉ chuyển cột kề; employee được giao chỉ đi theo các bước cho phép, manager đúng project/Admin được đổi trạng thái qua bước kề. Cập nhật có điều kiện trạng thái cũ để tránh ghi đè cạnh tranh. Nguồn: `utils/taskRules.getAllowedMoves`, `taskActionController.changeTaskStatus`.
+8. **Thành viên:** không thể bớt project manager; không thể bớt member còn task chưa hoàn tất. Nguồn: `memberController.removeMember`.
+9. **Xóa project:** chỉ xóa khi không có task và không có project comment; transaction xóa DB xong mới dọn thư mục attachment đúng project. Nguồn: `projectController.createDeleteProjectHandler`, `services/attachmentStorage.js`.
+10. **Comment/attachment trên project hoàn tất:** comment vẫn được tạo bởi người có quyền; upload/delete attachment mới bị chặn. Tạo/sửa/status task bị chặn. Nguồn: `projectCommentController`, `commentController`, `commentAccess.js`, `attachmentRoutes.js`, task controllers.
 
-```mermaid
-stateDiagram-v2
-    [*] --> dang_thuc_hien: tạo dự án
-    dang_thuc_hien --> hoan_thanh: có ít nhất 1 task và mọi task xong
-    hoan_thanh --> dang_thuc_hien: Admin/quản lý dự án mở lại
-    dang_thuc_hien --> [*]: xóa nếu chưa có task
-```
-
-`hoan_thanh` khóa tạo/sửa task và đổi trạng thái task. Xóa/mở lại dự án vẫn là thao tác riêng có quyền; cần giữ thống nhất nếu thay policy lưu lịch sử.
-
-## State diagram: task
+## Sơ đồ trạng thái
 
 ```mermaid
 stateDiagram-v2
-    [*] --> can_lam: tạo task trong dự án đang thực hiện
-    can_lam --> dang_lam: người được giao hoặc quản lý/Admin
-    dang_lam --> can_lam: người được giao hoặc quản lý/Admin
-    dang_lam --> xong: người được giao hoặc quản lý/Admin
-    xong --> dang_lam: quản lý dự án/Admin
-    hoan_thanh_du_an: dự án đã hoàn thành
-    can_lam --> hoan_thanh_du_an: bị khóa
-    dang_lam --> hoan_thanh_du_an: bị khóa
-    xong --> hoan_thanh_du_an: không cho cập nhật task
+    [*] --> dang_thuc_hien: tạo project
+    dang_thuc_hien --> hoan_thanh: có task và tất cả task xong
+    hoan_thanh --> dang_thuc_hien: admin hoặc manager đúng project gọi reopen
+    dang_thuc_hien --> [*]: xóa nếu project không task/comment
 ```
 
-Backend chỉ cho chuyển sang cột kề. Nhân viên được giao không thể kéo task từ `xong` lùi lại; quản lý/Admin có thể kéo task về trạng thái kề.
+```mermaid
+stateDiagram-v2
+    [*] --> can_lam: tạo task trong project đang thực hiện
+    can_lam --> dang_lam: assignee hoặc manager/admin theo quyền
+    dang_lam --> can_lam: assignee hoặc manager/admin theo quyền
+    dang_lam --> xong: assignee hoặc manager/admin theo quyền
+    xong --> dang_lam: chỉ manager/admin
+```
 
-## Ma trận quyền hiện tại
+`completeProject` yêu cầu ít nhất một task và tất cả đã xong. `reopenProject` hiện cho admin/manager đúng project mở lại về `dang_thuc_hien`, không yêu cầu lý do và không có audit event chuyên biệt.
 
-| Hành động | Nhân viên thành viên | Quản lý dự án (vai trò manager, đúng manager_id) | Admin | Người ngoài dự án |
-|---|---:|---:|---:|---:|
-| Xem dự án/task | Có | Có | Có | Không |
-| Đổi trạng thái task được giao | Có, theo bước cho phép | Có | Có | Không |
-| Đổi trạng thái task người khác | Không | Có, theo bước cho phép | Có, theo bước cho phép | Không |
-| Tạo task / sửa task | Không | Có | Có | Không |
-| Thêm/bớt thành viên | Không | Có | Có | Không |
-| Sửa/xóa/hoàn tất/mở lại dự án | Không | Có | Có | Không |
-| Bình luận dự án/task | Thành viên theo endpoint | Quản lý có quyền truy cập theo endpoint | Có | Không |
+## Ma trận quyền theo API
 
-Vai trò `manager` không tự cấp quyền với mọi dự án. Admin được phân biệt riêng. Một nhân viên là `manager_id` nhưng có role tài khoản employee có thể đọc dự án theo nhánh manager trong truy vấn list, song hàm quản lý ghi yêu cầu role `manager` hoặc `admin`; cần quyết định liệu đây là dữ liệu hợp lệ hay inconsistency cần xử lý.
+| Hành động | Employee là member | Manager đúng `manager_id` | Admin | Người không thuộc project |
+|---|---|---|---|---|
+| Xem project/task trong project | Được | Được | Được | 403 |
+| Xem “task của tôi” | Chỉ task được giao cho mình | Chỉ task được giao cho mình, ngoài project được quản lý có thể đọc thêm qua project routes | Task được giao cho mình ở `/mine`; mọi project qua project APIs | Không có task ngoài project/member scope |
+| Đổi trạng thái task | Task được giao, theo bước cho phép | Task trong project, chỉ bước kề | Task trong mọi project, chỉ bước kề | 403 |
+| Tạo/sửa task, quản lý member | Không | Được trong project mình quản lý | Được | 403 |
+| Sửa/xóa/complete/reopen project | Không | Được trong project mình quản lý | Được | 403 |
+| Bình luận project/task | Member được; project manager cũng được theo endpoint | Manager đúng project hoặc member | Được | 403 |
+| Upload/delete attachment mới | Theo quyền project và trạng thái project | Theo quyền project và trạng thái project | Được khi project chưa hoàn thành | Bị chặn; project hoàn thành cũng chặn ghi attachment |
 
-## Rủi ro dữ liệu cụ thể
+Nguồn: `projectRoutes.js`, `taskRoutes.js`, `projectController.js`, `taskAccess.js`, `memberController.js`, `commentAccess.js`, `attachmentRoutes.js`. Chú ý `role=manager` không cho quyền quản lý mọi project.
 
-1. **Deadline ngoài khoảng dự án:** create/update task không kiểm tra ngày bắt đầu. Sửa khoảng thời gian dự án không kiểm tra task nằm trước ngày bắt đầu mới. Dữ liệu hiện hữu cũng cần truy vấn kiểm kê trước khi áp quy tắc.
-2. **Assignee không được ràng buộc bằng DB với membership:** controller kiểm tra ở luồng chuẩn, nhưng ràng buộc FK chỉ bảo đảm nhân viên tồn tại. Script/import hoặc luồng ghi mới có thể tạo task giao cho người ngoài dự án.
-3. **Bớt thành viên làm mất lịch sử tham gia:** `removeMember` xóa dòng membership sau khi task chưa hoàn tất đã được giao lại; không có `left_at`/lịch sử membership.
-4. **Role token cũ và thay đổi nhân sự:** middleware hiện dùng role trong JWT đến khi token hết hạn; thay đổi role/trạng thái HR không được phản ánh đồng nhất ở mọi endpoint.
+## Rủi ro dữ liệu/contract
+
+1. **Assignee-member chỉ kiểm tra ở API:** schema có FK assignee tới employee nhưng chưa có composite FK bảo đảm assignee thuộc đúng `project_id`. Script/import khác có thể phá invariant nếu không gọi cùng validation.
+2. **Membership không lưu lịch sử:** `removeMember` xóa dòng membership; không có `joined_at/left_at` đủ để tái dựng quyền theo thời gian.
+3. **Offboarding không tự bàn giao:** status nghỉ việc làm token mất hiệu lực, nhưng task và membership vẫn tồn tại. Manager/Admin cần giao lại task; API chặn xóa member nếu task còn chưa xong.
+4. **Đổi phòng không đổi project:** project membership và assignee không tự chuyển theo phòng ban. Bulk department transfer không chạy rà soát project/task.
+5. **Manager role có thể lệch với project manager:** permission kiểm tra cả role `manager` lẫn `manager_id`. Nếu role bị hạ nhưng project vẫn trỏ tới employee đó, người này mất quyền quản lý cho đến khi role được xử lý.
+6. **Hoàn tất/mở lại không có audit policy:** status được cập nhật nhưng không lưu người/lý do qua một bảng audit riêng.
 
 ## Câu hỏi cần chủ nghiệp vụ quyết định
 
-1. Khi chuyển một nhân viên sang phòng ban khác, membership và task thuộc dự án cũ giữ nguyên, chuyển theo phòng ban, hay yêu cầu quản lý dự án phân công lại?
-2. Có cho phép hoàn tất dự án có task bị hủy/đóng theo trạng thái khác ngoài `xong` không? Hiện code yêu cầu tất cả task đúng trạng thái `xong`.
-3. Ai được mở lại dự án đã hoàn thành, và có yêu cầu ghi lý do/mốc audit hay không?
-4. Có cho xóa dự án rỗng nhưng đã có bình luận/attachment không? Cần chính sách lưu trữ lịch sử trước khi quyết định xóa cứng.
-5. Task có được phép có deadline vào cuối tuần/ngày lễ, và khi đổi ngày dự án, deadline ngoài khoảng sẽ bị từ chối, yêu cầu sửa task, hay tự điều chỉnh?
+1. Khi chuyển phòng hoặc nghỉ việc, membership/task cũ giữ nguyên, giao lại hay thu hồi quyền đọc? Ai chịu trách nhiệm và khi nào?
+2. Có cho task chạy cuối tuần/ngày lễ không? Quy tắc lặp hiện bỏ cuối tuần; task không lặp vẫn có thể đặt cuối tuần.
+3. Có cần lý do/người/thời điểm khi complete/reopen project không?
+4. Có cần lưu lịch sử member khi bớt người khỏi project không?
+5. Manager phòng ban và project manager có cần là cùng một vai trò/quy trình bổ nhiệm hay chỉ là hai quan hệ độc lập?
 
+## Nguồn code chính
+
+- `backend/prisma/schema.prisma`: `projects`, `project_members`, `tasks`.
+- `backend/src/controllers/projectController.js`, `taskController.js`, `taskDetailsController.js`, `taskActionController.js`, `memberController.js`.
+- `backend/src/utils/taskRules.js`, `taskAccess.js`, `commentAccess.js`.
+- `backend/src/routes/projectRoutes.js`, `taskRoutes.js`, `attachmentRoutes.js`.
+- Test contract: `backend/tests/project-task.integration.test.js`, `backend/tests/issue95.integration.test.js`.
