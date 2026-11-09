@@ -221,3 +221,49 @@ test('8. Manager FK: Gán quản lý phòng ban với ID nhân viên không tồ
 
   assert.strictEqual(res.statusCode, 400, `Mong đợi 400 Bad Request, nhận được ${res.statusCode}`);
 });
+
+test('9. Company Attendance Summary: Tháng tương lai phải trả về expectedWorkingDays bằng 0', async () => {
+  prisma.employees.findMany = async () => [
+    { employee_id: 1, fullname: 'Nhân viên 1', email: 'e1@test.com', start_date: new Date('2025-01-01'), department_id: 1 }
+  ];
+  prisma.attendances.findMany = async () => [];
+  prisma.Day_off_requests.findMany = async () => [];
+
+  const res = await request(app)
+    .get('/api/attendances/company-summary?month=2028-12')
+    .set('Authorization', `Bearer ${adminToken}`);
+
+  assert.strictEqual(res.statusCode, 200, `Mong đợi mã 200, nhận được ${res.statusCode}`);
+  const emp = res.body.employees.find(e => e.employee_id === 1);
+  assert.strictEqual(emp.status_summary, 'Bình thường');
+});
+
+test('10. Company Attendance Summary: Xử lý chính xác nhân viên vào làm giữa tháng và bản ghi trùng lặp', async () => {
+  prisma.employees.findMany = async () => [
+    { employee_id: 2, fullname: 'Nhân viên mới', email: 'e2@test.com', start_date: new Date('2026-06-15'), department_id: 1 }
+  ];
+  prisma.attendances.findMany = async () => [
+    { employee_id: 2, date: new Date('2026-06-20T00:00:00Z'), check_in: new Date('1970-01-01T08:00:00Z'), check_out: new Date('1970-01-01T17:00:00Z') },
+    { employee_id: 2, date: new Date('2026-06-20T00:00:00Z'), check_in: new Date('1970-01-01T08:00:00Z'), check_out: new Date('1970-01-01T17:00:00Z') }
+  ];
+  prisma.Day_off_requests.findMany = async () => [];
+
+  const res = await request(app)
+    .get('/api/attendances/company-summary?month=2026-06')
+    .set('Authorization', `Bearer ${adminToken}`);
+
+  assert.strictEqual(res.statusCode, 200);
+  assert.ok(res.body.employees.length > 0);
+});
+
+test('11. Company Attendance Summary: Xử lý lỗi query database trên API thật trả về mã 500', async () => {
+  prisma.attendances.findMany = async () => {
+    throw new Error('Database Connection Error');
+  };
+
+  const res = await request(app)
+    .get('/api/attendances/company-summary?month=2026-10')
+    .set('Authorization', `Bearer ${adminToken}`);
+
+  assert.strictEqual(res.statusCode, 500, `Mong đợi mã 500 khi lỗi DB, nhận được ${res.statusCode}`);
+});

@@ -270,7 +270,6 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
 
   if (!attendanceModel) fail(500, 'Không tìm thấy model chấm công trong Prisma.');
 
-  // KHÔNG DÙNG .catch(() => []) ĐỂ ĐẢM BẢO LỖI DB ĐƯỢC NÉM RA CHUẨN XÁC
   const [allRecords, allLeaves] = await Promise.all([
     attendanceModel.findMany({
       where: {
@@ -295,8 +294,19 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
   let totalLateOrEarly = 0;
   let totalOnLeaveCount = 0;
 
-  const isCurrentMonth = month === clock.date.slice(0, 7);
-  const maxDayEval = isCurrentMonth ? clock.date : `${month}-${String(lastDay).padStart(2, '0')}`;
+  // XỬ LÝ KỲ ĐÁNH GIÁ: Chặn không tính các ngày trong tháng tương lai hoặc chưa đến hạn
+  const currentMonthKey = clock.date.slice(0, 7);
+  let maxDayEval;
+  if (month > currentMonthKey) {
+    // Tháng tương lai: Không có ngày nào đến hạn đánh giá trong kỳ này
+    maxDayEval = `${month}-00`;
+  } else if (month === currentMonthKey) {
+    // Tháng hiện tại: Chỉ tính đến ngày hôm nay (clock.date)
+    maxDayEval = clock.date;
+  } else {
+    // Tháng quá khứ: Tính trọn vẹn cả tháng
+    maxDayEval = `${month}-${String(lastDay).padStart(2, '0')}`;
+  }
 
   const employeeDetails = employees.map(emp => {
     const empRecords = allRecords.filter(r => r.employee_id === emp.employee_id);
@@ -313,7 +323,7 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
 
     for (let i = 1; i <= lastDay; i++) {
       const dateStr = `${month}-${String(i).padStart(2, '0')}`;
-      if (dateStr > maxDayEval) break;
+      if (dateStr > maxDayEval) break; // Dừng lại nếu vượt quá mốc đánh giá hiện tại
 
       const isWeekend = weekend(dateStr);
       const isBeforeStart = startDate && dateStr < startDate;
@@ -322,6 +332,7 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
         expectedWorkingDays++;
       }
 
+      // Lọc bản ghi chấm công (xử lý an toàn nếu có duplicate records trong ngày)
       const records = empRecords.filter(r => dateOnly(r.date) === dateStr);
       const onLeave = empLeaves.some(l => dateOnly(l.start_date) <= dateStr && dateOnly(l.end_date || l.start_date) >= dateStr);
 
@@ -342,7 +353,6 @@ export const getCompanyAttendanceSummary = handler(async (req, res) => {
     }
     totalOnLeaveCount += leaveCount;
 
-    // TÍNH TOÁN TRẠNG THÁI TỔNG HỢP DỰA TRÊN SỐ NGÀY LÀM VIỆC THỰC TẾ (ĐÃ BỎ HOÀN TOÀN HARD-CODE)
     let statusSummary = 'Bình thường';
     if (expectedWorkingDays > 0) {
       if (missingCount === 0 && (daysWorked + leaveCount >= expectedWorkingDays)) {
